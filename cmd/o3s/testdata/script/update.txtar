@@ -1,7 +1,7 @@
 # A new home already holds what the binary and its stores ship, and a dev build leaves itself alone
 mkdir home
 cd home
-exec o3s init
+exec o3s init --guest
 exec o3s update
 stdout '^o3s dev builds update with go install or install\.sh$'
 stdout '^Up to date$'

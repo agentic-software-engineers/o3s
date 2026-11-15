@@ -1,7 +1,7 @@
 # owner/name starts an empty repository in projects/<host>/<owner>/<name> and joins the workspace, as ghq create does
 mkdir home
 cd home
-exec o3s init
+exec o3s init --guest
 exec o3s project create example/scratch
 stdout '^Created example/scratch$'
 cmpenv $WORK/devcontainer.log $WORK/want.log

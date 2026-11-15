@@ -4,23 +4,42 @@
 package vm_test
 
 import (
+	"os"
+	"regexp"
 	"strings"
 	"testing"
 
 	"github.com/hansehart/o3s/test/stacktest"
 )
 
-// A home's VM boots the pinned Ubuntu, keeps to its own filesystems, runs AppArmor, stops, and goes away with o3s vm rm.
+// o3s init makes the home inside its VM, which boots the pinned Ubuntu, keeps to its own filesystems, confines the cage
+// with AppArmor, stops, and goes away with o3s vm rm.
 //
 // The subtests share one VM in order, since every boot takes minutes.
 func TestTheHomesVM(t *testing.T) {
 	dir := stacktest.AVMHost(t)
-	out, err := stacktest.O3sIn(t, dir, "vm", "start")
-	// Stop when the VM fails to come up
+	out, err := stacktest.O3sIn(t, dir, "init")
+	// Stop when the home fails to come up in its VM
 	if err != nil {
-		t.Fatalf("o3s vm start = %v, want the home's VM running\n%s", err, out)
+		t.Fatalf("o3s init = %v, want the home made inside its VM\n%s", err, out)
 	}
 	t.Cleanup(func() { _, _ = stacktest.O3sIn(t, dir, "vm", "rm") })
+
+	t.Run("leaves the host folder its ID alone", func(t *testing.T) {
+		entries, err := os.ReadDir(dir)
+		// Require the one entry that finds the VM
+		if err != nil || len(entries) != 1 || entries[0].Name() != ".o3s" {
+			t.Errorf("host folder = %v, %v, want .o3s alone", entries, err)
+		}
+	})
+
+	t.Run("holds the home inside the VM", func(t *testing.T) {
+		out, err := stacktest.O3sIn(t, dir, "vm", "shell", "--", "cat", "o3s/o3s.json")
+		// Require the home's settings in the VM
+		if err != nil || !strings.Contains(out, `"hosts"`) {
+			t.Errorf("o3s vm shell -- cat o3s/o3s.json = %v\n%s\nwant the home's settings", err, out)
+		}
+	})
 
 	t.Run("boots the pinned Ubuntu", func(t *testing.T) {
 		out, err := stacktest.O3sIn(t, dir, "vm", "shell", "--", "cat", "/etc/os-release")
@@ -50,6 +69,29 @@ func TestTheHomesVM(t *testing.T) {
 		// Require the kernel to enforce AppArmor, which the cage's profile needs
 		if err != nil || strings.TrimSpace(out) != "Y" {
 			t.Errorf("o3s vm shell -- cat /sys/module/apparmor/parameters/enabled = %v, %q, want Y", err, out)
+		}
+	})
+
+	t.Run("confines the cage with its own profile", func(t *testing.T) {
+		out, err := stacktest.O3sIn(t, dir, "vm", "shell", "--", "sh", "-c", `cd "$HOME/o3s" && "$HOME/.local/share/o3s/devcontainers/bin/devcontainer" up --workspace-folder .`)
+		// Stop when the stack fails to come up in the VM
+		if err != nil {
+			t.Fatalf("devcontainer up in the VM = %v\n%s", err, out)
+		}
+		id := regexp.MustCompile(`"containerId":"([0-9a-f]+)"`).FindStringSubmatch(out)
+		// Stop when the CLI names no cage
+		if id == nil {
+			t.Fatalf("devcontainer up in the VM names no container\n%s", out)
+		}
+		out, err = stacktest.O3sIn(t, dir, "vm", "shell", "--", "docker", "exec", id[1], "cat", "/proc/self/attr/current")
+		// Require the cage to run under its profile in enforce mode
+		if err != nil || strings.TrimSpace(out) != "o3s-cage (enforce)" {
+			t.Errorf("cage confinement = %v, %q, want o3s-cage (enforce)", err, out)
+		}
+		out, err = stacktest.O3sIn(t, dir, "vm", "shell", "--", "docker", "ps", "--format", "{{.Names}}")
+		// Require the gateway and the proxy beside the cage
+		if err != nil || !strings.Contains(out, "gateway") || !strings.Contains(out, "proxy") {
+			t.Errorf("docker ps in the VM = %v\n%s\nwant the gateway and the proxy running", err, out)
 		}
 	})
 

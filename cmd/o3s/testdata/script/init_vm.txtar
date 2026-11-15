@@ -1,0 +1,74 @@
+# init makes the home inside its VM, and leaves this folder an ID to find the VM by
+env O3S_RELEASE_URL=file://$WORK/release
+mkdir home
+cd home
+exec o3s init
+exists .o3s/id
+! exists o3s.json
+grep 'tty=false start --name=o3s-[0-9a-f]{12} --vm-type=qemu -$' $WORK/limactl.log
+grep 'tty=false copy -r \S+ o3s-[0-9a-f]{12}:/tmp/o3s-release$' $WORK/limactl.log
+grep '^O3S_RELEASE_URL=file:///tmp/o3s-release sh /tmp/o3s-release/install.sh$' $WORK/vm.log
+grep 'init --guest' $WORK/vm.log
+
+# The VM commands find the home's VM by its ID, wherever the folder moves
+exec o3s vm shell -- echo inside
+stdout '^inside$'
+cd $WORK
+mv home moved
+cd moved
+exec o3s vm shell -- echo still
+stdout '^still$'
+
+# Release files that differ from their checksums stay out of the VM
+env O3S_RELEASE_URL=file://$WORK/tampered
+mkdir $WORK/other
+cd $WORK/other
+! exec o3s init
+stderr 'differs from the release''s checksums'
+
+# A dev build names where its release files come from
+env O3S_RELEASE_URL=
+! exec o3s init
+stderr 'O3S_RELEASE_URL'
+
+# The VM commands need a home with a VM
+mkdir $WORK/empty
+cd $WORK/empty
+! exec o3s vm shell -- true
+stderr 'no o3s home with a VM here, run o3s init'
+
+# --dangerously-skip-vm makes the home on this host, records the choice, and warns on every start
+mkdir $WORK/process
+cd $WORK/process
+exec o3s init --dangerously-skip-vm
+grep '"isolation": "process"' o3s.json
+! exists .o3s/id
+exec o3s init
+stderr '^warning: the home runs without its VM, remove "isolation" from o3s.json to go back to the secure default$'
+
+-- release/o3s-linux-amd64 --
+#!/bin/sh
+echo o3s version dev
+-- release/o3s-linux-arm64 --
+#!/bin/sh
+echo o3s version dev
+-- release/install.sh --
+#!/bin/sh
+echo install
+-- release/checksums.txt --
+38a5d1af183e71a625e8aa9f19b731ef531956ece2be4428142f0652223b23dd  o3s-linux-amd64
+38a5d1af183e71a625e8aa9f19b731ef531956ece2be4428142f0652223b23dd  o3s-linux-arm64
+13d4c1b32aa575d6976348888a129080e01b25b0db6132f2386b48b9cb34ce07  install.sh
+-- tampered/o3s-linux-amd64 --
+#!/bin/sh
+echo something else
+-- tampered/o3s-linux-arm64 --
+#!/bin/sh
+echo something else
+-- tampered/install.sh --
+#!/bin/sh
+echo install
+-- tampered/checksums.txt --
+38a5d1af183e71a625e8aa9f19b731ef531956ece2be4428142f0652223b23dd  o3s-linux-amd64
+38a5d1af183e71a625e8aa9f19b731ef531956ece2be4428142f0652223b23dd  o3s-linux-arm64
+13d4c1b32aa575d6976348888a129080e01b25b0db6132f2386b48b9cb34ce07  install.sh
