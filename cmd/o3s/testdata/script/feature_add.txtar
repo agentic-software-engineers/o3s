@@ -2,6 +2,7 @@
 exec o3s feature add $REGISTRY/features/tool
 env 'TOKEN=$TOKEN'
 cmpenv stdout added.txt
+stderr '^warning: EXAMPLE_TOKEN waits for its value: echo "\$TOKEN" \| o3s secret add EXAMPLE_TOKEN$'
 cmpenv .devcontainer/devcontainer.json want.jsonc
 grep '"by": \[\n +"user",\n +"'${REGISTRY@R}'/features/tool"' o3s.json
 grep '"ports": \[\n +22,\n +443' o3s.json
@@ -26,7 +27,7 @@ exec o3s feature rm $REGISTRY/features/tool
 exec o3s feature add $REGISTRY/features/tool --no-preview
 ! stdout '^  \+ '
 stdout '^Added '${REGISTRY@R}'/features/tool$'
-stdout '^! EXAMPLE_TOKEN waits for its value'
+stderr '^warning: EXAMPLE_TOKEN waits for its value'
 
 # A feature the store lacks is turned away
 ! exec o3s feature add $REGISTRY/features/absent
@@ -53,7 +54,6 @@ $REGISTRY/features/tool:2
   + EXAMPLE_MODE=strict
   + EXAMPLE_HOME=/home/ubuntu/features/$REGISTRY/features/tool
 Added $REGISTRY/features/tool
-! EXAMPLE_TOKEN waits for its value: echo "$TOKEN" | o3s secret add EXAMPLE_TOKEN
 Restarted gateway
 Rebuild the cage to install it
 -- want.jsonc --

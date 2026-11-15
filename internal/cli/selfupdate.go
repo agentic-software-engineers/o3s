@@ -28,7 +28,7 @@ var (
 )
 
 // selfUpdate brings the binary to the latest release and hands the rest of the update to it, and reports whether it did.
-func selfUpdate(ctx context.Context, in io.Reader, out io.Writer, yes bool) (bool, error) {
+func selfUpdate(ctx context.Context, in io.Reader, out, errOut io.Writer, yes bool) (bool, error) {
 	current := version()
 	// Leave a dev build to the way it was built
 	if !release.IsRelease(current) {
@@ -38,7 +38,7 @@ func selfUpdate(ctx context.Context, in io.Reader, out io.Writer, yes bool) (boo
 	latest, err := release.Latest(ctx)
 	// Go on with this binary where the releases stay out of reach
 	if err != nil {
-		fmt.Fprintf(out, "! releases out of reach, o3s stays at %s\n", current)
+		warn(errOut, "releases out of reach, o3s stays at %s", current)
 		return false, nil
 	}
 	// Go on with this binary where it is the latest release

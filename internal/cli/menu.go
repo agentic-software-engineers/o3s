@@ -19,7 +19,7 @@ func runMenu(ctx context.Context, s Streams) int {
 	self, err := executable()
 	// Report a binary that fails to find itself
 	if err != nil {
-		fmt.Fprintf(s.Err, "Error: %v\n", err)
+		fmt.Fprintf(s.Err, "error: %v\n", err)
 		return 1
 	}
 	err = tui.Run(ctx, tui.Config{
@@ -30,7 +30,7 @@ func runMenu(ctx context.Context, s Streams) int {
 	})
 	// Report a menu that fails to run
 	if err != nil {
-		fmt.Fprintf(s.Err, "Error: %v\n", err)
+		fmt.Fprintf(s.Err, "error: %v\n", err)
 		return 1
 	}
 	return 0

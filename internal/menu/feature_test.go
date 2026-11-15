@@ -80,7 +80,7 @@ func TestFeatureDialogsEndInTheirCommands(t *testing.T) {
 			"a store out of reach",
 			[][]string{{"feature"}, {"add"}, {"registry.example.org/features"}},
 			[]string{"What do you want to do?", "Action", "Store"},
-			[]Command{{Note: "! read the features of registry.example.org/features: unreachable"}},
+			[]Command{{Note: "error: read the features of registry.example.org/features: unreachable"}},
 		},
 		{
 			"removing a feature",

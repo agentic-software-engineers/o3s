@@ -89,7 +89,7 @@ func newFeatureAdd() *cobra.Command {
 			}
 			// Name how to give each waiting secret its value
 			for _, name := range waiting {
-				fmt.Fprintf(out, "! %s waits for its value: echo \"$TOKEN\" | o3s secret add %s\n", name, name)
+				warn(cmd.ErrOrStderr(), "%s waits for its value: echo \"$TOKEN\" | o3s secret add %s", name, name)
 			}
 			// Restart the stack where the allowlist changed
 			if hosts {

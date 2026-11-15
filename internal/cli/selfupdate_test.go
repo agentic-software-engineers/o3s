@@ -65,7 +65,7 @@ func TestSelfUpdateReplacesAnOlderRelease(t *testing.T) {
 	path, restarted := aRunningBinary(t, running)
 	var out strings.Builder
 
-	done, err := selfUpdate(t.Context(), strings.NewReader(""), &out, true)
+	done, err := selfUpdate(t.Context(), strings.NewReader(""), &out, &out, true)
 
 	// Stop when the update fails
 	if err != nil || !done {
@@ -97,7 +97,7 @@ func TestSelfUpdateGoesOnToTheHome(t *testing.T) {
 	}{
 		{"the latest release", latest, "", true},
 		{"a dev build", "dev", "o3s dev builds update with go install or install.sh", true},
-		{"releases out of reach", running, "! releases out of reach, o3s stays at " + running, false},
+		{"releases out of reach", running, "warning: releases out of reach, o3s stays at " + running, false},
 	}
 	// Check every case
 	for _, tt := range tests {
@@ -109,7 +109,7 @@ func TestSelfUpdateGoesOnToTheHome(t *testing.T) {
 		_, restarted := aRunningBinary(t, tt.version)
 		var out strings.Builder
 
-		done, err := selfUpdate(t.Context(), strings.NewReader(""), &out, true)
+		done, err := selfUpdate(t.Context(), strings.NewReader(""), &out, &out, true)
 
 		// Require the update to go on with this binary
 		if err != nil || done || *restarted != nil {

@@ -115,18 +115,18 @@ func prepare(cmd *cobra.Command, dir string) error {
 	}
 	// Name every other home, since this release runs one home per machine
 	for _, other := range host.OtherHomes(dir) {
-		fmt.Fprintf(out, "! %s is already an o3s home, and o3s runs one home per machine for now\n", other)
+		warn(cmd.ErrOrStderr(), "%s is already an o3s home, and o3s runs one home per machine for now", other)
 	}
 	// Hand back values compose reads that stay unwritten
 	if err := host.Env(dir); err != nil {
 		return err
 	}
-	waiting(out, dir)
+	waiting(cmd.ErrOrStderr(), dir)
 	return nil
 }
 
-// waiting names every secret a host carries that still waits for its value, with the command that gives it one.
-func waiting(out io.Writer, dir string) {
+// waiting warns about every secret a host carries that still waits for its value, with the command that gives it one.
+func waiting(errOut io.Writer, dir string) {
 	c, err := config.Load(dir)
 	// Leave the names to the commands that read the settings, which report a broken file themselves
 	if err != nil {
@@ -144,7 +144,7 @@ func waiting(out io.Writer, dir string) {
 		// Name a secret once while it waits for its value
 		if h.Secret != "" && !set && !named[h.Secret] {
 			named[h.Secret] = true
-			fmt.Fprintf(out, "! %s waits for its value: echo \"$TOKEN\" | o3s secret add %s\n", h.Secret, h.Secret)
+			warn(errOut, "%s waits for its value: echo \"$TOKEN\" | o3s secret add %s", h.Secret, h.Secret)
 		}
 	}
 }

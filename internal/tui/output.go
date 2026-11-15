@@ -43,7 +43,7 @@ func colored(line string) string {
 	trimmed := strings.TrimLeft(line, " ")
 	// Color a line by the sign it starts with
 	switch {
-	case strings.HasPrefix(trimmed, "! "), strings.HasPrefix(trimmed, "error:"):
+	case strings.HasPrefix(trimmed, "warning:"), strings.HasPrefix(trimmed, "error:"):
 		return warning.Render(line)
 	case strings.HasPrefix(trimmed, "+ "):
 		return added.Render(line)
