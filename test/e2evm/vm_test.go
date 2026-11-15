@@ -10,7 +10,7 @@ import (
 	"github.com/hansehart/o3s/test/stacktest"
 )
 
-// A home's VM boots the pinned Ubuntu, holds no host folder, runs AppArmor, stops, and goes away with o3s vm rm.
+// A home's VM boots the pinned Ubuntu, keeps to its own filesystems, runs AppArmor, stops, and goes away with o3s vm rm.
 //
 // The subtests share one VM in order, since every boot takes minutes.
 func TestTheHomesVM(t *testing.T) {
@@ -30,13 +30,13 @@ func TestTheHomesVM(t *testing.T) {
 		}
 	})
 
-	t.Run("sees no host folder", func(t *testing.T) {
+	t.Run("keeps to its own filesystems", func(t *testing.T) {
 		out, err := stacktest.O3sIn(t, dir, "vm", "shell", "--", "mount")
 		// Stop when the mounts stay unread
 		if err != nil {
 			t.Fatalf("o3s vm shell -- mount = %v\n%s", err, out)
 		}
-		// Require no filesystem that carries host folders into the VM
+		// Require the VM's own filesystems alone, free of any that carries host folders in
 		for _, kind := range []string{"type 9p", "type virtiofs", "type fuse.sshfs", "type drvfs"} {
 			// Name the host folder the VM sees
 			if strings.Contains(out, kind) {

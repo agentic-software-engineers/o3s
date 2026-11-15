@@ -24,7 +24,7 @@ func AVMHost(tb testing.TB) string {
 		base = "/tmp"
 	}
 	xdg, err := os.MkdirTemp(base, "o3s") //nolint:usetesting // tb.TempDir() is named after the test, too long for Lima's sockets
-	// Stop when the XDG folders have no place to go
+	// Stop when the XDG folders' place fails to appear
 	if err != nil {
 		tb.Fatalf("Setup: %v", err)
 	}

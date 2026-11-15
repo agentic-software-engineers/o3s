@@ -7,5 +7,5 @@ images:
     arch: "aarch64"
     digest: "sha256:8eb876c2ccc4b6ff89e4a65d511815923b285e04503ba465809bf587f763da24"
 
-# Shares no host folder and forwards no port, the only mode Lima's hcs driver runs in
+# Plain mode: the VM reaches the host over the network alone, the mode Lima's hcs driver runs in
 plain: true

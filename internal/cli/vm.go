@@ -37,7 +37,7 @@ func newVMLifecycle(use, short, done string, step func(vm.Lima, context.Context,
 		Args:  usage(cobra.NoArgs),
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			lima, name, err := homeVM()
-			// Hand back a host that can't reach the VM
+			// Hand back why the VM stays out of reach
 			if err != nil {
 				return err
 			}
@@ -51,15 +51,15 @@ func newVMLifecycle(use, short, done string, step func(vm.Lima, context.Context,
 	}
 }
 
-// newVMShell builds the command that runs a command in the home's VM, or its shell where none is named.
+// newVMShell builds the command that runs a command in the home's VM, or opens its shell for a bare call.
 func newVMShell() *cobra.Command {
 	return &cobra.Command{
-		Use:   "shell [-- <command> [args...]]",
+		Use:   "shell [command] [args...]",
 		Short: "Open a shell in the home's VM, or run a command there",
 		Args:  usage(cobra.ArbitraryArgs),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			lima, name, err := homeVM()
-			// Hand back a host that can't reach the VM
+			// Hand back why the VM stays out of reach
 			if err != nil {
 				return err
 			}

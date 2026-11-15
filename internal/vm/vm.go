@@ -26,7 +26,7 @@ var template []byte
 // Engines are the Lima VM types o3s boots a home's VM with.
 var Engines = []string{"qemu", "vz", "hcs"}
 
-// ErrNoLima marks a host without limactl.
+// ErrNoLima asks for limactl, which runs a home's VM.
 var ErrNoLima = errors.New("o3s runs a home's VM with Lima, put limactl on PATH (https://lima-vm.io/docs/installation/)")
 
 // Lima drives limactl with o3s's own Lima home.
@@ -38,7 +38,7 @@ type Lima struct {
 // Find picks the engine for this host, or the one O3S_ENGINE names, and the limactl o3s installed or one on PATH.
 func Find() (Lima, error) {
 	engine, err := Engine()
-	// Hand back an engine the host can't run
+	// Hand back why O3S_ENGINE is turned away
 	if err != nil {
 		return Lima{}, err
 	}
@@ -53,7 +53,7 @@ func Find() (Lima, error) {
 		return Lima{path: installed, engine: engine}, nil
 	}
 	path, err := exec.LookPath("limactl")
-	// Point at Lima's installation where limactl is missing
+	// Point at Lima's installation for a host that needs limactl
 	if err != nil {
 		return Lima{}, ErrNoLima
 	}
@@ -64,7 +64,7 @@ func Find() (Lima, error) {
 func Engine() (string, error) {
 	// Take the engine the user names
 	if engine := os.Getenv("O3S_ENGINE"); engine != "" {
-		// Turn away an engine o3s has no VM for
+		// Turn away an engine outside the ones o3s boots
 		if !slices.Contains(Engines, engine) {
 			return "", fmt.Errorf("O3S_ENGINE=%s, where o3s boots a VM with %s", engine, strings.Join(Engines, ", "))
 		}
@@ -85,7 +85,7 @@ func Name(dir string) string {
 	return "o3s-" + paths.ID(dir)
 }
 
-// Start creates a home's VM from the template where it is missing and starts it, its progress on out, the way limactl start takes a name or a template.
+// Start boots a home's VM, created from the template on its first start, its progress on out, the way limactl start takes a name or a template.
 func (l Lima) Start(ctx context.Context, name string, out io.Writer) error {
 	names, err := l.output(ctx, "list", "--quiet")
 	// Hand back a Lima that fails to list its VMs
@@ -132,7 +132,7 @@ func (l Lima) Delete(ctx context.Context, name string, out io.Writer) error {
 	return l.run(ctx, nil, out, out, "delete", "--force", name)
 }
 
-// run runs limactl in o3s's Lima home, without its terminal prompts.
+// run runs limactl in o3s's Lima home, in its automation mode (--tty=false).
 func (l Lima) run(ctx context.Context, in io.Reader, out, errOut io.Writer, args ...string) error {
 	cmd := exec.CommandContext(ctx, l.path, append([]string{"--tty=false"}, args...)...) //nolint:gosec // o3s runs the limactl it found, with arguments it builds itself
 	cmd.Env = append(os.Environ(), "LIMA_HOME="+paths.Lima())
