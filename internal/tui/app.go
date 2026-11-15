@@ -66,7 +66,7 @@ type model struct {
 
 // Run shows the menu until the user leaves.
 func Run(ctx context.Context, cfg Config) error {
-	// Hand the terminal to a command the way bubbletea does, unless the caller does it otherwise
+	// Hand the terminal to a command by default, unless the caller does it otherwise
 	if cfg.Exec == nil {
 		cfg.Exec = tea.ExecProcess
 	}
