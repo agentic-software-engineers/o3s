@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.5](https://github.com/hansehart/o3s/compare/v0.7.4...v0.7.5) (2026-11-15)
+
+
+### Features
+
+* **cli:** draw the menu as one app ([#241](https://github.com/hansehart/o3s/issues/241)) ([0e37d9e](https://github.com/hansehart/o3s/commit/0e37d9ec06603d1a2527b95965b7694880c5bc63))
+
 ## [0.7.4](https://github.com/hansehart/o3s/compare/v0.7.3...v0.7.4) (2026-11-13)
 
 
