@@ -17,8 +17,7 @@ import (
 
 // newInit builds the command that makes the working folder a home, and prepares the host for it on every start.
 func newInit() *cobra.Command {
-	var inVM bool
-	c := &cobra.Command{
+	return &cobra.Command{
 		Use:   "init",
 		Short: "Make this folder an o3s home, or prepare the host for the home it is",
 		Args:  usage(cobra.NoArgs),
@@ -27,10 +26,6 @@ func newInit() *cobra.Command {
 			// Hand back a working folder that stays unknown
 			if err != nil {
 				return err
-			}
-			// Boot the home's VM rather than prepare this host
-			if inVM {
-				return bootVM(cmd, dir)
 			}
 			secretsFile, err := secrets.Path()
 			// Hand back a secrets file whose place stays unknown
@@ -79,8 +74,6 @@ func newInit() *cobra.Command {
 			return nil
 		},
 	}
-	c.Flags().BoolVar(&inVM, "vm", false, "boot the home's VM, the boundary its stack runs in")
-	return c
 }
 
 // prepare readies the host for a home: the secrets file, the proxy's CA, the cage's confinement and the values compose reads.
