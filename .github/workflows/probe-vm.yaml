@@ -13,7 +13,7 @@ env:
   LIMA_VERSION: 2.3.0
 
 jobs:
-  # boot the o3s VM with Lima on the runners Lima's own CI boots VMs on, and probe it
+  # boot the o3s VM with Lima on the runners Lima's own CI boots VMs on, and probe it, with macOS on Intel since the Apple silicon runner reports virtualization unavailable
   unix:
     strategy:
       fail-fast: false
@@ -23,10 +23,6 @@ jobs:
             vm-type: qemu
             archive: lima-2.3.0-Linux-x86_64.tar.gz
             sha256: cc8ba97f1c801b899f7c9eda9919dfc4ce4fa2c140c53e5add15aa2d0a1936f9
-          - runner: macos-26
-            vm-type: vz
-            archive: lima-2.3.0-Darwin-arm64.tar.gz
-            sha256: b7af444bd8f91d3c307477e562f2cf3bd7595d62b9429185e4fa841563578cfc
           - runner: macos-26-intel
             vm-type: vz
             archive: lima-2.3.0-Darwin-x86_64.tar.gz
