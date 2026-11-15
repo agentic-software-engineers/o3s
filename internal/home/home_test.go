@@ -139,9 +139,9 @@ func TestInitPinsTheImagesToTheRelease(t *testing.T) {
 		version string
 		tag     string
 	}{
-		{"0.7.0", "0.7.0"},
+		{"1.0.0", "1.0.0"},
 		{"dev", "latest"},
-		{"0.6.6-SNAPSHOT-03605dd", "latest"},
+		{"1.0.0-SNAPSHOT-abc1234", "latest"},
 	}
 	// Check every kind of build
 	for _, tt := range tests {

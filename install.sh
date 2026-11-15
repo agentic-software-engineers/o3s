@@ -59,7 +59,7 @@ while [ $# -gt 0 ]; do
 	# Take each option the script knows, and name any other
 	case "$1" in
 	--version)
-		[ $# -ge 2 ] || die "--version needs a version, as in --version 0.8.0 or --version 0.8.0-rc.1"
+		[ $# -ge 2 ] || die "--version needs a version, as in --version 1.0.0 or --version 1.0.0-rc.1"
 		version="${2#v}"
 		channel="pinned"
 		shift 2

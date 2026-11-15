@@ -46,22 +46,22 @@ func TestInitPinsTheImagesByDigest(t *testing.T) {
 		{
 			"both digests",
 			map[string]string{"ghcr.io/hansehart/o3s-cage": cageDigest, "ghcr.io/hansehart/o3s-gateway": gatewayDigest},
-			[]string{"image: ghcr.io/hansehart/o3s-cage:0.7.0@" + cageDigest + "\n", "image: ghcr.io/hansehart/o3s-gateway:0.7.0@" + gatewayDigest + "\n"},
+			[]string{"image: ghcr.io/hansehart/o3s-cage:1.0.0@" + cageDigest + "\n", "image: ghcr.io/hansehart/o3s-gateway:1.0.0@" + gatewayDigest + "\n"},
 		},
 		{
 			"no digests",
 			nil,
-			[]string{"image: ghcr.io/hansehart/o3s-cage:0.7.0\n", "image: ghcr.io/hansehart/o3s-gateway:0.7.0\n"},
+			[]string{"image: ghcr.io/hansehart/o3s-cage:1.0.0\n", "image: ghcr.io/hansehart/o3s-gateway:1.0.0\n"},
 		},
 		{
 			"a malformed digest",
 			map[string]string{"ghcr.io/hansehart/o3s-cage": "sha256:short", "ghcr.io/hansehart/o3s-gateway": gatewayDigest},
-			[]string{"image: ghcr.io/hansehart/o3s-cage:0.7.0\n", "image: ghcr.io/hansehart/o3s-gateway:0.7.0@" + gatewayDigest + "\n"},
+			[]string{"image: ghcr.io/hansehart/o3s-cage:1.0.0\n", "image: ghcr.io/hansehart/o3s-gateway:1.0.0@" + gatewayDigest + "\n"},
 		},
 	}
 	// Write a home for every release
 	for _, tt := range tests {
-		aRelease(t, "0.7.0", tt.digests)
+		aRelease(t, "1.0.0", tt.digests)
 
 		compose := composeOf(t, anInitializedHome(t))
 
@@ -77,9 +77,9 @@ func TestInitPinsTheImagesByDigest(t *testing.T) {
 
 // An update names the tags that move, the digests left out of the display.
 func TestImagesShowsTagsWithoutDigests(t *testing.T) {
-	aRelease(t, "0.7.0", map[string]string{"ghcr.io/hansehart/o3s-cage": cageDigest, "ghcr.io/hansehart/o3s-gateway": gatewayDigest})
+	aRelease(t, "1.0.0", map[string]string{"ghcr.io/hansehart/o3s-cage": cageDigest, "ghcr.io/hansehart/o3s-gateway": gatewayDigest})
 	dir := anInitializedHome(t)
-	aRelease(t, "0.8.0", map[string]string{"ghcr.io/hansehart/o3s-cage": gatewayDigest, "ghcr.io/hansehart/o3s-gateway": cageDigest})
+	aRelease(t, "1.1.0", map[string]string{"ghcr.io/hansehart/o3s-cage": gatewayDigest, "ghcr.io/hansehart/o3s-gateway": cageDigest})
 
 	moved, err := home.Images(dir)
 
@@ -87,7 +87,7 @@ func TestImagesShowsTagsWithoutDigests(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Images() = %v", err)
 	}
-	want := []home.ImageChange{{Name: "o3s-cage", Old: "0.7.0", New: "0.8.0"}, {Name: "o3s-gateway", Old: "0.7.0", New: "0.8.0"}}
+	want := []home.ImageChange{{Name: "o3s-cage", Old: "1.0.0", New: "1.1.0"}, {Name: "o3s-gateway", Old: "1.0.0", New: "1.1.0"}}
 	// Require the tags alone
 	if diff := cmp.Diff(want, moved); diff != "" {
 		t.Errorf("Images() (-want +got):\n%s", diff)
@@ -96,9 +96,9 @@ func TestImagesShowsTagsWithoutDigests(t *testing.T) {
 
 // A home on the same release without digests names no image change, and the refresh names the compose file that brings the pin.
 func TestRefreshBringsTheDigestsToATaggedHome(t *testing.T) {
-	aRelease(t, "0.7.0", nil)
+	aRelease(t, "1.0.0", nil)
 	dir := anInitializedHome(t)
-	aRelease(t, "0.7.0", map[string]string{"ghcr.io/hansehart/o3s-cage": cageDigest, "ghcr.io/hansehart/o3s-gateway": gatewayDigest})
+	aRelease(t, "1.0.0", map[string]string{"ghcr.io/hansehart/o3s-cage": cageDigest, "ghcr.io/hansehart/o3s-gateway": gatewayDigest})
 
 	moved, err := home.Images(dir)
 	// Stop when the images fail to read
