@@ -1,4 +1,4 @@
-# The table lists every host with its ports, secret and who needs it
+# The table lists every host with its ports, secret and who needs it, and explains the mark of a secret that waits
 exec o3s firewall ls
 cmp stdout want.txt
 ! stderr .
@@ -16,3 +16,5 @@ cmp stdout want.txt
 HOST             PORTS   SECRET           BY
 example.com      22,443                   user
 api.example.com  443     EXAMPLE_TOKEN ⚠  registry.example.com/features/tool
+
+⚠ waits for its value: echo "$TOKEN" | o3s secret add <NAME>

@@ -105,16 +105,26 @@ func newFirewallLs() *cobra.Command {
 			}
 			w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 2, ' ', 0)
 			fmt.Fprintln(w, "HOST\tPORTS\tSECRET\tBY")
+			waiting := false
 			// Write a row per host, in the order the file holds them
 			for _, h := range c.Hosts {
 				secret := h.Secret
 				// Flag a secret that waits for its value
 				if _, ok := store.Value(secret); secret != "" && !ok {
 					secret += " ⚠"
+					waiting = true
 				}
 				fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", h.Name, joinPorts(h.Ports), secret, strings.Join(h.By, ", "))
 			}
-			return w.Flush()
+			// Hand back a table that fails to write
+			if err := w.Flush(); err != nil {
+				return err
+			}
+			// Explain the mark below a table that carries it
+			if waiting {
+				fmt.Fprintln(cmd.OutOrStdout(), "\n⚠ waits for its value: echo \"$TOKEN\" | o3s secret add <NAME>")
+			}
+			return nil
 		},
 	}
 }
