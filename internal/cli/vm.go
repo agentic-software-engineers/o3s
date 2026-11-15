@@ -15,7 +15,10 @@ import (
 // errExit carries the exit code of a command that ran in the VM and failed, so o3s fails with it too.
 type errExit struct{ code int }
 
-func (e errExit) Error() string { return fmt.Sprintf("the command in the VM exited with %d", e.code) }
+// Error names the exit code the command in the VM failed with.
+func (e errExit) Error() string {
+	return fmt.Sprintf("the command in the VM exited with %d", e.code)
+}
 
 // newVM builds the commands that run the home's VM.
 func newVM() *cobra.Command {

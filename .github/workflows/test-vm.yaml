@@ -12,8 +12,8 @@ env:
   LIMA_VERSION: 2.3.0
 
 jobs:
-  # boot a home's VM through the o3s CLI on the runners that offer virtualization
   unix:
+    # boot a home's VM through the o3s CLI on the runners that offer virtualization
     strategy:
       fail-fast: false
       matrix:
@@ -60,10 +60,10 @@ jobs:
 
       # run the suite that boots the home's VM through the o3s CLI
       - name: Run the VM tests
-        run: go test -tags vm -count=1 -timeout 40m -v ./test/e2evm/...
+        run: go test -tags e2e -count=1 -timeout 40m -v ./test/e2e/vm/...
 
-  # boot a home's VM on Windows, on the runner whose user is an Administrator
   hcs:
+    # boot a home's VM on Windows, on the runner whose user is an Administrator
     runs-on: windows-2025
     timeout-minutes: 45
     steps:
@@ -100,4 +100,4 @@ jobs:
 
       # run the suite that boots the home's VM through the o3s CLI
       - name: Run the VM tests
-        run: go test -tags vm -count=1 -timeout 40m -v ./test/e2evm/...
+        run: go test -tags e2e -count=1 -timeout 40m -v ./test/e2e/vm/...

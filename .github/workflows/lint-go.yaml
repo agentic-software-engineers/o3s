@@ -9,8 +9,8 @@ permissions:
   contents: read
 
 jobs:
-  # lint on every host system o3s runs on
   golangci-lint:
+    # lint on every host system o3s runs on
     strategy:
       fail-fast: false
       matrix:
