@@ -1,0 +1,40 @@
+# init --vm boots the home's VM from the template in o3s's own Lima home, without touching this host
+mkdir home
+cd home
+exec o3s init --vm
+stdout '^The VM o3s-[0-9a-f]{12} runs$'
+grep 'LIMA_HOME=\S+/\.local/share/o3s/lima --tty=false start --name=o3s-[0-9a-f]{12} --vm-type=qemu -$' $WORK/limactl.log
+grep 'plain: true' $WORK/template.yaml
+! exists o3s.json
+
+# Booting again starts the VM the home has
+exec o3s init --vm
+grep 'tty=false start o3s-[0-9a-f]{12}$' $WORK/limactl.log
+
+# A command in the VM runs with its exit code passed on
+exec o3s vm ssh -- echo inside
+stdout '^inside$'
+! exec o3s vm ssh -- sh -c 'exit 7'
+[exec:sh] ! stderr 'error'
+
+# rm deletes the VM, after which nothing runs in it
+exec o3s vm rm
+stdout '^Deleted the VM o3s-[0-9a-f]{12}$'
+! exec o3s vm ssh -- true
+stderr 'does not exist'
+
+# hcs names a DNS server, which Lima's hcs driver needs
+env O3S_ENGINE=hcs
+exec o3s init --vm
+grep 'vm-type=hcs --dns=8.8.8.8 -$' $WORK/limactl.log
+
+# An engine o3s has no VM for is turned away
+env O3S_ENGINE=firecracker
+! exec o3s init --vm
+stderr 'O3S_ENGINE=firecracker, where o3s boots a VM with qemu, vz, hcs'
+env O3S_ENGINE=
+
+# A host without Lima points at its installation
+env PATH=$O3S_DIR
+! exec o3s init --vm
+stderr 'put limactl on PATH'

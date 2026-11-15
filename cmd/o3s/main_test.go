@@ -40,6 +40,18 @@ esac
 exit 0
 `
 
+// fakeLimactl stands in for Lima, keeping its VMs in a file, so a script sees each VM o3s boots, runs commands in and deletes.
+const fakeLimactl = `#!/bin/sh
+echo "LIMA_HOME=$LIMA_HOME $*" >> "$WORK/limactl.log"
+# Answer each command the way Lima does, with the VMs listed in $WORK/vms
+case "$2" in
+  list) cat "$WORK/vms" 2>/dev/null || true ;;
+  start) for a in "$@"; do case "$a" in --name=*) echo "${a#--name=}" >> "$WORK/vms" ;; -) cat > "$WORK/template.yaml" ;; esac; done ;;
+  delete) grep -v "$4" "$WORK/vms" > "$WORK/vms.left"; mv "$WORK/vms.left" "$WORK/vms" ;;
+  shell) grep -qx "$3" "$WORK/vms" 2>/dev/null || { echo "instance $3 does not exist" >&2; exit 1; }; shift 3; "$@" ;;
+esac
+`
+
 // fakeCode stands in for the VS Code CLI, so a script sees what it opens.
 const fakeCode = `#!/bin/sh
 echo "$*" >> "$WORK/code.log"
@@ -116,7 +128,7 @@ func TestScripts(t *testing.T) {
 			if err := os.WriteFile(filepath.Join(bin, "devcontainer"), []byte(fakeDevcontainer), 0o755); err != nil { //nolint:gosec // the scripts run the fake CLI
 				return err
 			}
-			fakes := map[string]string{"aa-enabled": fakeAaEnabled, "code": fakeCode, "wslpath": fakeWslpath, "cmd.exe": fakeCmd}
+			fakes := map[string]string{"aa-enabled": fakeAaEnabled, "limactl": fakeLimactl, "code": fakeCode, "wslpath": fakeWslpath, "cmd.exe": fakeCmd}
 			// Write every other fake the scripts call
 			for name, script := range fakes {
 				// Hand back a fake that stays unwritten

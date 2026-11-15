@@ -35,8 +35,18 @@ func Devcontainers() string {
 
 // Home is the folder o3s keeps for one home, named after a short hash of the home's path.
 func Home(dir string) string {
+	return filepath.Join(State(), ID(dir))
+}
+
+// ID is a home's short name, the first 12 hex digits of its path's hash, which names its state folder and its VM.
+func ID(dir string) string {
 	sum := sha256.Sum256([]byte(dir))
-	return filepath.Join(State(), hex.EncodeToString(sum[:])[:12])
+	return hex.EncodeToString(sum[:])[:12]
+}
+
+// Lima is where o3s keeps its own Lima, apart from the user's, with the VMs of its homes.
+func Lima() string {
+	return filepath.Join(Data(), "lima")
 }
 
 // base hands back a base folder from its XDG variable where that is absolute, else from its default below the home folder.
