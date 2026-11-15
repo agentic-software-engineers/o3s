@@ -202,7 +202,12 @@ func newFirewallLog() *cobra.Command {
 			fmt.Fprintln(w, "ALLOWED\tDATA\tLAST SEEN")
 			// Write a row per allowed host
 			for _, a := range allowed {
-				fmt.Fprintf(w, "%s\t%s\t%s\n", a.Name, traffic.Size(a.Bytes), traffic.Ago(a.LastSeen, now))
+				seen := traffic.Ago(a.LastSeen, now)
+				// Mark a host that moved no data for a whole window, as the allowlist does
+				if a.Dead(now) {
+					seen += ", dead"
+				}
+				fmt.Fprintf(w, "%s\t%s\t%s\n", a.Name, traffic.Size(a.Bytes), seen)
 			}
 			// Hand back a table that fails to write
 			if err := w.Flush(); err != nil {
