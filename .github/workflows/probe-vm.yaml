@@ -1,0 +1,169 @@
+name: Probe VM
+on:
+  pull_request:
+    paths:
+      - .github/vm/**
+      - .github/workflows/probe-vm.yaml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  LIMA_VERSION: 2.3.0
+
+jobs:
+  # boot the o3s VM with Lima on the runners Lima's own CI boots VMs on, and probe it
+  unix:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            vm-type: qemu
+            archive: lima-2.3.0-Linux-x86_64.tar.gz
+            sha256: cc8ba97f1c801b899f7c9eda9919dfc4ce4fa2c140c53e5add15aa2d0a1936f9
+          - runner: macos-26
+            vm-type: vz
+            archive: lima-2.3.0-Darwin-arm64.tar.gz
+            sha256: b7af444bd8f91d3c307477e562f2cf3bd7595d62b9429185e4fa841563578cfc
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    steps:
+      # check out the template and the probe
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # hand the runner user KVM the way Lima's CI does, since joining the kvm group takes no effect there (lima hack/install-qemu.sh)
+      - name: Set up QEMU and KVM
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y --no-install-recommends ovmf qemu-system-x86 qemu-utils
+          sudo modprobe kvm
+          sudo chown "${USER}" /dev/kvm
+
+      # install the pinned Lima release, checked against its published sum
+      - name: Install Lima
+        env:
+          ARCHIVE: ${{ matrix.archive }}
+          SHA256: ${{ matrix.sha256 }}
+        run: |
+          curl -fsSLo "${RUNNER_TEMP}/${ARCHIVE}" "https://github.com/lima-vm/lima/releases/download/v${LIMA_VERSION}/${ARCHIVE}"
+          echo "${SHA256}  ${RUNNER_TEMP}/${ARCHIVE}" | shasum -a 256 -c
+          mkdir "${RUNNER_TEMP}/lima"
+          tar -C "${RUNNER_TEMP}/lima" -xzf "${RUNNER_TEMP}/${ARCHIVE}"
+          echo "${RUNNER_TEMP}/lima/bin" >> "${GITHUB_PATH}"
+
+      # boot the VM and record how long it takes
+      - name: Start the VM
+        env:
+          LIMA_HOME: ${{ runner.temp }}/lima-home
+          VM_TYPE: ${{ matrix.vm-type }}
+        run: |
+          start="$(date +%s)"
+          limactl create --tty=false --name=o3s --vm-type="${VM_TYPE}" --cpus=2 --memory=2 .github/vm/o3s.yaml
+          limactl start o3s
+          echo "${VM_TYPE} VM up in $(( $(date +%s) - start )) s" | tee -a "${GITHUB_STEP_SUMMARY}"
+
+      # run the probe as root in the VM
+      - name: Probe the VM
+        env:
+          LIMA_HOME: ${{ runner.temp }}/lima-home
+        run: |
+          limactl copy .github/vm/probe.sh o3s:/tmp/probe.sh
+          limactl shell --tty=false o3s -- sudo sh /tmp/probe.sh
+
+  # boot the o3s VM with Lima's hcs driver, on the runner whose user is an Administrator (lima test.yml windows-plain-smoke)
+  hcs:
+    runs-on: windows-2025
+    timeout-minutes: 30
+    steps:
+      # keep LF endings, so the probe runs in the VM as written
+      - name: Set gitconfig
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.eol lf
+
+      # check out the template and the probe
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # install the pinned Lima release, checked against its published sum
+      - name: Install Lima
+        env:
+          ARCHIVE: lima-2.3.0-Windows-AMD64.zip
+          SHA256: fbd49036909ba3833ea8618743bd3a051eb21049c80c0772452f79ed45af99dc
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $zip = Join-Path $env:RUNNER_TEMP $env:ARCHIVE
+          Invoke-WebRequest -Uri "https://github.com/lima-vm/lima/releases/download/v$env:LIMA_VERSION/$env:ARCHIVE" -OutFile $zip
+          $hash = (Get-FileHash -Algorithm SHA256 $zip).Hash.ToLower()
+          # stop on an archive that differs from the published one
+          if ($hash -ne $env:SHA256) { throw "checksum mismatch: $hash" }
+          Expand-Archive -Path $zip -DestinationPath (Join-Path $env:RUNNER_TEMP 'lima')
+          Add-Content -Path $env:GITHUB_PATH -Value (Join-Path $env:RUNNER_TEMP 'lima\bin')
+
+      # boot the VM and record how long it takes, with the DNS server the hcs driver needs set (lima hcs.md)
+      - name: Start the VM
+        env:
+          LIMA_HOME: ${{ runner.temp }}\lima-home
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $true
+          $took = Measure-Command {
+            limactl create --tty=false --name=o3s --vm-type=hcs --dns=8.8.8.8 --cpus=2 --memory=2 .github/vm/o3s.yaml
+            limactl start o3s
+          }
+          "hcs VM up in $([int]$took.TotalSeconds) s" | Tee-Object -Append -FilePath $env:GITHUB_STEP_SUMMARY
+
+      # run the probe as root in the VM
+      - name: Probe the VM
+        env:
+          LIMA_HOME: ${{ runner.temp }}\lima-home
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $true
+          limactl copy .github/vm/probe.sh o3s:/tmp/probe.sh
+          limactl shell --tty=false o3s -- sudo sh /tmp/probe.sh
+
+  # probe a WSL2 distro with AppArmor turned on the way the o3s wiki does it (Compatibility, AppArmor on WSL2)
+  wsl:
+    runs-on: windows-2025
+    timeout-minutes: 30
+    steps:
+      # keep LF endings, so the probe runs in the distro as written
+      - name: Set gitconfig
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.eol lf
+
+      # check out the probe
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # put AppArmor in the LSM list of the one kernel all distros share
+      - name: Turn on AppArmor in WSL
+        run: |
+          Set-Content -Path (Join-Path $env:USERPROFILE '.wslconfig') -Value "[wsl2]`nkernelCommandLine = lsm=apparmor,bpf,integrity,landlock,loadpin,lockdown,safesetid,selinux,tomoyo,yama"
+          wsl --shutdown
+          wsl --version
+          exit 0
+
+      # install Ubuntu and record how long it takes
+      - name: Install Ubuntu
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $true
+          $took = Measure-Command { wsl --install --no-launch --web-download -d Ubuntu-24.04 }
+          "WSL Ubuntu installed in $([int]$took.TotalSeconds) s" | Tee-Object -Append -FilePath $env:GITHUB_STEP_SUMMARY
+
+      # run the probe as root in the distro
+      - name: Probe the distro
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $true
+          wsl -d Ubuntu-24.04 -u root --cd $env:GITHUB_WORKSPACE -- sh .github/vm/probe.sh
