@@ -25,3 +25,9 @@ jobs:
       # run the unit tests and scenarios that need nothing beyond Go, with the race detector on
       - name: Run the tests
         run: go test -race -count=1 ./...
+
+      # vet the code for the other host systems the VM path serves, so a break there fails here first
+      - name: Vet for macOS and Windows
+        run: |
+          GOOS=darwin go vet -tags vm ./...
+          GOOS=windows go vet -tags vm ./...
