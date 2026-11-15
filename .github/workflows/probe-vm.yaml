@@ -80,7 +80,9 @@ jobs:
         if: failure()
         env:
           LIMA_HOME: ${{ runner.temp }}/lima-home
-        run: tail -n 40 "${LIMA_HOME}"/o3s/ha.stderr.log "${LIMA_HOME}"/o3s/serial*.log, on the runner whose user is an Administrator (lima test.yml windows-plain-smoke)
+        run: tail -n 40 "${LIMA_HOME}"/o3s/ha.stderr.log "${LIMA_HOME}"/o3s/serial*.log
+
+  # boot the o3s VM with Lima's hcs driver, on the runner whose user is an Administrator (lima test.yml windows-plain-smoke)
   hcs:
     runs-on: windows-2025
     timeout-minutes: 30
