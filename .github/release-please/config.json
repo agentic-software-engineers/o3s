@@ -11,6 +11,8 @@
   "versioning": "prerelease",
   "prerelease": true,
   "prerelease-type": "rc.1",
+  "draft": true,
+  "force-tag-creation": true,
   "pull-request-title-pattern": "chore(repo): release${component} ${version}",
   "changelog-sections": [
     { "type": "feat", "section": "Features" },
