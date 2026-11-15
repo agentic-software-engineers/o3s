@@ -26,9 +26,17 @@ esac
 exit 0
 `
 
-// fakeDevcontainer stands in for the devcontainer CLI, so a script sees each rebuild an update asks for.
+// fakeDevcontainer stands in for the devcontainer CLI, so a script sees each rebuild an update asks for and each command run in the cage.
 const fakeDevcontainer = `#!/bin/sh
 echo "$*" >> "$WORK/devcontainer.log"
+# Answer each command in the cage the way the cage would, as the files a script leaves in $WORK say
+case "$*" in
+  exec*"ssh-add -l") [ -f "$WORK/no-agent" ] && exit 2 ;;
+  exec*"--get remote.origin.url") [ -f "$WORK/origin" ] && cat "$WORK/origin" || exit 1 ;;
+  exec*"ls -A "*) [ -f "$WORK/not-empty" ] && echo README.md ;;
+  exec*"git clone "*) [ -f "$WORK/clone-fails" ] && { echo "fatal: repository not found" >&2; exit 128; } ;;
+esac
+exit 0
 `
 
 // fakeCode stands in for the VS Code CLI, so a script sees what it opens.

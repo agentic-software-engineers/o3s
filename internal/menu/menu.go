@@ -18,6 +18,8 @@ type Home struct {
 	Secrets  []Secret
 	Stores   []string
 	Features []string
+	// Projects are the names of the projects the workspace lists.
+	Projects []string
 	Lookup   Lookup
 }
 
@@ -138,6 +140,7 @@ var entries = []Option{
 	{Value: "secret", Note: "values the proxy injects"},
 	{Value: "store", Note: "where features come from"},
 	{Value: "feature", Note: "tools in the cage"},
+	{Value: "project", Note: "repositories in the workspace"},
 	{Value: "cage", Note: "open VS Code or a shell"},
 	{Value: "update", Note: "binary, stack and features"},
 }
@@ -184,6 +187,10 @@ func next(h Home, a Answers) (Question, bool) {
 	if do == "cage" {
 		return ask(a, choose("action", "Action", "ide", "shell"))
 	}
+	// Ask which action of the projects comes next, which may also create one
+	if do == "project" && !a.has("action") {
+		return choose("action", "Action", "add", "create", "rm", "ls"), false
+	}
 	// Ask which action of the group comes next
 	if !a.has("action") {
 		return choose("action", "Action", "add", "rm", "ls"), false
@@ -201,6 +208,8 @@ func next(h Home, a Answers) (Question, bool) {
 		return secret(h, a, action)
 	case "feature":
 		return feature(h, a, action)
+	case "project":
+		return projectDialog(h, a, action)
 	default:
 		return store(h, a, action)
 	}
@@ -288,6 +297,28 @@ func store(h Home, a Answers, action string) (Question, bool) {
 	return ask(a, Question{Key: "store", Kind: Input, Title: "Store"})
 }
 
+// projectDialog asks what cloning, creating or removing a project needs.
+func projectDialog(h Home, a Answers, action string) (Question, bool) {
+	// Ask which project to remove
+	if action == "rm" {
+		return pick(a, "project", "Project", h.Projects)
+	}
+	// Ask for the name of a new empty project
+	if action == "create" {
+		return ask(a, Question{Key: "project", Kind: Input, Title: "Name"})
+	}
+	return ask(a, Question{Key: "project", Kind: Input, Title: "Repository"})
+}
+
+// projectPlan builds the command a project dialog leads to, removal at the real terminal, where the user types the name.
+func projectPlan(a Answers, action string) []Command {
+	// Name that no project is there to remove
+	if !a.has("project") {
+		return []Command{{Note: "No project to remove"}}
+	}
+	return []Command{{Args: []string{"project", action, a.get("project")}, Terminal: action == "rm"}}
+}
+
 // plan builds the command lines the answers lead to, in the order they run.
 func plan(h Home, a Answers) []Command {
 	do, action := a.get("do"), a.get("action")
@@ -307,6 +338,8 @@ func plan(h Home, a Answers) []Command {
 		return []Command{{Args: []string{do, "ls"}}}
 	case do == "feature":
 		return featurePlan(h, a, action)
+	case do == "project":
+		return projectPlan(a, action)
 	case action == "rm":
 		return []Command{remove(a, do)}
 	case do == "firewall":
