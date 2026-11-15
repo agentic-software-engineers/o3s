@@ -94,6 +94,7 @@ parse_allowlist() {
 
   # Validate each entry and sort it into a static seed or a domain's set list
   local count_set
+  # Read every host of the policy
   while IFS=$'\t' read -r addr ports secret; do
     [ -n "$addr" ] || continue
     [ -n "$ports" ] || die "host $addr has no port"
@@ -111,6 +112,7 @@ parse_allowlist() {
       case "$p" in ''|*[!0-9]*) die "invalid port $p for $addr";; esac
       { [ "$p" -ge 1 ] && [ "$p" -le 65535 ]; } || die "port $p out of range for $addr"
       case " $PORTS " in *" $p "*) ;; *) PORTS="$PORTS $p";; esac
+      # Seed an address host directly, and add a domain's set to the line that fills it on resolve
       if is_ipv4 "$addr"; then
         STATIC_SEEDS+=("$p $addr")
       else
@@ -124,6 +126,7 @@ parse_allowlist() {
     # Each host gets a set of its own, which counts its traffic apart from every other host
     count_set="o3s-h${#HOST_NAMES[@]}"
     HOST_NAMES+=("$addr")
+    # Seed an address host into its counting set, and fill a domain's on resolve
     if is_ipv4 "$addr"; then
       HOST_STATIC+=("$count_set $addr")
     else
@@ -140,6 +143,7 @@ parse_allowlist() {
 
 # One set per port, holding resolved hosts and static subnets alike so either matches a packet.
 create_sets() {
+  # Create the set of every port
   for p in $PORTS; do
     ipset create "allowed-p$p" hash:net timeout "$IPSET_TIMEOUT" -exist
   done
@@ -176,7 +180,9 @@ apply_firewall() {
 
   # Count every host's traffic both ways, leaving out the gateway's own probes
   iptables -N O3S_ACCT 2>/dev/null || iptables -F O3S_ACCT
+  # Count every host
   for i in "${!HOST_NAMES[@]}"; do
+    # Count both directions of the host's traffic
     for way in dst src; do
       iptables -A O3S_ACCT -m connmark ! --mark "$PROBE_MARK" -m set --match-set "o3s-h$i" "$way" -m comment --comment "${HOST_NAMES[$i]}"
     done
@@ -214,7 +220,9 @@ apply_firewall() {
 
 # Seed static entries directly, since no resolution will ever fill them.
 seed_static() {
+  # Seed only where the policy names addresses
   if [ ${#STATIC_SEEDS[@]} -gt 0 ]; then
+    # Seed every address on its port
     for seed in "${STATIC_SEEDS[@]}"; do
       read -r sp saddr <<<"$seed"
       # A zero timeout keeps the entry permanently, since static seeds are added once
@@ -225,6 +233,7 @@ seed_static() {
 
   # Seed each address host into its counting set the same way
   if [ ${#HOST_STATIC[@]} -gt 0 ]; then
+    # Seed every address host into its counting set
     for seed in "${HOST_STATIC[@]}"; do
       read -r set saddr <<<"$seed"
       ipset add -exist "$set" "$saddr" timeout 0
@@ -243,6 +252,7 @@ write_resolver_conf() {
   # Start every lifetime with an empty log, since the record already holds what earlier ones refused
   rm -f "$DNS_LOG_DIR"/dns.log*
 
+  # Append the lines only where the policy names domains
   if [ ${#DOMAIN_LINES[@]} -gt 0 ]; then
     printf '%s\n' "${DOMAIN_LINES[@]}" >> "$CONF"
   fi
