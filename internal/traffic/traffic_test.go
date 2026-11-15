@@ -1,8 +1,6 @@
 package traffic
 
 import (
-	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -15,34 +13,29 @@ var now = time.Unix(1_800_000_000, 0)
 // day is one day in seconds, the unit the record counts in.
 const day = 24 * 3600
 
-// A home whose gateway wrote no record yet reads as an empty one.
-func TestLoadReadsAMissingRecordAsEmpty(t *testing.T) {
-	got, err := Load(t.TempDir())
+// A gateway that wrote no record yet hands back nothing, which reads as an empty record.
+func TestParseReadsNothingAsEmpty(t *testing.T) {
+	got, err := Parse(nil)
 
-	// Report a missing record read as a failure
+	// Report nothing read as a failure
 	if err != nil {
-		t.Fatalf("Load() = %v, want an empty record", err)
+		t.Fatalf("Parse(nil) = %v, want an empty record", err)
 	}
-	// Report a missing record read as holding something
+	// Report nothing read as holding something
 	if len(got.Hosts) != 0 || len(got.Blocked) != 0 {
-		t.Errorf("Load() = %+v, want an empty record", got)
+		t.Errorf("Parse(nil) = %+v, want an empty record", got)
 	}
 }
 
 // A record reads back with every host and every refused name.
-func TestLoadReadsTheRecord(t *testing.T) {
-	dir := t.TempDir()
+func TestParseReadsTheRecord(t *testing.T) {
 	data := `{"since": 100, "updated": 200, "hosts": {"example.com": {"bytes": 1200, "last_seen": 150, "since": 120}}, "blocked": {"blocked.example": {"attempts": 3, "last_seen": 190}}}`
-	// Stop when the fixture stays unwritten
-	if err := os.WriteFile(filepath.Join(dir, File), []byte(data), 0o600); err != nil {
-		t.Fatalf("Setup: %v", err)
-	}
 
-	got, err := Load(dir)
+	got, err := Parse([]byte(data))
 
 	// Stop when the record fails to read
 	if err != nil {
-		t.Fatalf("Load() = %v", err)
+		t.Fatalf("Parse() = %v", err)
 	}
 	want := Record{
 		Since:   100,
@@ -52,7 +45,17 @@ func TestLoadReadsTheRecord(t *testing.T) {
 	}
 	// Report a record read wrong
 	if diff := cmp.Diff(want, got); diff != "" {
-		t.Errorf("Load() mismatch (-want +got):\n%s", diff)
+		t.Errorf("Parse() mismatch (-want +got):\n%s", diff)
+	}
+}
+
+// A record that holds no JSON is turned away.
+func TestParseTurnsAwayBrokenJSON(t *testing.T) {
+	_, err := Parse([]byte("{"))
+
+	// Report broken JSON read as a record
+	if err == nil {
+		t.Errorf("Parse({) = nil, want an error")
 	}
 }
 

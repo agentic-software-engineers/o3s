@@ -14,7 +14,7 @@ import (
 // update rewrites the expected files inside the scripts to what the binary now writes.
 var update = flag.Bool("update", false, "rewrite the expected files inside the scripts")
 
-// fakeDocker stands in for the container engine, so a script sees which restarts a change asks for.
+// fakeDocker stands in for the container engine, so a script sees which restarts a change asks for and what the gateway recorded.
 const fakeDocker = `#!/bin/sh
 echo "$*" >> "$WORK/docker.log"
 # Answer each question about the stack, any restart, and the daemon's security options, the way a host's engine would
@@ -23,6 +23,7 @@ case "$*" in
   ps*service=proxy*) [ -f "$WORK/stack-up" ] && echo proxy-id ;;
   restart*) echo "$2" ;;
   info*) [ -f "$WORK/no-apparmor" ] && echo '["name=seccomp,profile=builtin","name=cgroupns"]' || echo '["name=apparmor","name=seccomp,profile=builtin","name=cgroupns"]' ;;
+  "exec gateway-id cat /state/traffic.json") [ -f "$WORK/traffic.json" ] && cat "$WORK/traffic.json" || exit 1 ;;
 esac
 exit 0
 `

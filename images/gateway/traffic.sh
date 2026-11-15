@@ -7,7 +7,7 @@
 #        Runs beside the resolver for the gateway's lifetime. Every interval it reads the bytes
 #        each allowed host moved from the counting chain and the names the resolver refused from
 #        its query log, adds them to what earlier lifetimes recorded, and writes the total to the
-#        home's state folder, where o3s reads it.
+#        gateway's state volume, where o3s asks for it.
 #
 # SEE ALSO
 #        entrypoint.sh, o3s.json
@@ -146,7 +146,7 @@ read_refusals() {
   fi
 }
 
-# Write the record in a single step, readable by the user who owns the home.
+# Write the record in a single step.
 write_record() {
   local now="$1" tmp="$RECORD.tmp" name sep
   {
@@ -166,12 +166,11 @@ write_record() {
     done
     printf '\n  }\n}\n'
   } > "$tmp"
-  chown "${O3S_UID:-0}:${O3S_GID:-0}" "$tmp" 2>/dev/null || true
   chmod 0644 "$tmp"
   mv "$tmp" "$RECORD"
 }
 
-# Record nothing where the home's state folder is not mounted
+# Record nothing where the state volume is not mounted
 [ -d "$STATE_DIR" ] || exit 0
 
 load_record

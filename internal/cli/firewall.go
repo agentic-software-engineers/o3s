@@ -13,7 +13,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/hansehart/o3s/internal/config"
-	"github.com/hansehart/o3s/internal/paths"
 	"github.com/hansehart/o3s/internal/restart"
 	"github.com/hansehart/o3s/internal/traffic"
 )
@@ -109,7 +108,7 @@ func newFirewallLs() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			record := loadTraffic(cmd, dir)
+			record, _ := askGateway(cmd, dir)
 			now := time.Now()
 			w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 2, ' ', 0)
 			fmt.Fprintln(w, "HOST\tPORTS\tDATA\tLAST SEEN\tSECRET\tBY")
@@ -174,16 +173,21 @@ func newFirewallLog() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			record := loadTraffic(cmd, dir)
+			record, running := askGateway(cmd, dir)
 			blocked, allowed := capped(record.Refused(), limit), capped(active(c, record), limit)
 			// Hand both tables to a script that asked for JSON
 			if asJSON {
 				return writeLogJSON(cmd, blocked, allowed)
 			}
 			out := cmd.OutOrStdout()
+			// Point at starting a stack that is down, since its gateway holds the record
+			if !running {
+				fmt.Fprintln(out, "Start the stack to see its traffic")
+				return nil
+			}
 			// Say that nothing is recorded yet
 			if len(blocked) == 0 && len(allowed) == 0 {
-				fmt.Fprintln(out, "No traffic recorded yet, the gateway records it while the stack runs")
+				fmt.Fprintln(out, "No traffic recorded yet, the gateway records it every minute")
 				return nil
 			}
 			now := time.Now()
@@ -280,15 +284,15 @@ func writeLogJSON(cmd *cobra.Command, blocked []traffic.Refused, allowed []recor
 	return enc.Encode(doc)
 }
 
-// loadTraffic reads the gateway's record for a home, warning about and leaving out one that fails to read.
-func loadTraffic(cmd *cobra.Command, dir string) traffic.Record {
-	record, err := traffic.Load(paths.Home(dir))
+// askGateway asks the home's running gateway for its record and reports whether it runs, warning about and leaving out a record that fails to read.
+func askGateway(cmd *cobra.Command, dir string) (traffic.Record, bool) {
+	record, running, err := traffic.Read(cmd.Context(), dir)
 	// Leave the traffic out where its record fails to read
 	if err != nil {
 		warn(cmd.ErrOrStderr(), "%v", err)
-		return traffic.Record{}
+		return traffic.Record{}, running
 	}
-	return record
+	return record, running
 }
 
 // change applies a change to the home, saves it, and restarts the stack so it takes effect.

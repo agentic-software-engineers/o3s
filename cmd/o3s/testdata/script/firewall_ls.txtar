@@ -4,7 +4,7 @@ cmp stdout want.txt
 ! stderr .
 
 # With the gateway's record, every host shows the data it moved and when, and a host without data for 30 days reads as dead
-exec sh -c 'now=$(date +%s); d=$HOME/.local/state/o3s/$(printf %s "$PWD" | sha256sum | cut -c1-12); mkdir -p "$d"; printf "{\"since\": %s, \"updated\": %s, \"hosts\": {\"example.com\": {\"bytes\": 1234567890, \"last_seen\": %s, \"since\": %s}, \"api.example.com\": {\"bytes\": 0, \"last_seen\": 0, \"since\": %s}}, \"blocked\": {}}" $((now-3456000)) $now $((now-300)) $((now-3456000)) $((now-3456000)) > "$d/traffic.json"'
+exec sh -c 'now=$(date +%s); touch $WORK/stack-up; printf "{\"since\": %s, \"updated\": %s, \"hosts\": {\"example.com\": {\"bytes\": 1234567890, \"last_seen\": %s, \"since\": %s}, \"api.example.com\": {\"bytes\": 0, \"last_seen\": 0, \"since\": %s}}, \"blocked\": {}}" $((now-3456000)) $now $((now-300)) $((now-3456000)) $((now-3456000)) > $WORK/traffic.json'
 exec o3s firewall ls
 cmp stdout want-traffic.txt
 ! stderr .

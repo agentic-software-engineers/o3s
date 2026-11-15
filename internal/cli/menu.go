@@ -12,7 +12,6 @@ import (
 	"github.com/hansehart/o3s/internal/devcontainer"
 	"github.com/hansehart/o3s/internal/home"
 	"github.com/hansehart/o3s/internal/menu"
-	"github.com/hansehart/o3s/internal/paths"
 	"github.com/hansehart/o3s/internal/registry"
 	"github.com/hansehart/o3s/internal/traffic"
 	"github.com/hansehart/o3s/internal/tui"
@@ -128,7 +127,7 @@ func menuHome(ctx context.Context) menu.Home {
 			}
 		}
 	}
-	record, err := traffic.Load(paths.Home(dir))
+	record, _, err := traffic.Read(ctx, dir)
 	// Offer every name the gateway refused, noting how often and when
 	if err == nil {
 		now := time.Now()

@@ -3,18 +3,18 @@ package traffic
 
 import (
 	"cmp"
+	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"io/fs"
-	"os"
-	"path/filepath"
+	"os/exec"
 	"slices"
 	"time"
+
+	"github.com/hansehart/o3s/internal/restart"
 )
 
-// File is the record the gateway writes into the home's state folder.
-const File = "traffic.json"
+// path is where the gateway keeps its record, in its own state volume.
+const path = "/state/traffic.json"
 
 // Window is how long a host may move no data before it counts as dead.
 const Window = 30 * 24 * time.Hour
@@ -47,21 +47,36 @@ type Refused struct {
 	Refusal
 }
 
-// Load reads the record from a home's state folder, and an empty one where the gateway wrote none yet.
-func Load(dir string) (Record, error) {
-	data, err := os.ReadFile(filepath.Join(dir, File))
-	// Read a record the gateway has yet to write as empty
-	if errors.Is(err, fs.ErrNotExist) {
-		return Record{}, nil
-	}
-	// Hand back a record that fails to read
+// Read asks the home's running gateway for its record, and reports whether a gateway runs.
+func Read(ctx context.Context, home string) (Record, bool, error) {
+	ids, err := restart.Containers(ctx, home, "gateway")
+	// Hand back an engine that fails to answer
 	if err != nil {
-		return Record{}, err
+		return Record{}, false, err
 	}
+	// Report a stack that is down
+	if len(ids) == 0 {
+		return Record{}, false, nil
+	}
+	out, err := exec.CommandContext(ctx, "docker", "exec", ids[0], "cat", path).Output() //nolint:gosec // the id comes from the engine itself, for the stack's own gateway
+	// Read a gateway that wrote no record yet as one that recorded nothing
+	if err != nil {
+		return Record{}, true, nil
+	}
+	r, err := Parse(out)
+	return r, true, err
+}
+
+// Parse reads a record the gateway wrote, and nothing as an empty record.
+func Parse(data []byte) (Record, error) {
 	var r Record
+	// Read a gateway that wrote nothing as an empty record
+	if len(data) == 0 {
+		return r, nil
+	}
 	// Hand back a record that holds no JSON
 	if err := json.Unmarshal(data, &r); err != nil {
-		return Record{}, fmt.Errorf("read %s: %w", File, err)
+		return Record{}, fmt.Errorf("read the traffic record: %w", err)
 	}
 	return r, nil
 }

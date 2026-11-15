@@ -1,9 +1,14 @@
-# Without a record from the gateway, the log says there is nothing yet
+# Without a running stack, the log points at starting it
 exec o3s firewall log
-stdout '^No traffic recorded yet, the gateway records it while the stack runs$'
+stdout '^Start the stack to see its traffic$'
+
+# A running gateway without a record yet says so
+exec sh -c 'touch $WORK/stack-up'
+exec o3s firewall log
+stdout '^No traffic recorded yet, the gateway records it every minute$'
 
 # The log lists the refused names and the allowed hosts, each most recent first, and names the command that allows one
-exec sh -c 'now=$(date +%s); d=$HOME/.local/state/o3s/$(printf %s "$PWD" | sha256sum | cut -c1-12); mkdir -p "$d"; printf "{\"since\": %s, \"updated\": %s, \"hosts\": {\"example.com\": {\"bytes\": 84000000, \"last_seen\": %s, \"since\": %s}, \"api.example.com\": {\"bytes\": 1200, \"last_seen\": %s, \"since\": %s}, \"dead.example.com\": {\"bytes\": 0, \"last_seen\": 0, \"since\": %s}}, \"blocked\": {\"blocked.example\": {\"attempts\": 3, \"last_seen\": %s}, \"old.example\": {\"attempts\": 12, \"last_seen\": %s}}}" $((now-86400)) $now $((now-300)) $((now-86400)) $((now-7200)) $((now-86400)) $((now-3456000)) $((now-300)) $((now-172800)) > "$d/traffic.json"'
+exec sh -c 'now=$(date +%s); touch $WORK/stack-up; printf "{\"since\": %s, \"updated\": %s, \"hosts\": {\"example.com\": {\"bytes\": 84000000, \"last_seen\": %s, \"since\": %s}, \"api.example.com\": {\"bytes\": 1200, \"last_seen\": %s, \"since\": %s}, \"dead.example.com\": {\"bytes\": 0, \"last_seen\": 0, \"since\": %s}}, \"blocked\": {\"blocked.example\": {\"attempts\": 3, \"last_seen\": %s}, \"old.example\": {\"attempts\": 12, \"last_seen\": %s}}}" $((now-86400)) $now $((now-300)) $((now-86400)) $((now-7200)) $((now-86400)) $((now-3456000)) $((now-300)) $((now-172800)) > $WORK/traffic.json'
 exec o3s firewall log
 cmp stdout want.txt
 

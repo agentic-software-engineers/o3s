@@ -27,7 +27,6 @@ exists .devcontainer/.env
 grep '^O3S_PROXY_DIR='$WORK'/.local/state/o3s/proxy$' .devcontainer/.env
 grep '^O3S_SECRETS_DIR='$WORK'/.config/o3s$' .devcontainer/.env
 grep '^O3S_SOCKET_DIR='$WORK'/.local/state/o3s/[0-9a-f]{12}/docker-host$' .devcontainer/.env
-grep '^O3S_STATE_DIR='$WORK'/.local/state/o3s/[0-9a-f]{12}$' .devcontainer/.env
 exists $WORK/.local/state/o3s/proxy/mitmproxy-ca.crt
 ! exists $WORK/.config/o3s/mitmproxy-ca.crt
 exists $WORK/.config/o3s/secrets.env
