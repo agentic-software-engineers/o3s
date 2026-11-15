@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 jobs:
-  # lint on every host system o3s runs on, the way Lima's lint-go job does (lima .github/workflows/test.yml:72-78)
+  # lint on every host system o3s runs on
   golangci-lint:
     strategy:
       fail-fast: false
@@ -17,7 +17,7 @@ jobs:
         runner: [ubuntu-latest, macos-26, windows-2025]
     runs-on: ${{ matrix.runner }}
     steps:
-      # keep LF endings, which golangci-lint's formatters need on Windows (golangci/golangci-lint discussions/5840)
+      # keep LF endings, which the formatters expect
       - name: Set gitconfig
         if: runner.os == 'Windows'
         run: |

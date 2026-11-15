@@ -1,4 +1,4 @@
-// Package vm runs the VM an o3s home lives in through Lima, one engine per host system, the way Podman machine drives one provider per system.
+// Package vm runs the VM an o3s home lives in, with the engine each host system runs natively.
 package vm
 
 import (
@@ -18,27 +18,27 @@ import (
 	"github.com/hansehart/o3s/internal/paths"
 )
 
-// template is the Lima template every home's VM boots from.
+// template describes the machine every home's VM boots from.
 //
 //go:embed o3s.yaml
 var template []byte
 
-// Engines are the Lima VM types o3s boots a home's VM with.
+// Engines are the VM types o3s boots a home's VM with.
 var Engines = []string{"qemu", "vz", "hcs"}
 
-// ErrNoLima asks for limactl, which runs a home's VM.
+// ErrNoLima asks for the VM manager a home's VM runs with.
 var ErrNoLima = errors.New("o3s runs a home's VM with Lima, put limactl on PATH (https://lima-vm.io/docs/installation/)")
 
-// Lima drives limactl with o3s's own Lima home.
+// Lima runs the homes' VMs, kept apart from any VMs the user runs.
 type Lima struct {
 	path   string
 	engine string
 }
 
-// Find picks the engine for this host, or the one O3S_ENGINE names, and the limactl o3s installed or one on PATH.
+// Find picks the engine for this host, or the one the user names, and the VM manager o3s installed or one on PATH.
 func Find() (Lima, error) {
 	engine, err := Engine()
-	// Hand back why O3S_ENGINE is turned away
+	// Hand back why the engine is turned away
 	if err != nil {
 		return Lima{}, err
 	}
@@ -48,19 +48,19 @@ func Find() (Lima, error) {
 		name += ".exe"
 	}
 	installed := filepath.Join(paths.Lima(), "bin", name)
-	// Take the Lima o3s installed
+	// Take the copy o3s installed
 	if _, err := os.Stat(installed); err == nil {
 		return Lima{path: installed, engine: engine}, nil
 	}
 	path, err := exec.LookPath("limactl")
-	// Point at Lima's installation for a host that needs limactl
+	// Point at the manager's installation for a host that needs it
 	if err != nil {
 		return Lima{}, ErrNoLima
 	}
 	return Lima{path: path, engine: engine}, nil
 }
 
-// Engine is the VM type for this host system, QEMU with KVM on Linux, Apple's vz on macOS, hcs on Windows, unless O3S_ENGINE names another.
+// Engine is the VM type this host system runs natively, unless the user names another.
 func Engine() (string, error) {
 	// Take the engine the user names
 	if engine := os.Getenv("O3S_ENGINE"); engine != "" {
@@ -85,10 +85,10 @@ func Name(dir string) string {
 	return "o3s-" + paths.ID(dir)
 }
 
-// Start boots a home's VM, created from the template on its first start, its progress on out, the way limactl start takes a name or a template.
+// Start boots a home's VM, created from the template on its first start, with its progress on out.
 func (l Lima) Start(ctx context.Context, name string, out io.Writer) error {
 	names, err := l.output(ctx, "list", "--quiet")
-	// Hand back a Lima that fails to list its VMs
+	// Hand back a manager that fails to list its VMs
 	if err != nil {
 		return err
 	}
@@ -97,7 +97,7 @@ func (l Lima) Start(ctx context.Context, name string, out io.Writer) error {
 		return l.run(ctx, nil, out, out, "start", name)
 	}
 	args := []string{"start", "--name=" + name, "--vm-type=" + l.engine}
-	// Name a DNS server, which the hcs driver needs set explicitly (lima website/content/en/docs/config/vmtype/hcs.md, lima-vm/lima#5662)
+	// Name a DNS server for the engine that needs one set
 	if l.engine == "hcs" {
 		args = append(args, "--dns=8.8.8.8")
 	}
@@ -114,8 +114,7 @@ func (l Lima) Exec(ctx context.Context, name string, in io.Reader, out, errOut i
 	return l.run(ctx, in, out, errOut, append([]string{"shell", name}, args...)...)
 }
 
-// Delete stops a running home's VM and removes it, its disk included, in the order Lima's own Windows smoke test takes,
-// since Windows keeps a running VM's logs locked (lima .github/actions/windows_plain_smoke_test/action.yml).
+// Delete removes a home's VM and its disk, stopping it first so its files are free to go.
 func (l Lima) Delete(ctx context.Context, name string, out io.Writer) error {
 	status, err := l.output(ctx, "list", "--format={{.Status}}", name)
 	// Hand back a VM whose state stays unknown
@@ -132,7 +131,7 @@ func (l Lima) Delete(ctx context.Context, name string, out io.Writer) error {
 	return l.run(ctx, nil, out, out, "delete", "--force", name)
 }
 
-// run runs limactl in o3s's Lima home, in its automation mode (--tty=false).
+// run runs the VM manager for o3s's own VMs, in its automation mode.
 func (l Lima) run(ctx context.Context, in io.Reader, out, errOut io.Writer, args ...string) error {
 	cmd := exec.CommandContext(ctx, l.path, append([]string{"--tty=false"}, args...)...) //nolint:gosec // o3s runs the limactl it found, with arguments it builds itself
 	cmd.Env = append(os.Environ(), "LIMA_HOME="+paths.Lima())
@@ -140,7 +139,7 @@ func (l Lima) run(ctx context.Context, in io.Reader, out, errOut io.Writer, args
 	return cmd.Run()
 }
 
-// output runs limactl and hands back what it printed, with its error output in the failure.
+// output runs the VM manager and hands back what it printed, with its error output in the failure.
 func (l Lima) output(ctx context.Context, args ...string) (string, error) {
 	var out, errOut bytes.Buffer
 	// Hand back the error output along with the failure

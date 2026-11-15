@@ -17,7 +17,7 @@ type errExit struct{ code int }
 
 func (e errExit) Error() string { return fmt.Sprintf("the command in the VM exited with %d", e.code) }
 
-// newVM builds the commands that run the home's VM, named the way Lima and Podman machine name theirs.
+// newVM builds the commands that run the home's VM.
 func newVM() *cobra.Command {
 	c := group("vm", "Run the VM the home lives in")
 	c.AddCommand(
@@ -29,7 +29,7 @@ func newVM() *cobra.Command {
 	return c
 }
 
-// newVMLifecycle builds a command that takes the home's VM one step through its life, with Lima's progress on stderr.
+// newVMLifecycle builds a command that takes the home's VM one step through its life, with its progress on stderr.
 func newVMLifecycle(use, short, done string, step func(vm.Lima, context.Context, string, io.Writer) error) *cobra.Command {
 	return &cobra.Command{
 		Use:   use,
@@ -73,7 +73,7 @@ func newVMShell() *cobra.Command {
 	}
 }
 
-// homeVM finds Lima and the name of the working folder's VM.
+// homeVM finds the VM manager and the name of the working folder's VM.
 func homeVM() (vm.Lima, string, error) {
 	dir, err := workingHome()
 	// Hand back a working folder that stays unknown

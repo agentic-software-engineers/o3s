@@ -1,6 +1,6 @@
 //go:build vm
 
-// Package e2evm_test covers the VM an o3s home lives in, booted on a real host through the o3s CLI alone, like Podman's machine suite.
+// Package e2evm_test covers the VM an o3s home lives in, booted on a real host through the o3s CLI alone.
 package e2evm_test
 
 import (

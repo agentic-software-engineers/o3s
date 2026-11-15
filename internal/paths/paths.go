@@ -44,7 +44,7 @@ func ID(dir string) string {
 	return hex.EncodeToString(sum[:])[:12]
 }
 
-// Lima is where o3s keeps its own Lima, apart from the user's, with the VMs of its homes.
+// Lima is where o3s keeps its homes' VMs, apart from the user's own.
 func Lima() string {
 	return filepath.Join(Data(), "lima")
 }

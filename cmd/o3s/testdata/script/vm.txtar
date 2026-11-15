@@ -1,4 +1,4 @@
-# vm start creates the home's VM from the template in o3s's own Lima home, and leaves this folder as it was
+# vm start creates the home's VM from the template in o3s's own VM folder, and leaves this folder as it was
 mkdir home
 cd home
 exec o3s vm start
@@ -28,18 +28,18 @@ stdout '^Deleted the VM o3s-[0-9a-f]{12}$'
 ! exec o3s vm shell -- true
 stderr 'does not exist'
 
-# hcs names a DNS server, which Lima's hcs driver needs
+# The engine that needs a DNS server gets one
 env O3S_ENGINE=hcs
 exec o3s vm start
 grep 'vm-type=hcs --dns=8.8.8.8 -$' $WORK/limactl.log
 
-# An engine outside qemu, vz and hcs is turned away
+# An unknown engine is turned away
 env O3S_ENGINE=firecracker
 ! exec o3s vm start
 stderr 'O3S_ENGINE=firecracker, where o3s boots a VM with qemu, vz, hcs'
 env O3S_ENGINE=
 
-# A host that needs Lima gets pointed at its installation
+# A host that needs the VM manager gets pointed at its installation
 env PATH=$O3S_DIR
 ! exec o3s vm start
 stderr 'put limactl on PATH'

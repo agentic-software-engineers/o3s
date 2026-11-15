@@ -1,4 +1,4 @@
-# The VM a home runs in: Ubuntu 26.04 pinned by digest, the same images Lima 2.3.0 pins (templates/_images/ubuntu-26.04.yaml)
+# The machine a home runs in, its image pinned by digest
 images:
   - location: "https://cloud-images.ubuntu.com/releases/resolute/release-20261016/ubuntu-26.04-server-cloudimg-amd64.img"
     arch: "x86_64"
@@ -7,5 +7,5 @@ images:
     arch: "aarch64"
     digest: "sha256:8eb876c2ccc4b6ff89e4a65d511815923b285e04503ba465809bf587f763da24"
 
-# Plain mode: the VM reaches the host over the network alone, the mode Lima's hcs driver runs in
+# Reach the host over the network alone
 plain: true

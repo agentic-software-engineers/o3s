@@ -12,8 +12,7 @@ import (
 
 // AVMHost makes a host for a home's VM, with o3s built from this branch first on PATH, and hands back the home's empty folder.
 //
-// The XDG folders sit below a short temporary folder rather than the test's own, and below /tmp rather than macOS's long TMPDIR,
-// since Lima keeps sockets in the VM's folder below the data folder and refuses a socket path of 104 characters or more.
+// The XDG folders sit below a short temporary folder, since the VM manager keeps sockets there and socket paths are capped in length.
 func AVMHost(tb testing.TB) string {
 	tb.Helper()
 	bin := o3sBinary(tb)
