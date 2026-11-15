@@ -27,6 +27,10 @@ jobs:
             vm-type: vz
             archive: lima-2.3.0-Darwin-arm64.tar.gz
             sha256: b7af444bd8f91d3c307477e562f2cf3bd7595d62b9429185e4fa841563578cfc
+          - runner: macos-26-intel
+            vm-type: vz
+            archive: lima-2.3.0-Darwin-x86_64.tar.gz
+            sha256: d58bc7d6b8158d638720d8c8fdb17eb58527dfead6a29a5b60f48a35ee4a65a6
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
     steps:
