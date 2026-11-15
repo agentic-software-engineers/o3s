@@ -14,9 +14,11 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"regexp"
 	"runtime"
-	"strconv"
 	"strings"
+
+	"golang.org/x/mod/semver"
 
 	"github.com/hansehart/o3s/internal/atomicfile"
 )
@@ -118,42 +120,13 @@ func VerifyHint(binary string) string {
 	return "gh attestation verify " + binary + " --repo " + repo + " --signer-workflow " + signer
 }
 
-// Newer reports whether version a comes after version b, comparing each part as a number.
+// Newer reports whether version a comes after version b by semver, a release candidate below the release it leads to.
 func Newer(a, b string) bool {
-	x, okA := parts(a)
-	y, okB := parts(b)
 	// Order nothing that reads as no release
-	if !okA || !okB {
+	if !IsRelease(a) || !IsRelease(b) {
 		return false
 	}
-	// Compare the parts from major to patch
-	for i := range x {
-		// Decide at the first part that differs
-		if x[i] != y[i] {
-			return x[i] > y[i]
-		}
-	}
-	return false
-}
-
-// parts reads a version's major, minor and patch.
-func parts(version string) ([3]int, bool) {
-	var out [3]int
-	fields := strings.Split(version, ".")
-	// Turn away a version without three parts
-	if len(fields) != 3 {
-		return out, false
-	}
-	// Read every part as a number
-	for i, f := range fields {
-		n, err := strconv.Atoi(f)
-		// Turn away a part that reads as no number
-		if err != nil {
-			return out, false
-		}
-		out[i] = n
-	}
-	return out, true
+	return semver.Compare("v"+a, "v"+b) > 0
 }
 
 // get downloads a URL whole.
@@ -190,8 +163,12 @@ func checksum(list []byte, name string) (string, bool) {
 	return "", false
 }
 
-// IsRelease reports whether a version names a published release.
+// candidate matches the pre-release part of a release candidate.
+var candidate = regexp.MustCompile(`^-rc\.[0-9]+$`)
+
+// IsRelease reports whether a version names a published release: three numbers, and a release candidate's -rc.N where it is one.
 func IsRelease(version string) bool {
-	_, ok := parts(version)
-	return ok
+	v := "v" + version
+	pre := semver.Prerelease(v)
+	return semver.Canonical(v) == v && (pre == "" || candidate.MatchString(pre))
 }

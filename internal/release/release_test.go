@@ -145,17 +145,23 @@ func TestVerifyLeavesTheCheckWithoutGh(t *testing.T) {
 	}
 }
 
-// Versions compare part by part as numbers.
+// Versions compare by semver precedence (semver.org, section 11): number by number, and a release candidate below its release.
 func TestNewerComparesVersions(t *testing.T) {
 	tests := []struct {
 		a, b string
 		want bool
 	}{
-		{"0.8.0", "0.7.0", true},
-		{"0.10.0", "0.9.0", true},
-		{"1.0.0", "0.99.99", true},
-		{"0.7.0", "0.7.0", false},
-		{"0.7.1", "0.8.0", false},
+		{"1.0.1", "1.0.0", true},
+		{"1.1.0", "1.0.9", true},
+		{"2.0.0", "1.99.99", true},
+		{"1.10.0", "1.9.0", true},
+		{"1.0.0", "1.0.0", false},
+		{"1.0.0", "1.0.1", false},
+		{"1.0.0-rc.2", "1.0.0-rc.1", true},
+		{"1.0.0-rc.10", "1.0.0-rc.2", true},
+		{"1.0.0", "1.0.0-rc.1", true},
+		{"1.0.0-rc.1", "0.9.9", true},
+		{"1.0.0-rc.1", "1.0.0", false},
 	}
 	// Check every pair
 	for _, tt := range tests {
@@ -190,5 +196,26 @@ func TestReplaceSwapsTheBinary(t *testing.T) {
 	// Require the new binary in place, executable
 	if string(data) != binary || info.Mode().Perm() != 0o755 {
 		t.Errorf("Replace() left %q with mode %v, want the new binary with 0755", data, info.Mode().Perm())
+	}
+}
+
+// A release names three numbers, with or without a release candidate, and a build of no release names something else.
+func TestIsReleaseKnowsReleaseCandidates(t *testing.T) {
+	tests := []struct {
+		version string
+		want    bool
+	}{
+		{"1.0.0", true},
+		{"1.0.0-rc.1", true},
+		{"dev", false},
+		{"1.0.0-SNAPSHOT-abc1234", false},
+		{"1.0", false},
+	}
+	// Check every version
+	for _, tt := range tests {
+		// Report a version read otherwise
+		if got := release.IsRelease(tt.version); got != tt.want {
+			t.Errorf("IsRelease(%s) = %v, want %v", tt.version, got, tt.want)
+		}
 	}
 }
