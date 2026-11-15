@@ -9,9 +9,21 @@ permissions:
   contents: read
 
 jobs:
+  # lint on every host system o3s runs on, the way Lima's lint-go job does (lima .github/workflows/test.yml:72-78)
   golangci-lint:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-latest, macos-26, windows-2025]
+    runs-on: ${{ matrix.runner }}
     steps:
+      # keep LF endings, which golangci-lint's formatters need on Windows (golangci/golangci-lint discussions/5840)
+      - name: Set gitconfig
+        if: runner.os == 'Windows'
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.eol lf
+
       # check out the code the linters read
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
