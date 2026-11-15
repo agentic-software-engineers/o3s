@@ -1,6 +1,7 @@
 package stacktest
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -16,10 +17,18 @@ type Raised struct {
 	ContainerID string `json:"containerId"`
 }
 
-// DevcontainerUp raises the stack of the test's home, built from this branch, the way the editor does.
+// DevcontainerUp raises the stack of the test's home, built from this branch, the way the editor does. It removes the
+// stack once the test ends, since devcontainer up reuses a running stack whatever home raised it.
 func DevcontainerUp(tb testing.TB) (Raised, error) {
 	tb.Helper()
-	out, err := run(tb.Context(), tb, "devcontainer", "up", "--workspace-folder", devHome(tb))
+	dir := devHome(tb)
+	tb.Cleanup(func() {
+		// Report a stack that outlives its test
+		if _, err := compose(context.WithoutCancel(tb.Context()), tb, "rm", "--stop", "--force"); err != nil {
+			tb.Errorf("Cleanup: %v", err)
+		}
+	})
+	out, err := run(tb.Context(), tb, "devcontainer", "up", "--workspace-folder", dir)
 	// Hand back the refusal the CLI reports
 	if err != nil {
 		return Raised{}, err

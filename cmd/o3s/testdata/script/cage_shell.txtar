@@ -12,4 +12,4 @@ stderr 'no o3s home'
 
 -- want.log --
 up --workspace-folder $WORK/home
-exec --workspace-folder $WORK/home bash
+exec --workspace-folder $WORK/home --container-id cage-id bash

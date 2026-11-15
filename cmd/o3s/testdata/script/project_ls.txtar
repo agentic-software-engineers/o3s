@@ -2,10 +2,12 @@
 mkdir home
 cd home
 exec o3s init
-exec o3s project create scratch
+exec o3s project create example/scratch
+exec o3s project create gitlab.com/group/app
 exec o3s project ls
 cmp stdout $WORK/want.txt
 
 -- want.txt --
-NAME     PATH
-scratch  /home/ubuntu/projects/scratch
+NAME             PATH
+example/scratch  /home/ubuntu/projects/github.com/example/scratch
+group/app        /home/ubuntu/projects/gitlab.com/group/app

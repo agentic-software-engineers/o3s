@@ -60,7 +60,7 @@ func isUsage(err error) bool {
 	return errors.Is(err, ErrUsage) || errors.Is(err, config.ErrInvalid) || errors.Is(err, secrets.ErrInvalid) || errors.Is(err, registry.ErrInvalid)
 }
 
-// warn names something the user should know on stderr, the way git and cargo do, so it stays apart from a command's output.
+// warn names something the user should know on stderr, so it stays apart from a command's output.
 func warn(w io.Writer, format string, args ...any) {
 	fmt.Fprintf(w, "warning: "+format+"\n", args...)
 }
