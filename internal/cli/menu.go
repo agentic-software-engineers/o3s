@@ -9,9 +9,11 @@ import (
 
 	"github.com/hansehart/o3s/internal/config"
 	"github.com/hansehart/o3s/internal/devcontainer"
+	"github.com/hansehart/o3s/internal/home"
 	"github.com/hansehart/o3s/internal/menu"
 	"github.com/hansehart/o3s/internal/registry"
 	"github.com/hansehart/o3s/internal/tui"
+	"github.com/hansehart/o3s/internal/workspace"
 )
 
 // runMenu shows the menu in its own screen, running each dialog's commands as this binary, until the user leaves.
@@ -121,6 +123,14 @@ func menuHome(ctx context.Context) menu.Home {
 			if ref, err := registry.ParseRef(key); err == nil {
 				h.Features = append(h.Features, ref.Package())
 			}
+		}
+	}
+	ws, err := workspace.Load(home.Workspace(dir))
+	// Offer every project the workspace lists
+	if err == nil {
+		// Offer each project by its name
+		for _, f := range projects(ws) {
+			h.Projects = append(h.Projects, f.Name)
 		}
 	}
 	var names []string

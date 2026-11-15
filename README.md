@@ -47,6 +47,12 @@ o3s store add ghcr.io/hansehart/devcontainer-features
 o3s feature add ghcr.io/hansehart/devcontainer-features/claude-code
 ```
 
+**project**
+```sh
+# Clones a repository into ~/projects in the cage and adds it to the workspace
+o3s project add torvalds/linux
+```
+
 **cage**
 ```sh
 # Opens the home's workspace in VS Code inside the cage
@@ -88,7 +94,7 @@ o3s update
    ```
 
 > [!WARNING]
-> Only `~/features`, `~/o3s`, and `~/projects` survive a rebuild in the cage. Keep your work in `~/projects` and add each project to the workspace.
+> Only `~/features`, `~/o3s`, and `~/projects` survive a rebuild in the cage. Keep your work in `~/projects`, where `o3s project add` puts it.
 
 ## What you get
 

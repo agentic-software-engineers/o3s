@@ -15,6 +15,7 @@ func TestTheMainMenuExplainsEachEntry(t *testing.T) {
 		{Value: "secret", Note: "values the proxy injects"},
 		{Value: "store", Note: "where features come from"},
 		{Value: "feature", Note: "tools in the cage"},
+		{Value: "project", Note: "repositories in the workspace"},
 		{Value: "cage", Note: "open VS Code or a shell"},
 		{Value: "update", Note: "binary, stack and features"},
 	}

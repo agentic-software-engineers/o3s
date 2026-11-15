@@ -1,0 +1,23 @@
+# Without a terminal nobody can type the name, so rm asks for --yes and deletes nothing
+mkdir home
+cd home
+exec o3s init
+exec o3s project create scratch
+! exec o3s project rm scratch
+stderr 'pass --yes to delete without a terminal'
+grep 'scratch' home.code-workspace
+
+# --yes deletes the folder in the cage and takes it off the workspace
+rm $WORK/devcontainer.log
+exec o3s project rm scratch --yes
+stdout '^Removed scratch$'
+cmpenv $WORK/devcontainer.log $WORK/want.log
+! grep 'scratch' home.code-workspace
+
+# A project the workspace lacks is turned away
+! exec o3s project rm absent --yes
+stderr 'unknown project absent'
+
+-- want.log --
+up --workspace-folder $WORK/home
+exec --workspace-folder $WORK/home rm -rf /home/ubuntu/projects/scratch

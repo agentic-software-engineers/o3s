@@ -1,0 +1,25 @@
+# A new name starts an empty repository in the projects volume and joins the workspace
+mkdir home
+cd home
+exec o3s init
+exec o3s project create scratch
+stdout '^Created scratch$'
+cmpenv $WORK/devcontainer.log $WORK/want.log
+grep '"path": "/home/ubuntu/projects/scratch"' home.code-workspace
+
+# A folder that holds files already is turned away, as ghq create does
+cp $WORK/empty $WORK/not-empty
+cp home.code-workspace $WORK/before
+! exec o3s project create taken
+stderr '/home/ubuntu/projects/taken holds files already'
+cmp home.code-workspace $WORK/before
+
+# A name that leaves the projects volume is a usage error
+! exec o3s project create ../etc
+stderr 'invalid name "../etc"'
+
+-- want.log --
+up --workspace-folder $WORK/home
+exec --workspace-folder $WORK/home ls -A /home/ubuntu/projects/scratch
+exec --workspace-folder $WORK/home git init --quiet /home/ubuntu/projects/scratch
+-- empty --

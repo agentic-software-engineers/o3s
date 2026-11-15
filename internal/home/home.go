@@ -132,6 +132,11 @@ func Exists(dir string) bool {
 	return false
 }
 
+// Workspace is a home's VS Code workspace, named after its folder so each window title names its home.
+func Workspace(dir string) string {
+	return filepath.Join(dir, filepath.Base(dir)+".code-workspace")
+}
+
 // Seed writes the files a home needs and lacks, its settings and its workspace named after the folder, and hands back what it wrote.
 func Seed(dir string) ([]string, error) {
 	var written []string
@@ -145,7 +150,7 @@ func Seed(dir string) ([]string, error) {
 		}
 		written = append(written, settings)
 	}
-	workspace := filepath.Join(dir, filepath.Base(dir)+".code-workspace")
+	workspace := Workspace(dir)
 	// Start the workspace from its template where the home holds none
 	if _, err := os.Stat(workspace); errors.Is(err, fs.ErrNotExist) {
 		data, err := files.ReadFile("templates/o3s.code-workspace")

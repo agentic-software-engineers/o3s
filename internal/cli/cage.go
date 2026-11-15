@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"os"
@@ -11,6 +12,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/hansehart/o3s/internal/config"
+	"github.com/hansehart/o3s/internal/home"
 	"github.com/hansehart/o3s/internal/ide"
 	"github.com/hansehart/o3s/internal/rebuild"
 )
@@ -49,7 +51,7 @@ func newCageIDE() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			uri := ide.URI(host, filepath.Base(dir)+".code-workspace")
+			uri := ide.URI(host, filepath.Base(home.Workspace(dir)))
 			// Hand back a VS Code that fails to start
 			if err := exec.CommandContext(cmd.Context(), code, "--file-uri", uri).Run(); err != nil {
 				return err
@@ -72,16 +74,10 @@ func newCageShell() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			cli, ok := rebuild.CLI()
-			// Point at the devcontainer CLI o3s init installs
-			if !ok {
-				return errors.New("o3s cage shell runs the devcontainer CLI, install it with o3s init")
-			}
-			up := exec.CommandContext(cmd.Context(), cli, "up", "--workspace-folder", dir)
-			up.Stdout, up.Stderr = cmd.ErrOrStderr(), cmd.ErrOrStderr()
+			cli, err := raise(cmd, dir)
 			// Hand back a cage that fails to come up
-			if err := up.Run(); err != nil {
-				return fmt.Errorf("raise the cage: %w", err)
+			if err != nil {
+				return err
 			}
 			return syscall.Exec(cli, []string{cli, "exec", "--workspace-folder", dir, "bash"}, os.Environ())
 		},
@@ -97,4 +93,33 @@ func cageHome() (string, error) {
 	}
 	_, err = config.Load(dir)
 	return dir, err
+}
+
+// raise brings the home's cage up with the devcontainer CLI, its output on stderr, and hands back the CLI's path.
+func raise(cmd *cobra.Command, dir string) (string, error) {
+	cli, ok := rebuild.CLI()
+	// Point at the installer where the devcontainer CLI is missing
+	if !ok {
+		return "", fmt.Errorf("%s runs the devcontainer CLI, install it with o3s init", cmd.CommandPath())
+	}
+	up := exec.CommandContext(cmd.Context(), cli, "up", "--workspace-folder", dir)
+	up.Stdout, up.Stderr = cmd.ErrOrStderr(), cmd.ErrOrStderr()
+	// Hand back a cage that fails to come up
+	if err := up.Run(); err != nil {
+		return "", fmt.Errorf("raise the cage: %w", err)
+	}
+	return cli, nil
+}
+
+// inCage runs a command inside the raised cage, its stderr on stderr, and hands back its stdout and exit code.
+func inCage(cmd *cobra.Command, cli, dir string, args ...string) (string, int, error) {
+	run := exec.CommandContext(cmd.Context(), cli, append([]string{"exec", "--workspace-folder", dir}, args...)...) //nolint:gosec // o3s runs the devcontainer CLI it found, with the commands it builds itself
+	var out bytes.Buffer
+	run.Stdout, run.Stderr = &out, cmd.ErrOrStderr()
+	err := run.Run()
+	// Hand back the exit code of a command that ran and failed
+	if exit, ok := errors.AsType[*exec.ExitError](err); ok {
+		return out.String(), exit.ExitCode(), nil
+	}
+	return out.String(), 0, err
 }

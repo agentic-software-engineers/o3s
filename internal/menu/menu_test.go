@@ -17,8 +17,9 @@ var aHome = Home{
 		{Name: "api.example.com", Ports: []int{443}, Secret: "EXAMPLE_TOKEN", Inject: []string{"header", "body"}, By: []string{"user"}},
 		{Name: "example.org", Ports: []int{443}, By: []string{"registry.example.com/features/tool"}},
 	},
-	Secrets: []Secret{{Name: "EXAMPLE_TOKEN", Set: false}, {Name: "OTHER_TOKEN", Set: true}},
-	Stores:  []string{"registry.example.com/features"},
+	Secrets:  []Secret{{Name: "EXAMPLE_TOKEN", Set: false}, {Name: "OTHER_TOKEN", Set: true}},
+	Stores:   []string{"registry.example.com/features"},
+	Projects: []string{"app"},
 }
 
 // walk answers each question the core asks in turn and hands back what it asked and the command it ends in.
@@ -134,6 +135,30 @@ func TestEveryDialogEndsInItsCommand(t *testing.T) {
 			[]Command{{Args: []string{"update"}, Terminal: true}},
 		},
 		{
+			"cloning a project",
+			[][]string{{"project"}, {"add"}, {"hansehart/o3s"}},
+			[]string{"What do you want to do?", "Action", "Repository"},
+			[]Command{{Args: []string{"project", "add", "hansehart/o3s"}}},
+		},
+		{
+			"creating a project",
+			[][]string{{"project"}, {"create"}, {"scratch"}},
+			[]string{"What do you want to do?", "Action", "Name"},
+			[]Command{{Args: []string{"project", "create", "scratch"}}},
+		},
+		{
+			"removing a project at the real terminal, where the user types its name",
+			[][]string{{"project"}, {"rm"}, {"app"}},
+			[]string{"What do you want to do?", "Action", "Project"},
+			[]Command{{Args: []string{"project", "rm", "app"}, Terminal: true}},
+		},
+		{
+			"listing the projects",
+			[][]string{{"project"}, {"ls"}},
+			[]string{"What do you want to do?", "Action"},
+			[]Command{{Args: []string{"project", "ls"}}},
+		},
+		{
 			"opening the cage in VS Code",
 			[][]string{{"cage"}, {"ide"}},
 			[]string{"What do you want to do?", "Action"},
@@ -222,6 +247,7 @@ func TestRmWithNothingToRemoveEndsWithANote(t *testing.T) {
 		{"firewall", "No host to remove"},
 		{"secret", "No secret to remove"},
 		{"store", "No store to remove"},
+		{"project", "No project to remove"},
 	}
 	// Check every group
 	for _, tt := range tests {

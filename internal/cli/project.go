@@ -1,0 +1,320 @@
+package cli
+
+import (
+	"bufio"
+	"errors"
+	"fmt"
+	"slices"
+	"strings"
+	"text/tabwriter"
+
+	"github.com/spf13/cobra"
+
+	"github.com/hansehart/o3s/internal/config"
+	"github.com/hansehart/o3s/internal/home"
+	"github.com/hansehart/o3s/internal/project"
+	"github.com/hansehart/o3s/internal/workspace"
+)
+
+// noAgent is the exit code ssh-add gives where it reaches no agent (openssh-portable ssh-add.1, EXIT STATUS).
+const noAgent = 2
+
+// newProject builds the commands that clone, create, remove and list the projects in the home's workspace.
+func newProject() *cobra.Command {
+	p := group("project", "Clone, create or remove the projects in the workspace")
+	p.AddCommand(newProjectAdd(), newProjectCreate(), newProjectRm(), newProjectLs())
+	return p
+}
+
+// newProjectAdd builds the command that clones a repository into the projects volume and lists it in the workspace.
+func newProjectAdd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "add <repository>",
+		Short: "Clone a repository into ~/projects and add it to the workspace",
+		Args:  usage(cobra.ExactArgs(1)),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			repo, err := project.Parse(args[0])
+			// Hand back a repository o3s cannot read
+			if err != nil {
+				return fmt.Errorf("%w: %w", ErrUsage, err)
+			}
+			dir, err := cageHome()
+			// Hand back a folder that holds no home
+			if err != nil {
+				return err
+			}
+			c, err := config.Load(dir)
+			// Hand back a home whose settings fail to load
+			if err != nil {
+				return err
+			}
+			// Turn away a clone the gateway would block, with the command that opens the way
+			if !allows(c, repo.Host, repo.Port) {
+				return fmt.Errorf("the firewall blocks %s:%d, allow it with: o3s firewall add %s --port %d", repo.Host, repo.Port, repo.Host, repo.Port)
+			}
+			ws, err := workspace.Load(home.Workspace(dir))
+			// Hand back a workspace that fails to load
+			if err != nil {
+				return err
+			}
+			// Turn away a project whose folder the workspace lists already
+			if listed(ws, repo.Path()) {
+				return fmt.Errorf("%s is %w", repo.Path(), workspace.ErrListed)
+			}
+			cli, err := raise(cmd, dir)
+			// Hand back a cage that fails to come up
+			if err != nil {
+				return err
+			}
+			cloned := true
+			// Look for the SSH agent a clone over SSH signs with
+			if repo.SSH {
+				_, code, err := inCage(cmd, cli, dir, "ssh-add", "-l")
+				// Hand back an agent check that fails to run
+				if err != nil {
+					return err
+				}
+				cloned = code != noAgent
+			}
+			// Clone where the cage can sign, and leave the clone to the user otherwise
+			if cloned {
+				_, code, err := inCage(cmd, cli, dir, "git", "clone", repo.URL, repo.Path())
+				// Hand back a clone that fails to run
+				if err != nil {
+					return err
+				}
+				// Hand back a clone git turned down, its reason on stderr already
+				if code != 0 {
+					return fmt.Errorf("git clone %s exited with %d", repo.URL, code)
+				}
+			} else {
+				warn(cmd.ErrOrStderr(), "no SSH agent in the cage, clone %s yourself:\n  o3s cage shell\n  git clone %s %s", repo.FullName(), repo.URL, repo.Path())
+			}
+			// Hand back a workspace that stays unwritten
+			if err := addFolder(dir, ws, repo.Name); err != nil {
+				return err
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), "Added %s\n", repo.Name)
+			return nil
+		},
+	}
+}
+
+// newProjectCreate builds the command that starts an empty repository in the projects volume and lists it in the workspace.
+func newProjectCreate() *cobra.Command {
+	return &cobra.Command{
+		Use:   "create <name>",
+		Short: "Start an empty repository in ~/projects and add it to the workspace",
+		Args:  usage(cobra.ExactArgs(1)),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			name := args[0]
+			// Turn away a name that makes no folder of its own
+			if !project.ValidName(name) {
+				return fmt.Errorf("%w: invalid name %q, want letters, digits, '.', '_' or '-'", ErrUsage, name)
+			}
+			dir, err := cageHome()
+			// Hand back a folder that holds no home
+			if err != nil {
+				return err
+			}
+			ws, err := workspace.Load(home.Workspace(dir))
+			// Hand back a workspace that fails to load
+			if err != nil {
+				return err
+			}
+			path := project.Path(name)
+			// Turn away a project whose folder the workspace lists already
+			if listed(ws, path) {
+				return fmt.Errorf("%s is %w", path, workspace.ErrListed)
+			}
+			cli, err := raise(cmd, dir)
+			// Hand back a cage that fails to come up
+			if err != nil {
+				return err
+			}
+			held, _, err := inCage(cmd, cli, dir, "ls", "-A", path)
+			// Hand back a look into the folder that fails to run
+			if err != nil {
+				return err
+			}
+			// Turn away a folder that holds files, as ghq create does
+			if strings.TrimSpace(held) != "" {
+				return fmt.Errorf("%s holds files already, add it with o3s project add or pick another name", path)
+			}
+			_, code, err := inCage(cmd, cli, dir, "git", "init", "--quiet", path)
+			// Hand back a repository that fails to start
+			if err != nil {
+				return err
+			}
+			// Hand back a repository git turned down, its reason on stderr already
+			if code != 0 {
+				return fmt.Errorf("git init %s exited with %d", path, code)
+			}
+			// Hand back a workspace that stays unwritten
+			if err := addFolder(dir, ws, name); err != nil {
+				return err
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), "Created %s\n", name)
+			return nil
+		},
+	}
+}
+
+// newProjectRm builds the command that deletes a project's folder and takes it off the workspace, once the user types its name.
+func newProjectRm() *cobra.Command {
+	var yes bool
+	cmd := &cobra.Command{
+		Use:   "rm <name>",
+		Short: "Delete a project's folder and remove it from the workspace",
+		Args:  usage(cobra.ExactArgs(1)),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			name := args[0]
+			dir, err := cageHome()
+			// Hand back a folder that holds no home
+			if err != nil {
+				return err
+			}
+			ws, err := workspace.Load(home.Workspace(dir))
+			// Hand back a workspace that fails to load
+			if err != nil {
+				return err
+			}
+			path := project.Path(name)
+			// Turn away a project the workspace lacks
+			if !project.ValidName(name) || !listed(ws, path) {
+				return fmt.Errorf("unknown project %s, o3s project ls lists them", name)
+			}
+			// Turn away a run where nobody can type the name
+			if !yes && !isTerminal(cmd.InOrStdin()) {
+				return fmt.Errorf("%w: pass --yes to delete without a terminal", ErrUsage)
+			}
+			cli, err := raise(cmd, dir)
+			// Hand back a cage that fails to come up
+			if err != nil {
+				return err
+			}
+			// Ask for the name before anything is deleted
+			if !yes {
+				remote, _, err := inCage(cmd, cli, dir, "git", "config", "--file", path+"/.git/config", "--get", "remote.origin.url")
+				// Hand back a remote that fails to read
+				if err != nil {
+					return err
+				}
+				want, ok := project.OwnerRepo(remote)
+				// Ask for the project's own name where it has no origin to name
+				if !ok {
+					want = name
+				}
+				// Hand back a deletion the user did not confirm
+				if err := confirmName(cmd, want); err != nil {
+					return err
+				}
+			}
+			_, code, err := inCage(cmd, cli, dir, "rm", "-rf", path)
+			// Hand back a deletion that fails to run
+			if err != nil {
+				return err
+			}
+			// Hand back a folder that stays, its reason on stderr already
+			if code != 0 {
+				return fmt.Errorf("rm %s exited with %d", path, code)
+			}
+			ws.Remove(path)
+			// Hand back a workspace that stays unwritten
+			if err := ws.Save(home.Workspace(dir)); err != nil {
+				return err
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), "Removed %s\n", name)
+			return nil
+		},
+	}
+	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "delete without typing the name")
+	return cmd
+}
+
+// newProjectLs builds the command that lists the projects in the workspace.
+func newProjectLs() *cobra.Command {
+	return &cobra.Command{
+		Use:   "ls",
+		Short: "List the projects",
+		Args:  usage(cobra.NoArgs),
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			dir, err := cageHome()
+			// Hand back a folder that holds no home
+			if err != nil {
+				return err
+			}
+			ws, err := workspace.Load(home.Workspace(dir))
+			// Hand back a workspace that fails to load
+			if err != nil {
+				return err
+			}
+			w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 2, ' ', 0)
+			fmt.Fprintln(w, "NAME\tPATH")
+			// Write a row per project, in the order the workspace holds them
+			for _, f := range projects(ws) {
+				fmt.Fprintf(w, "%s\t%s\n", f.Name, f.Path)
+			}
+			return w.Flush()
+		},
+	}
+}
+
+// projects lists the workspace's folders in the projects volume, each named after its folder.
+func projects(ws *workspace.Workspace) []workspace.Folder {
+	var out []workspace.Folder
+	// Take every folder right below the projects volume
+	for _, f := range ws.Folders() {
+		name, ok := strings.CutPrefix(f.Path, project.Dir+"/")
+		// Take a folder of the volume's own
+		if ok && project.ValidName(name) {
+			out = append(out, workspace.Folder{Name: name, Path: f.Path})
+		}
+	}
+	return out
+}
+
+// listed reports whether the workspace lists a folder.
+func listed(ws *workspace.Workspace, path string) bool {
+	return slices.ContainsFunc(ws.Folders(), func(f workspace.Folder) bool { return f.Path == path })
+}
+
+// addFolder lists a project's folder in the workspace and saves it.
+func addFolder(dir string, ws *workspace.Workspace, name string) error {
+	// Hand back a folder the workspace turns away
+	if err := ws.Add(workspace.Folder{Name: name, Path: project.Path(name)}); err != nil {
+		return err
+	}
+	return ws.Save(home.Workspace(dir))
+}
+
+// allows reports whether the home's allowlist lets the cage reach a host on a port, by its name or a wildcard over it.
+func allows(c config.Config, host string, port int) bool {
+	// Look at every host the allowlist holds
+	for _, h := range c.Hosts {
+		suffix, wildcard := strings.CutPrefix(h.Name, "*")
+		// Take the host by its name, or by a wildcard that covers it
+		if (h.Name == host || wildcard && strings.HasSuffix(host, suffix)) && slices.Contains(h.Ports, port) {
+			return true
+		}
+	}
+	return false
+}
+
+// errNotConfirmed marks a deletion the user did not confirm.
+var errNotConfirmed = errors.New("the name does not match, nothing deleted")
+
+// confirmName asks the user to type a name before a deletion, the way gh repo delete does.
+func confirmName(cmd *cobra.Command, want string) error {
+	fmt.Fprintf(cmd.OutOrStdout(), "Type %q to confirm deletion: ", want)
+	line, err := bufio.NewReader(cmd.InOrStdin()).ReadString('\n')
+	// Read a failed read that typed nothing as a refusal
+	if err != nil && line == "" {
+		return errNotConfirmed
+	}
+	// Turn away a name that differs
+	if strings.TrimSpace(line) != want {
+		return errNotConfirmed
+	}
+	return nil
+}
