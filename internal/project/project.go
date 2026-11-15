@@ -117,7 +117,7 @@ func parse(arg string) (Repository, error) {
 	return Repository{}, errors.New("no form matches")
 }
 
-// short builds the SSH clone of a repository named without a URL, the way gh clones with git_protocol ssh.
+// short builds the SSH clone of a repository named without a URL.
 func short(host, p string) (Repository, error) {
 	p = strings.TrimSuffix(p, ".git")
 	return fromPath(host, 22, p, "git@"+host+":"+p+".git", true)
