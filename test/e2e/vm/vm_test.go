@@ -1,7 +1,7 @@
-//go:build vm
+//go:build e2e
 
-// Package e2evm_test covers the VM an o3s home lives in, booted on a real host through the o3s CLI alone.
-package e2evm_test
+// Package vm_test covers the VM an o3s home lives in, booted on a real host through the o3s CLI alone.
+package vm_test
 
 import (
 	"strings"

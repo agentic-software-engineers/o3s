@@ -5,7 +5,6 @@ run:
   build-tags:
     - integration
     - e2e
-    - vm
 
 linters:
   # Start from the standard set and add the linters most Go projects share
