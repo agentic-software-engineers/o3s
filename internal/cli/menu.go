@@ -6,12 +6,15 @@ import (
 	"io"
 	"os/exec"
 	"slices"
+	"time"
 
 	"github.com/hansehart/o3s/internal/config"
 	"github.com/hansehart/o3s/internal/devcontainer"
 	"github.com/hansehart/o3s/internal/home"
 	"github.com/hansehart/o3s/internal/menu"
+	"github.com/hansehart/o3s/internal/paths"
 	"github.com/hansehart/o3s/internal/registry"
+	"github.com/hansehart/o3s/internal/traffic"
 	"github.com/hansehart/o3s/internal/tui"
 	"github.com/hansehart/o3s/internal/workspace"
 )
@@ -125,6 +128,15 @@ func menuHome(ctx context.Context) menu.Home {
 			}
 		}
 	}
+	record, err := traffic.Load(paths.Home(dir))
+	// Offer every name the gateway refused, noting how often and when
+	if err == nil {
+		now := time.Now()
+		// Offer each refused name, the most recent first
+		for _, b := range record.Refused() {
+			h.Blocked = append(h.Blocked, menu.Option{Value: b.Name, Note: attempts(b.Attempts) + ", " + traffic.Ago(b.LastSeen, now)})
+		}
+	}
 	ws, err := workspace.Load(home.Workspace(dir))
 	// Offer every project the workspace lists
 	if err == nil {
@@ -153,6 +165,15 @@ func menuHome(ctx context.Context) menu.Home {
 		h.Secrets = append(h.Secrets, menu.Secret{Name: name, Set: set})
 	}
 	return h
+}
+
+// attempts writes a number of refused lookups.
+func attempts(n int64) string {
+	// Write a single attempt in the singular
+	if n == 1 {
+		return "1 attempt"
+	}
+	return fmt.Sprintf("%d attempts", n)
 }
 
 // isInteractive reports whether both ends of a stream reach a terminal, as a menu needs.

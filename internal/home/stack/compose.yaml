@@ -104,9 +104,16 @@ services:
     # Cage identity: the gateway locates its cage/egress interfaces from this
     environment:
       GW_CAGE_IP: *gateway_ip
-    # The allow-listed hosts
+      # The owner of the traffic record, so o3s reads it as the user
+      O3S_UID: ${O3S_UID}
+      O3S_GID: ${O3S_GID}
+      # How often the traffic record is written, in seconds
+      O3S_TRAFFIC_INTERVAL: ${O3S_TRAFFIC_INTERVAL:-60}
     volumes:
+      # The allow-listed hosts
       - ../o3s.json:/config/o3s.json:ro
+      # The home's state, where the gateway records each host's traffic and the names it refused
+      - ${O3S_STATE_DIR}:/state
     networks:
       cage:
         ipv4_address: *gateway_ip

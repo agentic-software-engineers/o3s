@@ -1,0 +1,48 @@
+# Without a record from the gateway, the log says there is nothing yet
+exec o3s firewall log
+stdout '^No traffic recorded yet, the gateway records it while the stack runs$'
+
+# The log lists the refused names and the allowed hosts, each most recent first, and names the command that allows one
+exec sh -c 'now=$(date +%s); d=$HOME/.local/state/o3s/$(printf %s "$PWD" | sha256sum | cut -c1-12); mkdir -p "$d"; printf "{\"since\": %s, \"updated\": %s, \"hosts\": {\"example.com\": {\"bytes\": 84000000, \"last_seen\": %s, \"since\": %s}, \"api.example.com\": {\"bytes\": 1200, \"last_seen\": %s, \"since\": %s}}, \"blocked\": {\"blocked.example\": {\"attempts\": 3, \"last_seen\": %s}, \"old.example\": {\"attempts\": 12, \"last_seen\": %s}}}" $((now-86400)) $now $((now-300)) $((now-86400)) $((now-7200)) $((now-86400)) $((now-300)) $((now-172800)) > "$d/traffic.json"'
+exec o3s firewall log
+cmp stdout want.txt
+
+# --limit caps each table
+exec o3s firewall log --limit 1
+cmp stdout want-limit.txt
+
+# --json hands both tables to a script
+exec o3s firewall log --json
+stdout '"blocked": \['
+stdout '"host": "blocked.example"'
+stdout '"attempts": 3'
+stdout '"allowed": \['
+stdout '"bytes": 84000000'
+
+-- o3s.json --
+{
+  "$schema": "./.devcontainer/o3s.schema.json",
+  "stores": [],
+  "hosts": [
+    {"name": "example.com", "ports": [443], "by": ["user"]},
+    {"name": "api.example.com", "ports": [443], "by": ["user"]}
+  ]
+}
+-- want.txt --
+BLOCKED          ATTEMPTS  LAST SEEN
+blocked.example  3         5m ago
+old.example      12        2d ago
+
+ALLOWED          DATA     LAST SEEN
+example.com      84.0 MB  5m ago
+api.example.com  1.2 kB   2h ago
+
+Allow a blocked host with: o3s firewall add <host> --port 443
+-- want-limit.txt --
+BLOCKED          ATTEMPTS  LAST SEEN
+blocked.example  3         5m ago
+
+ALLOWED      DATA     LAST SEEN
+example.com  84.0 MB  5m ago
+
+Allow a blocked host with: o3s firewall add <host> --port 443

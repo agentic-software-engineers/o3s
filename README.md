@@ -28,6 +28,10 @@ Run `o3s` alone for a menu that leads through each of them.
 # Allows the hosts the cage may reach
 o3s firewall add github.com --port 22 --port 443
 ```
+```sh
+# Shows the names the cage was refused and the data each allowed host moved
+o3s firewall log
+```
 
 **secret**
 ```sh
