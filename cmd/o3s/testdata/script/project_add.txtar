@@ -2,36 +2,36 @@
 mkdir home
 cd home
 exec o3s init
-! exec o3s project add hansehart/o3s
+! exec o3s project add torvalds/linux
 stderr 'the firewall blocks github.com:22, allow it with: o3s firewall add github.com --port 22'
 ! exists $WORK/devcontainer.log
 
-# owner/repo clones over SSH into the projects volume and joins the workspace
+# owner/name clones over SSH into projects/<host>/<owner>/<name> and joins the workspace as owner/name
 exec o3s firewall add github.com --port 22 --port 443
-exec o3s project add hansehart/o3s
-stdout '^Added o3s$'
+exec o3s project add torvalds/linux
+stdout '^Added torvalds/linux$'
 cmpenv $WORK/devcontainer.log $WORK/want-clone.log
 cmp home.code-workspace $WORK/want.code-workspace
 
 # A project the workspace lists already is turned away
-! exec o3s project add git@github.com:other/o3s.git
-stderr '/home/ubuntu/projects/o3s is already in the workspace'
+! exec o3s project add git@github.com:torvalds/linux.git
+stderr '/home/ubuntu/projects/github.com/torvalds/linux is already in the workspace'
 
 # Without an SSH agent the folder joins the workspace, and the user is told how to clone it
 exec o3s firewall add gitlab.com --port 22
 cp $WORK/empty $WORK/no-agent
 rm $WORK/devcontainer.log
-exec o3s project add gitlab.com/group/app
-stdout '^Added app$'
-stderr '^warning: no SSH agent in the cage, clone group/app yourself:$'
-stderr '^  git clone git@gitlab.com:group/app.git /home/ubuntu/projects/app$'
+exec o3s project add gitlab.com/group/sub/app
+stdout '^Added group/sub/app$'
+stderr '^warning: no SSH agent in the cage, clone group/sub/app yourself:$'
+stderr '^  git clone git@gitlab.com:group/sub/app.git /home/ubuntu/projects/gitlab.com/group/sub/app$'
 ! grep 'git clone' $WORK/devcontainer.log
-grep '"path": "/home/ubuntu/projects/app"' home.code-workspace
+grep '"path": "/home/ubuntu/projects/gitlab.com/group/sub/app"' home.code-workspace
 rm $WORK/no-agent
 
 # An HTTPS URL clones as given, over the port the gateway opens for it
 exec o3s project add https://github.com/hansehart/devcontainer-features
-grep 'exec --workspace-folder '$WORK'/home git clone https://github.com/hansehart/devcontainer-features /home/ubuntu/projects/devcontainer-features$' $WORK/devcontainer.log
+grep 'exec --workspace-folder '$WORK'/home git clone https://github.com/hansehart/devcontainer-features /home/ubuntu/projects/github.com/hansehart/devcontainer-features$' $WORK/devcontainer.log
 
 # A clone git turns down leaves the workspace as it was
 exec o3s firewall add example.com --port 22
@@ -43,14 +43,14 @@ stderr 'git clone git@example.com:team/gone.git exited with 128'
 cmp home.code-workspace $WORK/before
 
 # Something that names no repository is a usage error
-! exec o3s project add o3s
-stderr 'invalid repository "o3s"'
+! exec o3s project add linux
+stderr 'invalid repository "linux"'
 stderr 'Run ''o3s project add --help'' for usage.'
 
 -- want-clone.log --
 up --workspace-folder $WORK/home
 exec --workspace-folder $WORK/home ssh-add -l
-exec --workspace-folder $WORK/home git clone git@github.com:hansehart/o3s.git /home/ubuntu/projects/o3s
+exec --workspace-folder $WORK/home git clone git@github.com:torvalds/linux.git /home/ubuntu/projects/github.com/torvalds/linux
 -- want.code-workspace --
 {
 	"folders": [
@@ -59,8 +59,8 @@ exec --workspace-folder $WORK/home git clone git@github.com:hansehart/o3s.git /h
 			"path": "/home/ubuntu/o3s"
 		},
 		{
-			"name": "o3s",
-			"path": "/home/ubuntu/projects/o3s"
+			"name": "torvalds/linux",
+			"path": "/home/ubuntu/projects/github.com/torvalds/linux"
 		}
 	]
 }

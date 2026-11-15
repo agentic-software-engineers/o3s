@@ -18,7 +18,7 @@ type Home struct {
 	Secrets  []Secret
 	Stores   []string
 	Features []string
-	// Projects are the names of the projects the workspace lists.
+	// Projects are the projects the workspace lists, as host/owner/name.
 	Projects []string
 	Lookup   Lookup
 }
@@ -305,7 +305,7 @@ func projectDialog(h Home, a Answers, action string) (Question, bool) {
 	}
 	// Ask for the name of a new empty project
 	if action == "create" {
-		return ask(a, Question{Key: "project", Kind: Input, Title: "Name"})
+		return ask(a, Question{Key: "project", Kind: Input, Title: "Repository"})
 	}
 	return ask(a, Question{Key: "project", Kind: Input, Title: "Repository"})
 }

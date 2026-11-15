@@ -19,7 +19,7 @@ var aHome = Home{
 	},
 	Secrets:  []Secret{{Name: "EXAMPLE_TOKEN", Set: false}, {Name: "OTHER_TOKEN", Set: true}},
 	Stores:   []string{"registry.example.com/features"},
-	Projects: []string{"app"},
+	Projects: []string{"example.com/team/app"},
 }
 
 // walk answers each question the core asks in turn and hands back what it asked and the command it ends in.
@@ -136,21 +136,21 @@ func TestEveryDialogEndsInItsCommand(t *testing.T) {
 		},
 		{
 			"cloning a project",
-			[][]string{{"project"}, {"add"}, {"hansehart/o3s"}},
+			[][]string{{"project"}, {"add"}, {"torvalds/linux"}},
 			[]string{"What do you want to do?", "Action", "Repository"},
-			[]Command{{Args: []string{"project", "add", "hansehart/o3s"}}},
+			[]Command{{Args: []string{"project", "add", "torvalds/linux"}}},
 		},
 		{
 			"creating a project",
-			[][]string{{"project"}, {"create"}, {"scratch"}},
-			[]string{"What do you want to do?", "Action", "Name"},
-			[]Command{{Args: []string{"project", "create", "scratch"}}},
+			[][]string{{"project"}, {"create"}, {"example/scratch"}},
+			[]string{"What do you want to do?", "Action", "Repository"},
+			[]Command{{Args: []string{"project", "create", "example/scratch"}}},
 		},
 		{
 			"removing a project at the real terminal, where the user types its name",
-			[][]string{{"project"}, {"rm"}, {"app"}},
+			[][]string{{"project"}, {"rm"}, {"example.com/team/app"}},
 			[]string{"What do you want to do?", "Action", "Project"},
-			[]Command{{Args: []string{"project", "rm", "app"}, Terminal: true}},
+			[]Command{{Args: []string{"project", "rm", "example.com/team/app"}, Terminal: true}},
 		},
 		{
 			"listing the projects",

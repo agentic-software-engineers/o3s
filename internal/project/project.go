@@ -40,21 +40,32 @@ func (r Repository) FullName() string {
 	return r.Owner + "/" + r.Name
 }
 
-// Path is the folder the cage keeps the repository in.
-func (r Repository) Path() string {
-	return Path(r.Name)
+// Short names a repository as host/owner/name, the form Parse reads back.
+func (r Repository) Short() string {
+	return r.Host + "/" + r.FullName()
 }
 
-// Path is the folder the cage keeps a project of the given name in.
-func Path(name string) string {
-	return path.Join(Dir, name)
+// Path is the folder the cage keeps the repository in, by host, owner and name, the way ghq lays out its root.
+func (r Repository) Path() string {
+	return path.Join(Dir, r.Short())
+}
+
+// At reads the repository a folder of the projects volume holds, and reports whether the folder is one.
+func At(folder string) (Repository, bool) {
+	rest, ok := strings.CutPrefix(folder, Dir+"/")
+	// Report a folder outside the projects volume
+	if !ok {
+		return Repository{}, false
+	}
+	r, err := parse(rest)
+	return r, err == nil && r.Path() == folder
 }
 
 // scpLike matches git's short SSH form, user@host:path.
 var scpLike = regexp.MustCompile(`^([A-Za-z0-9._-]+)@([A-Za-z0-9.-]+):(.+)$`)
 
-// nameRule matches a folder name of one segment.
-var nameRule = regexp.MustCompile(`^[A-Za-z0-9._-]+$`)
+// segment matches one folder of a project's path.
+var segment = regexp.MustCompile(`^[A-Za-z0-9._-]+$`)
 
 // Parse reads a repository in one of the forms ghq and gh take: an SSH or HTTPS URL, git's user@host:owner/repo, host/owner/repo, or owner/repo on github.com, the short forms cloned over SSH.
 func Parse(arg string) (Repository, error) {
@@ -97,44 +108,36 @@ func parse(arg string) (Repository, error) {
 	parts := strings.Split(arg, "/")
 	// Read owner/repo on the default host
 	if len(parts) == 2 {
-		return short(defaultHost, parts[0], parts[1])
+		return short(defaultHost, arg)
 	}
-	// Read host/owner/repo
-	if len(parts) == 3 && strings.Contains(parts[0], ".") {
-		return short(parts[0], parts[1], parts[2])
+	// Read host/owner/repo, the owner with any subgroups
+	if len(parts) >= 3 && strings.Contains(parts[0], ".") {
+		return short(parts[0], strings.Join(parts[1:], "/"))
 	}
 	return Repository{}, errors.New("no form matches")
 }
 
 // short builds the SSH clone of a repository named without a URL, the way gh clones with git_protocol ssh.
-func short(host, owner, name string) (Repository, error) {
-	name = strings.TrimSuffix(name, ".git")
-	return fromPath(host, 22, owner+"/"+name, "git@"+host+":"+owner+"/"+name+".git", true)
+func short(host, p string) (Repository, error) {
+	p = strings.TrimSuffix(p, ".git")
+	return fromPath(host, 22, p, "git@"+host+":"+p+".git", true)
 }
 
 // fromPath builds a repository from its host and the path that names its owner and name.
 func fromPath(host string, port int, p, cloneURL string, ssh bool) (Repository, error) {
 	p = strings.TrimSuffix(strings.Trim(p, "/"), ".git")
-	owner, name := path.Split(p)
-	owner = strings.Trim(owner, "/")
-	// Turn away a path without an owner, or a name that makes no folder
-	if host == "" || owner == "" || !ValidName(name) {
+	parts := append([]string{host}, strings.Split(p, "/")...)
+	// Turn away a path without an owner
+	if len(parts) < 3 {
 		return Repository{}, errors.New("want a host, an owner and a name")
 	}
-	return Repository{Host: host, Port: port, Owner: owner, Name: name, URL: cloneURL, SSH: ssh}, nil
-}
-
-// ValidName reports whether a name makes a folder of its own in the projects volume.
-func ValidName(name string) bool {
-	return nameRule.MatchString(name) && name != "." && name != ".."
-}
-
-// OwnerRepo reads owner/repo from a clone's remote URL, and reports whether the URL names one.
-func OwnerRepo(remote string) (string, bool) {
-	r, err := parse(strings.TrimSpace(remote))
-	// Report a remote that names no repository
-	if err != nil {
-		return "", false
+	// Turn away any part that makes no folder of its own in the projects volume
+	for _, part := range parts {
+		// Name the part that would leave its place
+		if !segment.MatchString(part) || strings.Trim(part, ".") == "" {
+			return Repository{}, fmt.Errorf("%q makes no folder", part)
+		}
 	}
-	return r.FullName(), true
+	n := len(parts) - 1
+	return Repository{Host: host, Port: port, Owner: strings.Join(parts[1:n], "/"), Name: parts[n], URL: cloneURL, SSH: ssh}, nil
 }
