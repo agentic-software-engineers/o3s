@@ -136,3 +136,29 @@ func TestLoadNamesTheFirstBrokenEntry(t *testing.T) {
 		})
 	}
 }
+
+// A home keeps its opt-out from AppArmor through a save, and turns away any other profile.
+func TestLoadKeepsTheAppArmorOptOut(t *testing.T) {
+	home := t.TempDir()
+	saved := config.New()
+	saved.AppArmorProfile = config.Unconfined
+	// Stop when the file stays unwritten
+	if err := saved.Save(home); err != nil {
+		t.Fatalf("Setup: Save() = %v", err)
+	}
+
+	loaded, err := config.Load(home)
+
+	// Require the opt-out kept
+	if err != nil || loaded.AppArmorProfile != config.Unconfined {
+		t.Errorf("Load() = %q, %v, want unconfined", loaded.AppArmorProfile, err)
+	}
+	// Stop when the other profile stays unwritten
+	if err := os.WriteFile(filepath.Join(home, config.File), []byte(`{"stores": [], "hosts": [], "appArmorProfile": "o3s-cage"}`), 0o600); err != nil {
+		t.Fatalf("Setup: %v", err)
+	}
+	// Require any other profile turned away
+	if _, err := config.Load(home); err == nil {
+		t.Errorf("Load() with another profile = nil, want an error")
+	}
+}

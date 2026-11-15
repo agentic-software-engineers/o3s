@@ -70,7 +70,7 @@ services:
     security_opt:
       # Let exec grant the file capabilities the daemon's id-mapping helpers hold
       - no-new-privileges=false
-      - apparmor=o3s-cage
+      - apparmor=${O3S_APPARMOR_PROFILE:-o3s-cage}
       - seccomp=./seccomp.json
       - systempaths=unconfined
     # Bring the cage up behind the gateway

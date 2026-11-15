@@ -100,14 +100,22 @@ func prepare(cmd *cobra.Command, dir string) error {
 	} else {
 		fmt.Fprintf(out, "The proxy's CA is ready in %s\n", caDir)
 	}
-	note, err := host.Profile(cmd.Context(), filepath.Join(dir, ".devcontainer", "apparmor.conf"))
-	// Hand back a profile that fails to read
+	profile, err := appArmorProfile(cmd, dir)
+	// Hand back a cage that would run without the confinement it asks for
 	if err != nil {
 		return err
 	}
-	// Say what the confinement step found or did
-	if note != "" {
-		fmt.Fprintln(out, note)
+	// Load the cage's own profile where the cage runs with it
+	if profile == cageProfile {
+		note, err := host.Profile(cmd.Context(), filepath.Join(dir, ".devcontainer", "apparmor.conf"))
+		// Hand back a profile that fails to read
+		if err != nil {
+			return err
+		}
+		// Say what the confinement step found or did
+		if note != "" {
+			fmt.Fprintln(out, note)
+		}
 	}
 	// Hand back a home's state that stays unwritten
 	if err := host.HomeState(dir); err != nil {
@@ -118,7 +126,7 @@ func prepare(cmd *cobra.Command, dir string) error {
 		warn(cmd.ErrOrStderr(), "%s is already an o3s home, and o3s runs one home per machine for now", other)
 	}
 	// Hand back values compose reads that stay unwritten
-	if err := host.Env(dir); err != nil {
+	if err := host.Env(dir, profile); err != nil {
 		return err
 	}
 	waiting(cmd.ErrOrStderr(), dir)
@@ -157,4 +165,31 @@ func nextSteps(out io.Writer) {
 	fmt.Fprintf(w, "  echo \"$TOKEN\" | o3s secret add <NAME>\tstore a secret\n")
 	fmt.Fprintln(w, "  o3s cage ide\topen it in the cage")
 	_ = w.Flush()
+}
+
+// cageProfile is the AppArmor profile the stack ships for the cage.
+const cageProfile = "o3s-cage"
+
+// appArmorProfile picks the cage's AppArmor profile: unconfined where the home opts out, its own where Docker confines with AppArmor, and none at all otherwise, since the cage would run less confined than it asks.
+func appArmorProfile(cmd *cobra.Command, dir string) (string, error) {
+	c, err := config.Load(dir)
+	// Hand back a home whose settings fail to load
+	if err != nil {
+		return "", err
+	}
+	// Run unconfined where the home opts out, and say so
+	if c.AppArmorProfile == config.Unconfined {
+		warn(cmd.ErrOrStderr(), "the cage runs without AppArmor, as o3s.json's appArmorProfile asks")
+		return config.Unconfined, nil
+	}
+	confines, err := host.DaemonAppArmor(cmd.Context())
+	// Hand back a daemon whose security options stay unknown
+	if err != nil {
+		return "", err
+	}
+	// Refuse a cage Docker would start without its profile
+	if !confines {
+		return "", fmt.Errorf("the cage's profile %s needs AppArmor, but Docker reports it unavailable, so enable AppArmor on the daemon host or set \"appArmorProfile\": %q in %s", cageProfile, config.Unconfined, config.File)
+	}
+	return cageProfile, nil
 }

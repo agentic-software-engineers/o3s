@@ -17,12 +17,12 @@ func TestEnvKeepsTheMarkerAndNamesTheUser(t *testing.T) {
 		t.Fatalf("Setup: %v", err)
 	}
 	// Stop when the first run fails
-	if err := Env(home); err != nil {
+	if err := Env(home, "o3s-cage"); err != nil {
 		t.Fatalf("Env() = %v", err)
 	}
 	first, _ := os.ReadFile(filepath.Join(home, ".devcontainer", ".env"))
 
-	err := Env(home)
+	err := Env(home, "o3s-cage")
 
 	// Stop when the second run fails
 	if err != nil {

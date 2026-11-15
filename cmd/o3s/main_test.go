@@ -17,11 +17,12 @@ var update = flag.Bool("update", false, "rewrite the expected files inside the s
 // fakeDocker stands in for the container engine, so a script sees which restarts a change asks for.
 const fakeDocker = `#!/bin/sh
 echo "$*" >> "$WORK/docker.log"
-# Answer each question about the stack, and any restart, the way a host's engine would
+# Answer each question about the stack, any restart, and the daemon's security options, the way a host's engine would
 case "$*" in
   ps*service=gateway*) [ -f "$WORK/stack-up" ] && echo gateway-id ;;
   ps*service=proxy*) [ -f "$WORK/stack-up" ] && echo proxy-id ;;
   restart*) echo "$2" ;;
+  info*) [ -f "$WORK/no-apparmor" ] && echo '["name=seccomp,profile=builtin","name=cgroupns"]' || echo '["name=apparmor","name=seccomp,profile=builtin","name=cgroupns"]' ;;
 esac
 exit 0
 `
