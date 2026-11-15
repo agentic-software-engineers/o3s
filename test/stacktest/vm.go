@@ -1,21 +1,29 @@
 package stacktest
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"testing"
 )
 
 // AVMHost makes a host for a home's VM, with o3s built from this branch first on PATH, and hands back the home's empty folder.
 //
-// The XDG folders sit below a short temporary folder rather than the test's own, since Lima keeps sockets in the VM's folder below
-// the data folder and a socket path is capped at about 104 characters (lima pkg/limayaml/validate.go:418).
+// The XDG folders sit below a short temporary folder rather than the test's own, and below /tmp rather than macOS's long TMPDIR,
+// since Lima keeps sockets in the VM's folder below the data folder and refuses a socket path of 104 characters or more.
 func AVMHost(tb testing.TB) string {
 	tb.Helper()
 	bin := o3sBinary(tb)
 	tb.Setenv("PATH", filepath.Dir(bin)+string(os.PathListSeparator)+os.Getenv("PATH"))
-	xdg, err := os.MkdirTemp("", "o3s") //nolint:usetesting // tb.TempDir() is named after the test, too long for Lima's sockets
+	base := ""
+	// Keep the folder short on hosts with Unix sockets
+	if runtime.GOOS != "windows" {
+		base = "/tmp"
+	}
+	xdg, err := os.MkdirTemp(base, "o3s") //nolint:usetesting // tb.TempDir() is named after the test, too long for Lima's sockets
 	// Stop when the XDG folders have no place to go
 	if err != nil {
 		tb.Fatalf("Setup: %v", err)
@@ -33,11 +41,16 @@ func AVMHost(tb testing.TB) string {
 	return dir
 }
 
-// O3sIn runs the o3s on PATH in a home's folder, and hands back what it printed on stdout and stderr together.
+// O3sIn runs the o3s on PATH in a home's folder, and hands back what it printed on stdout, with stderr in its failure.
 func O3sIn(tb testing.TB, dir string, args ...string) (string, error) {
 	tb.Helper()
 	cmd := exec.CommandContext(tb.Context(), "o3s", args...)
 	cmd.Dir = dir
-	out, err := cmd.CombinedOutput()
-	return string(out), err
+	var stdout, stderr strings.Builder
+	cmd.Stdout, cmd.Stderr = &stdout, &stderr
+	// Hand back what o3s printed on stderr along with the failure
+	if err := cmd.Run(); err != nil {
+		return stdout.String(), fmt.Errorf("o3s %s: %w\n%s", strings.Join(args, " "), err, stderr.String())
+	}
+	return stdout.String(), nil
 }

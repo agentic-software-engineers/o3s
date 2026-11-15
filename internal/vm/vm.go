@@ -109,8 +109,21 @@ func (l Lima) Exec(ctx context.Context, name string, in io.Reader, out, errOut i
 	return l.run(ctx, in, out, errOut, append([]string{"shell", name}, args...)...)
 }
 
-// Delete stops and removes a home's VM, its disk included.
+// Delete stops a running home's VM and removes it, its disk included, in the order Lima's own Windows smoke test takes,
+// since Windows keeps a running VM's logs locked (lima .github/actions/windows_plain_smoke_test/action.yml).
 func (l Lima) Delete(ctx context.Context, name string, out io.Writer) error {
+	status, err := l.output(ctx, "list", "--format={{.Status}}", name)
+	// Hand back a VM whose state stays unknown
+	if err != nil {
+		return err
+	}
+	// Stop the VM first where it runs
+	if strings.TrimSpace(status) == "Running" {
+		// Hand back a VM that keeps running
+		if err := l.run(ctx, nil, out, out, "stop", name); err != nil {
+			return err
+		}
+	}
 	return l.run(ctx, nil, out, out, "delete", "--force", name)
 }
 

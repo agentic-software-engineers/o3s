@@ -45,7 +45,8 @@ const fakeLimactl = `#!/bin/sh
 echo "LIMA_HOME=$LIMA_HOME $*" >> "$WORK/limactl.log"
 # Answer each command the way Lima does, with the VMs listed in $WORK/vms
 case "$2" in
-  list) cat "$WORK/vms" 2>/dev/null || true ;;
+  list) case "$3" in --format=*) grep -qx "$4" "$WORK/vms" && echo Running || exit 1 ;; *) cat "$WORK/vms" 2>/dev/null || true ;; esac ;;
+  stop) ;;
   start) for a in "$@"; do case "$a" in --name=*) echo "${a#--name=}" >> "$WORK/vms" ;; -) cat > "$WORK/template.yaml" ;; esac; done ;;
   delete) grep -v "$4" "$WORK/vms" > "$WORK/vms.left"; mv "$WORK/vms.left" "$WORK/vms" ;;
   shell) grep -qx "$3" "$WORK/vms" 2>/dev/null || { echo "instance $3 does not exist" >&2; exit 1; }; shift 3; "$@" ;;
