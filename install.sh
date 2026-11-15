@@ -4,7 +4,7 @@
 #
 # SYNOPSIS
 #        curl -fsSL https://github.com/hansehart/o3s/releases/latest/download/install.sh | sh
-#        sh install.sh [--version <X.Y.Z>] [--no-devcontainer]
+#        sh install.sh [--version <X.Y.Z[-rc.N]>] [--no-devcontainer]
 #
 # DESCRIPTION
 #        Downloads the o3s binary of a release for this host, checks it against the release's
@@ -55,7 +55,7 @@ while [ $# -gt 0 ]; do
 	# Take each option the script knows, and name any other
 	case "$1" in
 	--version)
-		[ $# -ge 2 ] || die "--version needs a version, as in --version 0.7.0"
+		[ $# -ge 2 ] || die "--version needs a version, as in --version 0.8.0 or --version 0.8.0-rc.1"
 		version="${2#v}"
 		shift 2
 		;;
@@ -64,7 +64,7 @@ while [ $# -gt 0 ]; do
 		shift
 		;;
 	-h | --help)
-		say "Usage: sh install.sh [--version <X.Y.Z>] [--no-devcontainer]"
+		say "Usage: sh install.sh [--version <X.Y.Z[-rc.N]>] [--no-devcontainer]"
 		exit 0
 		;;
 	*)

@@ -120,3 +120,15 @@ func TestRefreshBringsTheDigestsToATaggedHome(t *testing.T) {
 		t.Errorf("Refresh() = %v, want ~ compose.yaml", paths(changes))
 	}
 }
+
+// A release candidate pins its images like any release, at its own tag and digest.
+func TestInitPinsAReleaseCandidate(t *testing.T) {
+	aRelease(t, "0.8.0-rc.1", map[string]string{"ghcr.io/hansehart/o3s-cage": cageDigest, "ghcr.io/hansehart/o3s-gateway": gatewayDigest})
+
+	compose := composeOf(t, anInitializedHome(t))
+
+	// Require the cage at the candidate's tag and digest
+	if want := "image: ghcr.io/hansehart/o3s-cage:0.8.0-rc.1@" + cageDigest + "\n"; !strings.Contains(compose, want) {
+		t.Errorf("compose lacks %q", want)
+	}
+}
