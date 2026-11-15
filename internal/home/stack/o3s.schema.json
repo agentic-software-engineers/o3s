@@ -69,6 +69,10 @@
         },
         "dependentRequired": { "inject": ["secret"] }
       }
+    },
+    "appArmorProfile": {
+      "description": "Set to unconfined to run the cage without its own AppArmor profile, where the Docker daemon has no AppArmor. The cage keeps its seccomp filter, capabilities and gateway, and loses AppArmor's file and mount rules. o3s refuses to start a cage without AppArmor unless this is set.",
+      "enum": ["unconfined"]
     }
   }
 }

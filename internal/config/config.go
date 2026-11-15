@@ -43,7 +43,12 @@ type Config struct {
 	Schema string  `json:"$schema"`
 	Stores []Store `json:"stores"`
 	Hosts  []Host  `json:"hosts"`
+	// AppArmorProfile opts the cage out of its own AppArmor profile where it reads unconfined, for a Docker daemon without AppArmor.
+	AppArmorProfile string `json:"appArmorProfile,omitempty"`
 }
+
+// Unconfined is the one value of AppArmorProfile, the opt-out from the cage's own profile.
+const Unconfined = "unconfined"
 
 // Store is a feature collection the menu offers features from.
 type Store struct {
@@ -102,6 +107,10 @@ func Load(home string) (Config, error) {
 
 // check holds every store and host to the rules o3s writes them by, and names the first that breaks one.
 func (c Config) check() error {
+	// Name an AppArmor profile other than the opt-out
+	if c.AppArmorProfile != "" && c.AppArmorProfile != Unconfined {
+		return fmt.Errorf("appArmorProfile %q, where only %q opts out", c.AppArmorProfile, Unconfined)
+	}
 	stores := map[string]bool{}
 	// Check every store
 	for _, s := range c.Stores {

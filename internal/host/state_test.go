@@ -51,7 +51,7 @@ func TestEnvNamesTheFoldersComposeMounts(t *testing.T) {
 		t.Fatalf("Setup: %v", err)
 	}
 
-	err := Env(home)
+	err := Env(home, "o3s-cage")
 
 	// Stop when the values stay unwritten
 	if err != nil {

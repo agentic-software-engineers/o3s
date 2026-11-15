@@ -145,3 +145,16 @@ func TestTheSchemaTurnsAwayUnknownKeys(t *testing.T) {
 		})
 	}
 }
+
+// The schema takes unconfined as the one value of appArmorProfile, the opt-out from the cage's own profile.
+func TestTheSchemaTakesTheAppArmorOptOut(t *testing.T) {
+	schema := theShippedSchema(t)
+
+	opted := check(t, schema, []byte(`{"stores": [], "hosts": [], "appArmorProfile": "unconfined"}`))
+	other := check(t, schema, []byte(`{"stores": [], "hosts": [], "appArmorProfile": "o3s-cage"}`))
+
+	// Require the opt-out taken and any other value turned away
+	if opted != nil || other == nil {
+		t.Errorf("schema on unconfined = %v, on another value = %v, want it taken and turned away", opted, other)
+	}
+}
