@@ -4,17 +4,20 @@
 #
 # SYNOPSIS
 #        curl -fsSL https://github.com/hansehart/o3s/releases/latest/download/install.sh | sh
-#        sh install.sh [--version <X.Y.Z[-rc.N]>] [--no-devcontainer]
+#        sh install.sh [--rc | --version <X.Y.Z[-rc.N]>] [--no-devcontainer]
 #
 # DESCRIPTION
 #        Downloads the o3s binary of a release for this host, checks it against the release's
 #        checksums, verifies its build attestation where gh is logged in, and installs it to
-#        ~/.local/bin. Then installs the devcontainer CLI o3s rebuilds the cage with, with its own
+#        ~/.local/bin under its channel's name. The latest stable release goes to o3s-latest, which
+#        o3s links to. --rc takes the newest release, release candidates included, as o3s-rc, and
+#        --version a given release as o3s-<version>. Each updates within its channel. Then installs the devcontainer CLI o3s rebuilds the cage with, with its own
 #        Node, into ~/.local/share/o3s/devcontainers.
 #
 # ENVIRONMENT
 #        O3S_INSTALL_DIR             where the binary goes (default: ~/.local/bin)
 #        O3S_RELEASE_URL             where the release's files come from (default: GitHub releases)
+#        O3S_RELEASES_FEED           the releases feed --rc reads (default: GitHub's releases.atom)
 #        XDG_DATA_HOME               the data folder o3s keeps its devcontainer CLI in (default: ~/.local/share)
 set -eu
 
@@ -49,6 +52,7 @@ check_sums() {
 }
 
 version=""
+channel="latest"
 devcontainer="yes"
 # Read every option
 while [ $# -gt 0 ]; do
@@ -57,14 +61,19 @@ while [ $# -gt 0 ]; do
 	--version)
 		[ $# -ge 2 ] || die "--version needs a version, as in --version 0.8.0 or --version 0.8.0-rc.1"
 		version="${2#v}"
+		channel="pinned"
 		shift 2
+		;;
+	--rc)
+		channel="rc"
+		shift
 		;;
 	--no-devcontainer)
 		devcontainer="no"
 		shift
 		;;
 	-h | --help)
-		say "Usage: sh install.sh [--version <X.Y.Z[-rc.N]>] [--no-devcontainer]"
+		say "Usage: sh install.sh [--rc | --version <X.Y.Z[-rc.N]>] [--no-devcontainer]"
 		exit 0
 		;;
 	*)
@@ -104,6 +113,22 @@ if [ "${devcontainer}" = "yes" ] && [ ! -x "${prefix}/bin/devcontainer" ]; then
 fi
 
 proto="--proto =https --tlsv1.2"
+tmp=$(mktemp -d)
+trap 'rm -rf "${tmp}"' EXIT
+# Take the newest release from the releases feed for the release candidates' channel
+if [ "${channel}" = "rc" ]; then
+	feed="https://github.com/${repo}/releases.atom"
+	# Read the feed from where the environment points, a mirror or a test, over any protocol
+	if [ -n "${O3S_RELEASES_FEED:-}" ]; then
+		feed="${O3S_RELEASES_FEED}"
+		proto=""
+	fi
+	fetch "${feed}" "${tmp}/releases.atom" || die "failed to read the releases feed ${feed}"
+	version=$(grep -o 'releases/tag/v[^"]*' "${tmp}/releases.atom" | head -n 1 | sed 's|.*/tag/v||')
+	[ -n "${version}" ] || die "the releases feed ${feed} names no release"
+	say "Taking the newest release, ${version}"
+	proto="--proto =https --tlsv1.2"
+fi
 base="https://github.com/${repo}/releases/latest/download"
 # Take the release the user named
 if [ -n "${version}" ]; then
@@ -114,9 +139,6 @@ if [ -n "${O3S_RELEASE_URL:-}" ]; then
 	base="${O3S_RELEASE_URL}"
 	proto=""
 fi
-
-tmp=$(mktemp -d)
-trap 'rm -rf "${tmp}"' EXIT
 
 fetch "${base}/${asset}" "${tmp}/${asset}" || die "failed to download ${asset} from ${base}"
 fetch "${base}/checksums.txt" "${tmp}/checksums.txt" || die "failed to download checksums.txt from ${base}"
@@ -132,13 +154,22 @@ fi
 
 dir="${O3S_INSTALL_DIR:-${HOME}/.local/bin}"
 mkdir -p "${dir}"
-install -m 0755 "${tmp}/${asset}" "${dir}/o3s"
-say "Installed $("${dir}/o3s" --version) to ${dir}/o3s"
+name="o3s-${channel}"
+# Name a pinned binary after the release it keeps
+if [ "${channel}" = "pinned" ]; then
+	name="o3s-${version}"
+fi
+install -m 0755 "${tmp}/${asset}" "${dir}/${name}"
+# Link o3s to the stable channel's binary
+if [ "${channel}" = "latest" ]; then
+	ln -sfn "${name}" "${dir}/o3s"
+fi
+say "Installed $("${dir}/${name}" --version) to ${dir}/${name}"
 # Confirm the attestation, or show how to verify it by hand
 if [ "${verified}" = "yes" ]; then
 	say "Verified its build attestation"
 else
-	say "Verify its build attestation with: gh attestation verify ${dir}/o3s --repo ${repo} --signer-workflow ${signer}"
+	say "Verify its build attestation with: gh attestation verify ${dir}/${name} --repo ${repo} --signer-workflow ${signer}"
 fi
 # Show how to reach the binary from a folder outside the PATH
 case ":${PATH}:" in
@@ -164,4 +195,9 @@ if [ "${devcontainer}" = "yes" ]; then
 fi
 
 say ""
-say "Next: mkdir ~/o3s && cd ~/o3s && o3s init"
+command="${name}"
+# Call the stable channel by its link
+if [ "${channel}" = "latest" ]; then
+	command="o3s"
+fi
+say "Next: mkdir ~/o3s && cd ~/o3s && ${command} init"
