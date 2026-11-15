@@ -22,7 +22,7 @@ func newUpdate() *cobra.Command {
 		Args:  usage(cobra.NoArgs),
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			out := cmd.OutOrStdout()
-			done, err := selfUpdate(cmd.Context(), cmd.InOrStdin(), out, yes)
+			done, err := selfUpdate(cmd.Context(), cmd.InOrStdin(), out, cmd.ErrOrStderr(), yes)
 			// Leave the home to the new binary, which carries the update on
 			if err != nil || done {
 				return err
@@ -37,7 +37,7 @@ func newUpdate() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			show(out, plan)
+			show(out, cmd.ErrOrStderr(), plan)
 			// Leave a home that already holds what the binary and its stores ship
 			if plan.Empty() {
 				fmt.Fprintln(out, "Up to date")
@@ -84,11 +84,11 @@ func newUpdate() *cobra.Command {
 	return cmd
 }
 
-// show prints every change an update makes, and what it leaves for want of a store.
-func show(out io.Writer, p update.Plan) {
+// show prints every change an update makes, and warns on stderr about what it leaves for want of a store.
+func show(out, errOut io.Writer, p update.Plan) {
 	// Show every o3s image whose tag moves to this release
 	for _, i := range p.Images {
-		fmt.Fprintf(out, "%-14s %s → %s\n", i.Name, i.Old, i.New)
+		fmt.Fprintf(out, "%-14s %s -> %s\n", i.Name, i.Old, i.New)
 	}
 	// Head the stack's files with their folder
 	if len(p.Files) > 0 {
@@ -108,7 +108,7 @@ func show(out io.Writer, p update.Plan) {
 		line := fc.Package
 		// Name a tag that moves
 		if fc.OldTag != fc.NewTag {
-			line += fmt.Sprintf("   %s → %s", fc.OldTag, fc.NewTag)
+			line += fmt.Sprintf("   %s -> %s", fc.OldTag, fc.NewTag)
 		}
 		fmt.Fprintln(out, line)
 		// Show every host the feature needs anew
@@ -125,12 +125,12 @@ func show(out io.Writer, p update.Plan) {
 		}
 		// Show every variable that takes another value
 		for _, e := range fc.EnvChanged {
-			fmt.Fprintf(out, "  ~ %s=%s → %s\n", e.Name, e.Old, e.New)
+			fmt.Fprintf(out, "  ~ %s=%s -> %s\n", e.Name, e.Old, e.New)
 		}
 	}
 	// Name every feature its store left as it was
 	for _, w := range p.Warnings {
-		fmt.Fprintf(out, "⚠ %s\n", w)
+		warn(errOut, "%s", w)
 	}
 }
 

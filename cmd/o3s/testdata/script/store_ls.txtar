@@ -2,7 +2,7 @@
 exec o3s store add $REGISTRY/features
 exec o3s store ls
 stdout '^STORE +FEATURES$'
-stdout '^127\.0\.0\.1:1/features +⚠$'
+stdout '^127\.0\.0\.1:1/features +!$'
 stdout '/features +3$'
 
 # Listing leaves the stack untouched

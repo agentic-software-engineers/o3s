@@ -2,8 +2,9 @@
 exec o3s
 stdout 'firewall'
 
-# A group without an action is a usage error
+# A group without an action is a usage error, named the way git and cargo name errors
 ! exec o3s firewall
+stderr '^error: '
 stderr 'for usage'
 
 # An unknown action is a usage error

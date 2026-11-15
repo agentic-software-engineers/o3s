@@ -26,7 +26,7 @@ stdout '^Up to date$'
 # A feature on an older major version moves to the store's
 exec o3s feature add $REGISTRY/features/tool:1
 exec o3s update --yes
-stdout '/features/tool   1 → 2$'
+stdout '/features/tool   1 -> 2$'
 ! stdout 'Restarted'
 grep ${REGISTRY@R}/features/tool:2 .devcontainer/devcontainer.json
 exec o3s update

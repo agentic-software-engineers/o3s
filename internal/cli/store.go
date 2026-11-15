@@ -92,7 +92,7 @@ func newStoreLs() *cobra.Command {
 					counts[i] = strconv.Itoa(len(features))
 					// Warn about a store out of reach
 					if err != nil {
-						counts[i] = "⚠"
+						counts[i] = "!"
 					}
 				})
 			}

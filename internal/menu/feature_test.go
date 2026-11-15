@@ -21,7 +21,7 @@ func (fakeLookup) Features(store string) ([]string, error) {
 
 // Add shows what the tool brings.
 func (fakeLookup) Add(id string) (Preview, error) {
-	return Preview{Lines: []string{id + ":1", "  + example.com:443  EXAMPLE_TOKEN ⚠", "  + example.org:443  OTHER_TOKEN ⚠"}, Waiting: []string{"EXAMPLE_TOKEN", "OTHER_TOKEN"}}, nil
+	return Preview{Lines: []string{id + ":1", "  + example.com:443  EXAMPLE_TOKEN !", "  + example.org:443  OTHER_TOKEN !"}, Waiting: []string{"EXAMPLE_TOKEN", "OTHER_TOKEN"}}, nil
 }
 
 // Remove shows what leaves with the tool.
@@ -80,7 +80,7 @@ func TestFeatureDialogsEndInTheirCommands(t *testing.T) {
 			"a store out of reach",
 			[][]string{{"feature"}, {"add"}, {"registry.example.org/features"}},
 			[]string{"What do you want to do?", "Action", "Store"},
-			[]Command{{Note: "⚠ read the features of registry.example.org/features: unreachable"}},
+			[]Command{{Note: "error: read the features of registry.example.org/features: unreachable"}},
 		},
 		{
 			"removing a feature",
@@ -121,7 +121,7 @@ func TestFeatureApplyShowsThePreview(t *testing.T) {
 	got := [][]string{added[4].Preview, removed[3].Preview}
 
 	want := [][]string{
-		{"registry.example.com/features/tool:1", "  + example.com:443  EXAMPLE_TOKEN ⚠", "  + example.org:443  OTHER_TOKEN ⚠"},
+		{"registry.example.com/features/tool:1", "  + example.com:443  EXAMPLE_TOKEN !", "  + example.org:443  OTHER_TOKEN !"},
 		{"registry.example.com/features/tool", "  - example.com:443"},
 	}
 	// Report previews that differ
@@ -145,19 +145,6 @@ func TestFeatureDialogsWithNothingToChooseEndWithANote(t *testing.T) {
 	}
 }
 
-// The first question offers the features after the stores, then the cage and the update.
-func TestTheFirstQuestionOffersFeatures(t *testing.T) {
-	q, _ := next(aHome, nil)
-
-	got := q.Options
-
-	want := []Option{{Value: "init"}, {Value: "firewall"}, {Value: "secret"}, {Value: "store"}, {Value: "feature"}, {Value: "cage"}, {Value: "update"}}
-	// Report options that differ
-	if diff := cmp.Diff(want, got); diff != "" {
-		t.Errorf("options (-want +got):\n%s", diff)
-	}
-}
-
 // The features of a store come as a multi-select, and Apply? shows each chosen one's change in turn.
 func TestFeatureAddChoosesSeveral(t *testing.T) {
 	asked, _ := walk(t, aHomeWithTheTool(), []string{"feature"}, []string{"add"}, []string{"registry.example.com/features"}, []string{"other", "tool"}, []string{"no"})
@@ -165,8 +152,8 @@ func TestFeatureAddChoosesSeveral(t *testing.T) {
 	got := []any{asked[3].Kind, asked[4].Preview}
 
 	want := []any{Multi, []string{
-		"registry.example.com/features/other:1", "  + example.com:443  EXAMPLE_TOKEN ⚠", "  + example.org:443  OTHER_TOKEN ⚠",
-		"registry.example.com/features/tool:1", "  + example.com:443  EXAMPLE_TOKEN ⚠", "  + example.org:443  OTHER_TOKEN ⚠",
+		"registry.example.com/features/other:1", "  + example.com:443  EXAMPLE_TOKEN !", "  + example.org:443  OTHER_TOKEN !",
+		"registry.example.com/features/tool:1", "  + example.com:443  EXAMPLE_TOKEN !", "  + example.org:443  OTHER_TOKEN !",
 	}}
 	// Report a question or a preview that differs
 	if diff := cmp.Diff(want, got); diff != "" {

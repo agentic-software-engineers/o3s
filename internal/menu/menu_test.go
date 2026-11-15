@@ -10,7 +10,8 @@ import (
 
 // aHome is a home that allows a host with a secret, knows two secrets, and offers one store.
 var aHome = Home{
-	Dir: "/home/ubuntu/o3s",
+	Dir:    "/home/ubuntu/o3s",
+	Exists: true,
 	Hosts: []config.Host{
 		{Name: "example.com", Ports: []int{22, 443}, By: []string{"user"}},
 		{Name: "api.example.com", Ports: []int{443}, Secret: "EXAMPLE_TOKEN", Inject: []string{"header", "body"}, By: []string{"user"}},
@@ -118,7 +119,7 @@ func TestEveryDialogEndsInItsCommand(t *testing.T) {
 			"creating a home",
 			[][]string{{"init"}, {"yes"}},
 			[]string{"What do you want to do?", "Create an o3s home in /home/ubuntu/o3s?"},
-			[]Command{{Args: []string{"init"}}},
+			[]Command{{Args: []string{"init"}, Terminal: true}},
 		},
 		{
 			"declining to create a home",
@@ -130,7 +131,7 @@ func TestEveryDialogEndsInItsCommand(t *testing.T) {
 			"updating the home",
 			[][]string{{"update"}},
 			[]string{"What do you want to do?"},
-			[]Command{{Args: []string{"update"}}},
+			[]Command{{Args: []string{"update"}, Terminal: true}},
 		},
 		{
 			"opening the cage in VS Code",
@@ -142,7 +143,7 @@ func TestEveryDialogEndsInItsCommand(t *testing.T) {
 			"opening a shell in the cage",
 			[][]string{{"cage"}, {"shell"}},
 			[]string{"What do you want to do?", "Action"},
-			[]Command{{Args: []string{"cage", "shell"}}},
+			[]Command{{Args: []string{"cage", "shell"}, Terminal: true}},
 		},
 	}
 	// Walk every dialog

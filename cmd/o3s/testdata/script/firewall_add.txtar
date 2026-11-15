@@ -7,7 +7,7 @@ stdout '^Allowed example.com:443$'
 # An update lists each field it changed before it confirms
 exec o3s firewall add example.com --port 22 --port 443
 stdout '^example.com$'
-stdout '^  ~ ports 443 → 22,443$'
+stdout '^  ~ ports 443 -> 22,443$'
 stdout '^Allowed example.com:22,443$'
 
 # A secret goes where the inject sites name, or into the header

@@ -38,7 +38,7 @@ func Run(ctx context.Context, args []string, s Streams) int {
 	if err == nil {
 		return 0
 	}
-	fmt.Fprintf(s.Err, "Error: %v\n", err)
+	fmt.Fprintf(s.Err, "error: %v\n", err)
 	// Point a usage error at the help of the command it hit
 	if isUsage(err) {
 		fmt.Fprintf(s.Err, "Run '%s --help' for usage.\n", cmd.CommandPath())
@@ -54,4 +54,9 @@ func isUsage(err error) bool {
 		return false
 	}
 	return errors.Is(err, ErrUsage) || errors.Is(err, config.ErrInvalid) || errors.Is(err, secrets.ErrInvalid) || errors.Is(err, registry.ErrInvalid)
+}
+
+// warn names something the user should know on stderr, the way git and cargo do, so it stays apart from a command's output.
+func warn(w io.Writer, format string, args ...any) {
+	fmt.Fprintf(w, "warning: "+format+"\n", args...)
 }
