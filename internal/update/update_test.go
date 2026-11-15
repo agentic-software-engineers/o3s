@@ -198,14 +198,14 @@ func TestApplyLeavesNothingToUpdate(t *testing.T) {
 
 // A home a binary of an older release wrote names both o3s images the update moves.
 func TestCheckNamesTheImagesAReleaseMoves(t *testing.T) {
-	home.Version = "0.7.0"
+	home.Version = "1.0.0"
 	t.Cleanup(func() { home.Version = "dev" })
 	dir := t.TempDir()
 	// Stop when the home stays unwritten
 	if _, err := home.Init(dir); err != nil {
 		t.Fatalf("Setup: Init() = %v", err)
 	}
-	home.Version = "0.8.0"
+	home.Version = "1.1.0"
 
 	got, err := update.Check(t.Context(), dir)
 
@@ -213,7 +213,7 @@ func TestCheckNamesTheImagesAReleaseMoves(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Check() = %v", err)
 	}
-	want := []home.ImageChange{{Name: "o3s-cage", Old: "0.7.0", New: "0.8.0"}, {Name: "o3s-gateway", Old: "0.7.0", New: "0.8.0"}}
+	want := []home.ImageChange{{Name: "o3s-cage", Old: "1.0.0", New: "1.1.0"}, {Name: "o3s-gateway", Old: "1.0.0", New: "1.1.0"}}
 	// Require both images named
 	if diff := cmp.Diff(want, got.Images); diff != "" {
 		t.Errorf("Check() images (-want +got):\n%s", diff)

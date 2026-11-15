@@ -16,7 +16,7 @@ import (
 )
 
 // latest is the release the releases page offers as the newest.
-const latest = "0.8.0"
+const latest = "1.1.0"
 
 // binary stands in for the o3s binary of the latest release.
 const binary = "#!/bin/sh\necho o3s version " + latest + "\n"

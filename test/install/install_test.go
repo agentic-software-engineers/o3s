@@ -19,10 +19,17 @@ import (
 const script = "../../install.sh"
 
 // stub stands in for the o3s binary of a release.
-const stub = "#!/bin/sh\necho o3s version 0.7.0\n"
+const stub = "#!/bin/sh\necho o3s version 1.0.0\n"
 
 // tools are the commands install.sh may use beyond the ones a test fakes.
-var tools = []string{"sh", "curl", "sha256sum", "mktemp", "install", "rm", "mkdir", "grep", "cat"}
+var tools = []string{"sh", "curl", "sha256sum", "mktemp", "install", "rm", "mkdir", "grep", "cat", "ln", "head", "sed"}
+
+// feed is a releases feed whose newest entry is a release candidate.
+const feed = `<feed>
+<link href="https://github.com/hansehart/o3s/releases/tag/v1.1.0-rc.1"/>
+<link href="https://github.com/hansehart/o3s/releases/tag/v1.0.0"/>
+</feed>
+`
 
 // aRelease serves a release holding the stub for amd64, and checksums that match it unless tampered.
 func aRelease(t *testing.T, tampered bool) string {
@@ -37,6 +44,7 @@ func aRelease(t *testing.T, tampered bool) string {
 	files := map[string]string{
 		"o3s-linux-amd64": stub,
 		"checksums.txt":   digest + "  o3s-linux-amd64\n" + strings.Repeat("1", 64) + "  install.sh\n",
+		"releases.atom":   feed,
 	}
 	// Write every file of the release
 	for name, body := range files {
@@ -94,14 +102,19 @@ func (h host) install(t *testing.T, release string) (string, error) {
 func (h host) run(t *testing.T, release string, args ...string) (string, error) {
 	t.Helper()
 	cmd := exec.CommandContext(t.Context(), "sh", append([]string{script}, args...)...)
-	cmd.Env = append(slices.Clone(h.env), "O3S_RELEASE_URL="+release)
+	cmd.Env = append(slices.Clone(h.env), "O3S_RELEASE_URL="+release, "O3S_RELEASES_FEED="+release+"/releases.atom")
 	out, err := cmd.CombinedOutput()
 	return string(out), err
 }
 
-// installed reports whether the host holds an o3s binary in its install dir.
+// installed reports whether the host holds the stable channel's binary in its install dir.
 func (h host) installed() bool {
-	info, err := os.Stat(filepath.Join(h.home, ".local", "bin", "o3s"))
+	return h.holds("o3s-latest")
+}
+
+// holds reports whether the host holds an executable binary of a name in its install dir.
+func (h host) holds(name string) bool {
+	info, err := os.Stat(filepath.Join(h.home, ".local", "bin", name))
 	return err == nil && info.Mode()&0o111 != 0
 }
 
@@ -115,12 +128,13 @@ func TestInstallPutsTheBinaryInPlace(t *testing.T) {
 	if err != nil {
 		t.Fatalf("install.sh = %v\n%s", err, out)
 	}
-	// Require the binary in place
-	if !h.installed() {
-		t.Errorf("install.sh left no executable o3s in ~/.local/bin\n%s", out)
+	link, _ := os.Readlink(filepath.Join(h.home, ".local", "bin", "o3s"))
+	// Require o3s-latest in place, and o3s a link to it
+	if !h.installed() || link != "o3s-latest" {
+		t.Errorf("install.sh left o3s-latest %v and o3s linking to %q, want both\n%s", h.installed(), link, out)
 	}
 	// Require every line a user needs next
-	for _, want := range []string{"Installed o3s version 0.7.0", "export PATH=", "gh attestation verify", "--signer-workflow hansehart/o3s/.github/workflows/publish.yaml", "o3s init"} {
+	for _, want := range []string{"Installed o3s version 1.0.0", "export PATH=", "gh attestation verify", "--signer-workflow hansehart/o3s/.github/workflows/publish.yaml", "o3s init"} {
 		// Report a line the output lacks
 		if !strings.Contains(out, want) {
 			t.Errorf("install.sh output lacks %q:\n%s", want, out)
@@ -248,5 +262,32 @@ func TestInstallKeepsTheDevcontainerCLIItInstalled(t *testing.T) {
 	// Require the install to keep the CLI, though the host lacks what a fresh install of it needs
 	if err != nil || !strings.Contains(out, "Found the devcontainer CLI in "+filepath.Dir(bin)) {
 		t.Errorf("install.sh with the CLI in place = %v, want it kept\n%s", err, out)
+	}
+}
+
+// --rc installs the newest release, release candidates included, as o3s-rc, and --version a release as o3s-<version>, each beside o3s-latest.
+func TestInstallNamesTheChannelsBinary(t *testing.T) {
+	tests := []struct {
+		args       []string
+		binary     string
+		mentioning string
+	}{
+		{[]string{"--rc"}, "o3s-rc", "1.1.0-rc.1"},
+		{[]string{"--version", "1.0.0"}, "o3s-1.0.0", "o3s-1.0.0 init"},
+	}
+	// Install every channel on a fresh host
+	for _, tt := range tests {
+		h := aHost(t, "Linux", "x86_64", map[string]string{})
+
+		out, err := h.run(t, aRelease(t, false), append(tt.args, "--no-devcontainer")...)
+
+		// Require the channel's binary in place, the stable one left alone
+		if err != nil || !h.holds(tt.binary) || h.holds("o3s-latest") {
+			t.Errorf("install.sh %v = %v, %s %v, o3s-latest %v\n%s", tt.args, err, tt.binary, h.holds(tt.binary), h.holds("o3s-latest"), out)
+		}
+		// Require the output to name what it took
+		if !strings.Contains(out, tt.mentioning) {
+			t.Errorf("install.sh %v output lacks %q:\n%s", tt.args, tt.mentioning, out)
+		}
 	}
 }

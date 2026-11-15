@@ -129,13 +129,13 @@ jobs:
 
       # require the installed binary to name the release it came from
       - name: Check the version
-        run: test "$("${HOME}/.local/bin/o3s" --version)" = "o3s version ${TAG#v}"
+        run: test "$("${HOME}/.local/bin/o3s-${TAG#v}" --version)" = "o3s version ${TAG#v}"
 
       # require a fresh home to start the exact images this release pushed
       - name: Check the pinned images
         run: |
           cd "$(mktemp -d)"
-          "${HOME}/.local/bin/o3s" init >/dev/null
+          "${HOME}/.local/bin/o3s-${TAG#v}" init >/dev/null
           for image in cage gateway; do
             digest="$(docker buildx imagetools inspect "ghcr.io/hansehart/o3s-${image}:${TAG#v}" --format '{{.Manifest.Digest}}')"
             grep -q "image: ghcr.io/hansehart/o3s-${image}:${TAG#v}@${digest}$" .devcontainer/compose.yaml
@@ -145,6 +145,6 @@ jobs:
       - name: Check the update
         run: |
           cd "$(mktemp -d)"
-          "${HOME}/.local/bin/o3s" init >/dev/null
-          "${HOME}/.local/bin/o3s" update --yes | tee update.log
+          "${HOME}/.local/bin/o3s-${TAG#v}" init >/dev/null
+          "${HOME}/.local/bin/o3s-${TAG#v}" update --yes | tee update.log
           grep -q '^Up to date$' update.log
