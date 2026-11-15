@@ -72,7 +72,6 @@ o3s update
    ```sh
    curl -fsSL https://github.com/hansehart/o3s/releases/latest/download/install.sh | sh
    ```
-   This installs `o3s-latest`, which `o3s` links to and which follows stable releases. Add `-s -- --rc` for `o3s-rc`, which follows release candidates, or `-s -- --version X.Y.Z` for `o3s-X.Y.Z`, which keeps its version.
 2. Create your home.
    ```sh
    mkdir ~/o3s && cd ~/o3s && o3s init
