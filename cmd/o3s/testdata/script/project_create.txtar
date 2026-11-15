@@ -1,25 +1,26 @@
-# A new name starts an empty repository in the projects volume and joins the workspace
+# owner/name starts an empty repository in projects/<host>/<owner>/<name> and joins the workspace, as ghq create does
 mkdir home
 cd home
 exec o3s init
-exec o3s project create scratch
-stdout '^Created scratch$'
+exec o3s project create example/scratch
+stdout '^Created example/scratch$'
 cmpenv $WORK/devcontainer.log $WORK/want.log
-grep '"path": "/home/ubuntu/projects/scratch"' home.code-workspace
+grep '"name": "example/scratch"' home.code-workspace
+grep '"path": "/home/ubuntu/projects/github.com/example/scratch"' home.code-workspace
 
-# A folder that holds files already is turned away, as ghq create does
+# A folder that holds files already is turned away
 cp $WORK/empty $WORK/not-empty
 cp home.code-workspace $WORK/before
-! exec o3s project create taken
-stderr '/home/ubuntu/projects/taken holds files already'
+! exec o3s project create example/taken
+stderr '/home/ubuntu/projects/github.com/example/taken holds files already'
 cmp home.code-workspace $WORK/before
 
 # A name that leaves the projects volume is a usage error
-! exec o3s project create ../etc
-stderr 'invalid name "../etc"'
+! exec o3s project create example/..
+stderr 'invalid repository "example/.."'
 
 -- want.log --
 up --workspace-folder $WORK/home
-exec --workspace-folder $WORK/home ls -A /home/ubuntu/projects/scratch
-exec --workspace-folder $WORK/home git init --quiet /home/ubuntu/projects/scratch
+exec --workspace-folder $WORK/home --container-id cage-id ls -A /home/ubuntu/projects/github.com/example/scratch
+exec --workspace-folder $WORK/home --container-id cage-id git init --quiet /home/ubuntu/projects/github.com/example/scratch
 -- empty --

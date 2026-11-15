@@ -32,8 +32,8 @@ const fakeDevcontainer = `#!/bin/sh
 echo "$*" >> "$WORK/devcontainer.log"
 # Answer each command in the cage the way the cage would, as the files a script leaves in $WORK say
 case "$*" in
+  up*) echo '{"outcome":"success","containerId":"cage-id","composeProjectName":"o3s"}' ;;
   exec*"ssh-add -l") [ -f "$WORK/no-agent" ] && exit 2 ;;
-  exec*"--get remote.origin.url") [ -f "$WORK/origin" ] && cat "$WORK/origin" || exit 1 ;;
   exec*"ls -A "*) [ -f "$WORK/not-empty" ] && echo README.md ;;
   exec*"git clone "*) [ -f "$WORK/clone-fails" ] && { echo "fatal: repository not found" >&2; exit 128; } ;;
 esac

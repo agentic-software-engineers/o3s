@@ -128,9 +128,9 @@ func menuHome(ctx context.Context) menu.Home {
 	ws, err := workspace.Load(home.Workspace(dir))
 	// Offer every project the workspace lists
 	if err == nil {
-		// Offer each project by its name
-		for _, f := range projects(ws) {
-			h.Projects = append(h.Projects, f.Name)
+		// Offer each project in the short form rm takes
+		for _, r := range projects(ws) {
+			h.Projects = append(h.Projects, r.Short())
 		}
 	}
 	var names []string
