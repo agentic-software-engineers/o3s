@@ -2,7 +2,9 @@ name: Publish release
 on:
   push:
     tags:
+      # publish a stable release, which becomes the latest
       - 'v[0-9]+.[0-9]+.[0-9]+'
+      # publish a release candidate, which stays a prerelease
       - 'v[0-9]+.[0-9]+.[0-9]+-rc.[0-9]+'
   workflow_dispatch:
 
