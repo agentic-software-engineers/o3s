@@ -59,7 +59,7 @@ cmp o3s.json $WORK/want.json
 # A secret a host waits for is named with the command that gives it its value
 exec o3s firewall add example.com --secret EXAMPLE_TOKEN
 exec o3s init
-stdout '^⚠ EXAMPLE_TOKEN waits for its value: echo "\$TOKEN" \| o3s secret add EXAMPLE_TOKEN$'
+stdout '^! EXAMPLE_TOKEN waits for its value: echo "\$TOKEN" \| o3s secret add EXAMPLE_TOKEN$'
 
 # A stack that differs from this o3s is pointed at update, and left as it is
 cp $WORK/edited.yaml .devcontainer/compose.yaml
@@ -71,7 +71,7 @@ cmp .devcontainer/compose.yaml $WORK/edited.yaml
 mkdir $WORK/other
 cd $WORK/other
 exec o3s init
-stdout '^⚠ '$WORK'/home is already an o3s home, and o3s runs one home per machine for now$'
+stdout '^! '$WORK'/home is already an o3s home, and o3s runs one home per machine for now$'
 
 -- edited.yaml --
 services: {}

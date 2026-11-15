@@ -17,7 +17,7 @@ cmp o3s.json before.json
 rm docker.log
 exec o3s feature add $REGISTRY/features/go
 stdout '^'${REGISTRY@R}'/features/go:1$'
-! stdout 'Restarted|⚠'
+! stdout 'Restarted|!'
 stdout '^Rebuild the cage to install it$'
 ! exists docker.log
 
@@ -26,7 +26,7 @@ exec o3s feature rm $REGISTRY/features/tool
 exec o3s feature add $REGISTRY/features/tool --no-preview
 ! stdout '^  \+ '
 stdout '^Added '${REGISTRY@R}'/features/tool$'
-stdout '^⚠ EXAMPLE_TOKEN waits for its value'
+stdout '^! EXAMPLE_TOKEN waits for its value'
 
 # A feature the store lacks is turned away
 ! exec o3s feature add $REGISTRY/features/absent
@@ -49,11 +49,11 @@ stderr 'for usage'
 }
 -- added.txt --
 $REGISTRY/features/tool:2
-  + example.com:443  EXAMPLE_TOKEN ⚠
+  + example.com:443  EXAMPLE_TOKEN !
   + EXAMPLE_MODE=strict
   + EXAMPLE_HOME=/home/ubuntu/features/$REGISTRY/features/tool
 Added $REGISTRY/features/tool
-⚠ EXAMPLE_TOKEN waits for its value: echo "$TOKEN" | o3s secret add EXAMPLE_TOKEN
+! EXAMPLE_TOKEN waits for its value: echo "$TOKEN" | o3s secret add EXAMPLE_TOKEN
 Restarted gateway
 Rebuild the cage to install it
 -- want.jsonc --

@@ -79,7 +79,7 @@ func TestAppRunsADialogAndGoesBack(t *testing.T) {
 	back, _ := drive(ran, enter)
 
 	// Require the output on screen, the dialog done, and its success named
-	if view := stripped(ran.View().Content); ran.state != done || !strings.Contains(view, "ran firewall ls") || !strings.Contains(view, "firewall › ls") || !strings.Contains(view, "✓ done") {
+	if view := stripped(ran.View().Content); ran.state != done || !strings.Contains(view, "ran firewall ls") || !strings.Contains(view, "firewall / ls") || !strings.Contains(view, "done") {
 		t.Errorf("after ls = state %v, view:\n%s", ran.state, view)
 	}
 	// Require a fresh main menu
@@ -99,8 +99,8 @@ func TestAppStepsBackWithTheAnswer(t *testing.T) {
 		t.Errorf("after esc = %q, view:\n%s", m.q.Key, stripped(m.field.View(80)))
 	}
 	// Require the trail without the host
-	if strings.Join(m.crumbs, " › ") != "firewall › add" {
-		t.Errorf("trail = %q, want firewall › add", strings.Join(m.crumbs, " › "))
+	if strings.Join(m.crumbs, " / ") != "firewall / add" {
+		t.Errorf("trail = %q, want firewall / add", strings.Join(m.crumbs, " / "))
 	}
 }
 
@@ -125,7 +125,7 @@ func TestAppShowsAFailure(t *testing.T) {
 
 	view := stripped(m.View().Content)
 	// Require the output, the status and the failure
-	if !m.failed || !strings.Contains(view, "boom") || !strings.Contains(view, "✗ exit status 3") {
+	if !m.failed || !strings.Contains(view, "boom") || !strings.Contains(view, "error: exit status 3") {
 		t.Errorf("failed %v, view:\n%s", m.failed, view)
 	}
 }

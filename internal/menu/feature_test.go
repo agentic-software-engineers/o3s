@@ -21,7 +21,7 @@ func (fakeLookup) Features(store string) ([]string, error) {
 
 // Add shows what the tool brings.
 func (fakeLookup) Add(id string) (Preview, error) {
-	return Preview{Lines: []string{id + ":1", "  + example.com:443  EXAMPLE_TOKEN ⚠", "  + example.org:443  OTHER_TOKEN ⚠"}, Waiting: []string{"EXAMPLE_TOKEN", "OTHER_TOKEN"}}, nil
+	return Preview{Lines: []string{id + ":1", "  + example.com:443  EXAMPLE_TOKEN !", "  + example.org:443  OTHER_TOKEN !"}, Waiting: []string{"EXAMPLE_TOKEN", "OTHER_TOKEN"}}, nil
 }
 
 // Remove shows what leaves with the tool.
@@ -80,7 +80,7 @@ func TestFeatureDialogsEndInTheirCommands(t *testing.T) {
 			"a store out of reach",
 			[][]string{{"feature"}, {"add"}, {"registry.example.org/features"}},
 			[]string{"What do you want to do?", "Action", "Store"},
-			[]Command{{Note: "⚠ read the features of registry.example.org/features: unreachable"}},
+			[]Command{{Note: "! read the features of registry.example.org/features: unreachable"}},
 		},
 		{
 			"removing a feature",
@@ -121,7 +121,7 @@ func TestFeatureApplyShowsThePreview(t *testing.T) {
 	got := [][]string{added[4].Preview, removed[3].Preview}
 
 	want := [][]string{
-		{"registry.example.com/features/tool:1", "  + example.com:443  EXAMPLE_TOKEN ⚠", "  + example.org:443  OTHER_TOKEN ⚠"},
+		{"registry.example.com/features/tool:1", "  + example.com:443  EXAMPLE_TOKEN !", "  + example.org:443  OTHER_TOKEN !"},
 		{"registry.example.com/features/tool", "  - example.com:443"},
 	}
 	// Report previews that differ
@@ -152,8 +152,8 @@ func TestFeatureAddChoosesSeveral(t *testing.T) {
 	got := []any{asked[3].Kind, asked[4].Preview}
 
 	want := []any{Multi, []string{
-		"registry.example.com/features/other:1", "  + example.com:443  EXAMPLE_TOKEN ⚠", "  + example.org:443  OTHER_TOKEN ⚠",
-		"registry.example.com/features/tool:1", "  + example.com:443  EXAMPLE_TOKEN ⚠", "  + example.org:443  OTHER_TOKEN ⚠",
+		"registry.example.com/features/other:1", "  + example.com:443  EXAMPLE_TOKEN !", "  + example.org:443  OTHER_TOKEN !",
+		"registry.example.com/features/tool:1", "  + example.com:443  EXAMPLE_TOKEN !", "  + example.org:443  OTHER_TOKEN !",
 	}}
 	// Report a question or a preview that differs
 	if diff := cmp.Diff(want, got); diff != "" {

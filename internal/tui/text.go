@@ -25,7 +25,7 @@ func newText(q menu.Question) text {
 	// Hide what the user types for a secret
 	if q.Kind == menu.Hidden {
 		in.EchoMode = textinput.EchoPassword
-		in.EchoCharacter = '•'
+		in.EchoCharacter = '*'
 	}
 	// Start from the default of a shown question, so Enter keeps it
 	if q.Kind == menu.Input && len(q.Default) > 0 {
@@ -63,7 +63,7 @@ func (t text) View(width int) string {
 func (t text) Hint() string {
 	// Name the empty answer a secret's value may take
 	if t.q.Kind == menu.Hidden {
-		return "hidden as you type · enter confirm · esc back"
+		return "hidden as you type | enter confirm | esc back"
 	}
-	return "enter confirm · esc back"
+	return "enter confirm | esc back"
 }

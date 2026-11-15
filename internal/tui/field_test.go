@@ -38,8 +38,8 @@ func TestListNamesTheOptionsBelow(t *testing.T) {
 	view := stripped(newMulti(q).View(80))
 
 	// Require the count of the options below
-	if !strings.Contains(view, "↓ 3 more") {
-		t.Errorf("view lacks ↓ 3 more:\n%s", view)
+	if !strings.Contains(view, "(3 more)") {
+		t.Errorf("view lacks (3 more):\n%s", view)
 	}
 }
 
@@ -115,7 +115,7 @@ func TestTextStartsFromItsDefault(t *testing.T) {
 		t.Errorf("answers (-want +got):\n%s", diff)
 	}
 	// Require the hidden value shown as dots
-	if view := stripped(f.View(40)); !containsFold(view, "•••") {
+	if view := stripped(f.View(40)); !containsFold(view, "***") {
 		t.Errorf("hidden view = %q, want dots", view)
 	}
 }

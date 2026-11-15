@@ -78,13 +78,13 @@ func (l list) view(prefix func(menu.Option) string) string {
 		}
 		// Point at the highlighted option
 		if i == l.cursor {
-			row = pointer.Render("▸") + row[1:]
+			row = pointer.Render(">") + row[1:]
 		}
 		lines = append(lines, row)
 	}
 	// Name the options below the window
 	if rest := len(shown) - start - rows; rest > 0 {
-		lines = append(lines, dim.Render(fmt.Sprintf("  ↓ %d more", rest)))
+		lines = append(lines, dim.Render(fmt.Sprintf("  (%d more)", rest)))
 	}
 	// Name a filter that matches nothing
 	if len(shown) == 0 {

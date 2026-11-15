@@ -77,7 +77,7 @@ func (m multi) View(int) string {
 	return m.view(func(o menu.Option) string {
 		// Fill the box of a marked option
 		if m.marks[o.Value] {
-			return marked.Render("[•]") + " "
+			return marked.Render("[x]") + " "
 		}
 		return "[ ] "
 	})
@@ -85,7 +85,7 @@ func (m multi) View(int) string {
 
 // Hint names the keys of a multi-select.
 func (multi) Hint() string {
-	return "type to filter · space mark · enter done · esc back"
+	return "type to filter | space mark | enter done | esc back"
 }
 
 // toggled hands back marks with one value flipped, leaving the marks given as they were.

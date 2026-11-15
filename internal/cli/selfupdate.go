@@ -38,14 +38,14 @@ func selfUpdate(ctx context.Context, in io.Reader, out io.Writer, yes bool) (boo
 	latest, err := release.Latest(ctx)
 	// Go on with this binary where the releases stay out of reach
 	if err != nil {
-		fmt.Fprintf(out, "⚠ releases out of reach, o3s stays at %s\n", current)
+		fmt.Fprintf(out, "! releases out of reach, o3s stays at %s\n", current)
 		return false, nil
 	}
 	// Go on with this binary where it is the latest release
 	if !release.Newer(latest, current) {
 		return false, nil
 	}
-	fmt.Fprintf(out, "%-14s %s → %s\n", "o3s", current, latest)
+	fmt.Fprintf(out, "%-14s %s -> %s\n", "o3s", current, latest)
 	ok, err := confirm(in, out, isTerminal(in), yes)
 	// Hand back an answer that fails to arrive, or go on with this binary when the user declines
 	if err != nil || !ok {

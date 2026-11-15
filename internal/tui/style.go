@@ -14,5 +14,5 @@ var (
 	warning   = lipgloss.NewStyle().Foreground(lipgloss.Color("3"))
 	added     = lipgloss.NewStyle().Foreground(lipgloss.Color("2"))
 	removed   = lipgloss.NewStyle().Foreground(lipgloss.Color("1"))
-	separator = dim.Render(" › ")
+	separator = dim.Render(" / ")
 )

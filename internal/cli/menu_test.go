@@ -123,7 +123,7 @@ func TestMenuLookupShowsWhatAFeatureBrings(t *testing.T) {
 		t.Errorf("Features() (-want +got):\n%s", diff)
 	}
 	want := menu.Preview{
-		Lines:   []string{store + "/tool:1", "  + example.com:443  EXAMPLE_TOKEN ⚠", "  + EXAMPLE_MODE=strict"},
+		Lines:   []string{store + "/tool:1", "  + example.com:443  EXAMPLE_TOKEN !", "  + EXAMPLE_MODE=strict"},
 		Waiting: []string{"EXAMPLE_TOKEN"},
 	}
 	// Require the lines feature add prints

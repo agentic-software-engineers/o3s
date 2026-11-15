@@ -400,7 +400,7 @@ func featurePlan(h Home, a Answers, action string) []Command {
 		}
 		// Name a change that stays unknown
 		if _, err := h.Lookup.Remove(a.get("feature")); err != nil {
-			return []Command{{Note: "⚠ " + err.Error()}}
+			return []Command{{Note: "! " + err.Error()}}
 		}
 		// Leave when the user declines
 		if a.get("apply") != yes {
@@ -414,7 +414,7 @@ func featurePlan(h Home, a Answers, action string) []Command {
 	}
 	// Name a store out of reach
 	if _, err := h.Lookup.Features(a.get("store")); err != nil {
-		return []Command{{Note: "⚠ " + err.Error()}}
+		return []Command{{Note: "! " + err.Error()}}
 	}
 	// Name that the user chose no feature
 	if len(a.all("feature")) == 0 {
@@ -423,7 +423,7 @@ func featurePlan(h Home, a Answers, action string) []Command {
 	pv, err := previewAll(h, a)
 	// Name a change that stays unknown
 	if err != nil {
-		return []Command{{Note: "⚠ " + err.Error()}}
+		return []Command{{Note: "! " + err.Error()}}
 	}
 	// Leave when the user declines
 	if a.get("apply") != yes {

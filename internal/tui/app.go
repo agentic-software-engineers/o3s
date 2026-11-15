@@ -221,7 +221,7 @@ func (m model) runNext() (tea.Model, tea.Cmd) {
 	if len(m.queue) == 0 {
 		// Confirm a dialog whose commands all ran
 		if m.ran > 0 {
-			m.out.add(added.Render("✓ done"))
+			m.out.add(added.Render("done"))
 		}
 		m.state = done
 		return m, nil
@@ -247,7 +247,7 @@ func (m model) runNext() (tea.Model, tea.Cmd) {
 func (m model) ended(err error) (tea.Model, tea.Cmd) {
 	// Stop at a command that fails, naming how
 	if err != nil {
-		m.out.add("✗ " + err.Error())
+		m.out.add("error: " + err.Error())
 		m.queue, m.failed, m.state = nil, true, done
 		return m, nil
 	}
@@ -258,7 +258,7 @@ func (m model) ended(err error) (tea.Model, tea.Cmd) {
 func crumb(q menu.Question, values []string) string {
 	// Keep a hidden value hidden
 	if q.Kind == menu.Hidden {
-		return "••••"
+		return "***"
 	}
 	return strings.Join(values, ", ")
 }
@@ -277,14 +277,14 @@ func (m model) View() tea.View {
 	case asking:
 		body, hint = m.field.View(m.width), dim.Render(m.field.Hint())
 	case loading:
-		body = dim.Render("…")
+		body = dim.Render("...")
 	case running:
-		body, hint = m.out.View(), dim.Render("running…")
+		body, hint = m.out.View(), dim.Render("running...")
 	case done:
-		body, hint = m.out.View(), dim.Render("↵/esc back to the menu · pgup/pgdn scroll")
+		body, hint = m.out.View(), dim.Render("enter/esc back to the menu | pgup/pgdn scroll")
 		// Name a dialog that stopped at a failure
 		if m.failed {
-			hint = warning.Render("failed") + dim.Render(" · ") + hint
+			hint = warning.Render("failed") + dim.Render(" | ") + hint
 		}
 	}
 	v := tea.NewView(top + body + "\n\n" + hint)

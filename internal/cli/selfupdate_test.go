@@ -81,7 +81,7 @@ func TestSelfUpdateReplacesAnOlderRelease(t *testing.T) {
 		t.Errorf("restarted as %q, want %q", *restarted, want)
 	}
 	// Require the version line, the confirmation and the hint for checking by hand
-	for _, want := range []string{"o3s            " + running + " → " + latest, "Updated o3s to " + latest, "gh attestation verify " + path} {
+	for _, want := range []string{"o3s            " + running + " -> " + latest, "Updated o3s to " + latest, "gh attestation verify " + path} {
 		// Report a line the output lacks
 		if !strings.Contains(out.String(), want) {
 			t.Errorf("selfUpdate() output lacks %q:\n%s", want, out.String())
@@ -97,7 +97,7 @@ func TestSelfUpdateGoesOnToTheHome(t *testing.T) {
 	}{
 		{"the latest release", latest, "", true},
 		{"a dev build", "dev", "o3s dev builds update with go install or install.sh", true},
-		{"releases out of reach", running, "⚠ releases out of reach, o3s stays at " + running, false},
+		{"releases out of reach", running, "! releases out of reach, o3s stays at " + running, false},
 	}
 	// Check every case
 	for _, tt := range tests {

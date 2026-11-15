@@ -50,7 +50,7 @@ func capture(cmd *exec.Cmd, stdin string) stream {
 		}
 		// Name output that fails to read
 		if err := lines.Err(); err != nil {
-			s <- lineMsg("✗ " + err.Error())
+			s <- lineMsg("error: " + err.Error())
 		}
 		s <- endMsg{err: <-done}
 	}()
@@ -59,7 +59,7 @@ func capture(cmd *exec.Cmd, stdin string) stream {
 
 // inTerminal wraps a command that needs the real terminal, so its output stays on screen until the user goes back.
 func inTerminal(cmd *exec.Cmd) *exec.Cmd {
-	script := `"$@"; status=$?; printf '\n↵ back to the menu '; read -r _; exit $status`
+	script := `"$@"; status=$?; printf '\npress enter to go back to the menu '; read -r _; exit $status`
 	wrapped := exec.Command("sh", append([]string{"-c", script, "sh", cmd.Path}, cmd.Args[1:]...)...) //nolint:gosec,noctx // the menu runs its own binary, which the app's context ends with the program
 	wrapped.Env, wrapped.Dir = cmd.Env, cmd.Dir
 	return wrapped

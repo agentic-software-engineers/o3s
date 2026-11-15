@@ -40,7 +40,7 @@ func newFirewallAdd() *cobra.Command {
 					fmt.Fprintln(out, ch.Name)
 					// Show every changed field with its value before and after
 					for _, d := range diffs {
-						fmt.Fprintf(out, "  ~ %s %s → %s\n", d.Field, orNone(d.Old), orNone(d.New))
+						fmt.Fprintf(out, "  ~ %s %s -> %s\n", d.Field, orNone(d.Old), orNone(d.New))
 					}
 				}
 				h, _ := c.Find(ch.Name)
@@ -111,7 +111,7 @@ func newFirewallLs() *cobra.Command {
 				secret := h.Secret
 				// Flag a secret that waits for its value
 				if _, ok := store.Value(secret); secret != "" && !ok {
-					secret += " ⚠"
+					secret += " !"
 					waiting = true
 				}
 				fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", h.Name, joinPorts(h.Ports), secret, strings.Join(h.By, ", "))
@@ -122,7 +122,7 @@ func newFirewallLs() *cobra.Command {
 			}
 			// Explain the mark below a table that carries it
 			if waiting {
-				fmt.Fprintln(cmd.OutOrStdout(), "\n⚠ waits for its value: echo \"$TOKEN\" | o3s secret add <NAME>")
+				fmt.Fprintln(cmd.OutOrStdout(), "\n! waits for its value: echo \"$TOKEN\" | o3s secret add <NAME>")
 			}
 			return nil
 		},

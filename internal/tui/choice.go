@@ -56,5 +56,5 @@ func (c choice) View(int) string {
 
 // Hint names the keys of a choice.
 func (choice) Hint() string {
-	return "type to filter · ↑↓ move · enter choose · esc back"
+	return "type to filter | up/down move | enter choose | esc back"
 }

@@ -66,9 +66,9 @@ func (c confirm) View(int) string {
 	yesLabel, noLabel := "  Yes  ", "  No  "
 	// Highlight the answer the user is on
 	if c.yes {
-		yesLabel = pointer.Render("▸ Yes  ")
+		yesLabel = pointer.Render("> Yes  ")
 	} else {
-		noLabel = pointer.Render("▸ No  ")
+		noLabel = pointer.Render("> No  ")
 	}
 	lines = append(lines, title.Render(c.q.Title), yesLabel+noLabel)
 	return strings.Join(lines, "\n")
@@ -76,5 +76,5 @@ func (c confirm) View(int) string {
 
 // Hint names the keys of a confirmation.
 func (confirm) Hint() string {
-	return "y/n · ←→ move · enter confirm · esc back"
+	return "y/n | left/right move | enter confirm | esc back"
 }
