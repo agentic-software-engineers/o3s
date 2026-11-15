@@ -69,8 +69,7 @@ func TestAProjectIsClonedListedAndRemovedInTheCage(t *testing.T) {
 	}
 }
 
-// A clone over SSH in a cage without an SSH agent adds the folder and names the clone to run, since ssh-add reports
-// no agent with its own exit code.
+// A clone over SSH in a cage without an SSH agent adds the folder and names the clone to run.
 func TestAProjectOverSSHWithoutAnAgentNamesTheClone(t *testing.T) {
 	// Leave a host with an agent to the developer, whose devcontainer CLI may forward it into the cage
 	if os.Getenv("SSH_AUTH_SOCK") != "" {

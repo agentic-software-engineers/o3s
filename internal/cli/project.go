@@ -16,7 +16,7 @@ import (
 	"github.com/hansehart/o3s/internal/workspace"
 )
 
-// noAgent is the exit code ssh-add gives where it reaches no agent (openssh-portable ssh-add.1, EXIT STATUS).
+// noAgent is the exit code the agent check gives where it reaches no agent.
 const noAgent = 2
 
 // newProject builds the commands that clone, create, remove and list the projects in the home's workspace.
@@ -100,7 +100,7 @@ func newProjectAdd() *cobra.Command {
 	}
 }
 
-// newProjectCreate builds the command that starts an empty repository in the projects volume and lists it in the workspace, as ghq create does.
+// newProjectCreate builds the command that starts an empty repository in the projects volume and lists it in the workspace.
 func newProjectCreate() *cobra.Command {
 	return &cobra.Command{
 		Use:   "create <repository>",
@@ -137,7 +137,7 @@ func newProjectCreate() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			// Turn away a folder that holds files, as ghq create does
+			// Turn away a folder that holds files, so nothing there is overwritten
 			if strings.TrimSpace(held) != "" {
 				return fmt.Errorf("%s holds files already, add it with o3s project add or pick another name", path)
 			}
@@ -197,7 +197,7 @@ func newProjectRm() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			// Ask for owner/name before anything is deleted, the way gh repo delete does
+			// Ask for owner/name before anything is deleted
 			if !yes {
 				// Hand back a deletion the user did not confirm
 				if err := confirmName(cmd, repo.FullName()); err != nil {
@@ -297,7 +297,7 @@ func allows(c config.Config, host string, port int) bool {
 // errNotConfirmed marks a deletion the user did not confirm.
 var errNotConfirmed = errors.New("the name does not match, nothing deleted")
 
-// confirmName asks the user to type a name before a deletion, the way gh repo delete does.
+// confirmName asks the user to type a name before a deletion, so nothing is deleted by a stray key.
 func confirmName(cmd *cobra.Command, want string) error {
 	fmt.Fprintf(cmd.OutOrStdout(), "Type %q to confirm deletion: ", want)
 	line, err := bufio.NewReader(cmd.InOrStdin()).ReadString('\n')

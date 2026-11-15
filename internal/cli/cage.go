@@ -106,11 +106,8 @@ type raised struct {
 	ContainerID string `json:"containerId"`
 }
 
-// raise brings the home's cage up with the devcontainer CLI, its log on stderr, and hands back the container it reports.
-//
-// up finds a compose stack's cage by its project and service, while exec looks for the labels of the home that made
-// it, so every command runs in the container up reports, wherever the cage first came up (devcontainers/cli
-// dockerCompose.ts and utils.ts findContainerAndIdLabels).
+// raise brings the home's cage up with the devcontainer CLI, its log on stderr, and hands back the container it reports,
+// so every later command reaches that same container, however the cage first came up.
 func raise(cmd *cobra.Command, dir string) (cage, error) {
 	cli, ok := rebuild.CLI()
 	// Point at the installer where the devcontainer CLI is missing

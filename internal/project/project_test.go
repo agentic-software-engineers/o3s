@@ -7,7 +7,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 )
 
-// Every form ghq and gh take reads as the repository it names, the short ones cloned over SSH.
+// Every form a repository takes reads as the repository it names, the short ones cloned over SSH.
 func TestParseReadsEveryForm(t *testing.T) {
 	tests := []struct {
 		arg  string
@@ -51,7 +51,7 @@ func TestParseTurnsAwayWhatNamesNoRepository(t *testing.T) {
 	}
 }
 
-// A repository lands in the projects volume by host, owner and name, the way ghq lays out its root.
+// A repository lands in the projects volume by host, owner and name.
 func TestPathNestsByHostOwnerAndName(t *testing.T) {
 	tests := map[string]string{
 		"torvalds/linux":                    "/home/ubuntu/projects/github.com/torvalds/linux",

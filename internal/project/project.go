@@ -14,7 +14,7 @@ import (
 // Dir is where the cage keeps every project, the projects volume.
 const Dir = "/home/ubuntu/projects"
 
-// defaultHost is the host a repository names where it leaves the host out, as ghq and gh take it.
+// defaultHost is the host a repository names where it leaves the host out.
 const defaultHost = "github.com"
 
 // ErrInvalid marks a repository or project name o3s cannot read.
@@ -45,7 +45,7 @@ func (r Repository) Short() string {
 	return r.Host + "/" + r.FullName()
 }
 
-// Path is the folder the cage keeps the repository in, by host, owner and name, the way ghq lays out its root.
+// Path is the folder the cage keeps the repository in, by host, owner and name.
 func (r Repository) Path() string {
 	return path.Join(Dir, r.Short())
 }
@@ -67,7 +67,7 @@ var scpLike = regexp.MustCompile(`^([A-Za-z0-9._-]+)@([A-Za-z0-9.-]+):(.+)$`)
 // segment matches one folder of a project's path.
 var segment = regexp.MustCompile(`^[A-Za-z0-9._-]+$`)
 
-// Parse reads a repository in one of the forms ghq and gh take: an SSH or HTTPS URL, git's user@host:owner/repo, host/owner/repo, or owner/repo on github.com, the short forms cloned over SSH.
+// Parse reads a repository given as a URL, in git's short SSH form, or as host/owner/name or owner/name on the default host, the short forms cloned over SSH.
 func Parse(arg string) (Repository, error) {
 	r, err := parse(arg)
 	// Name the forms o3s takes where the argument matches none
