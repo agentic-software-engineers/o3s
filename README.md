@@ -50,7 +50,7 @@ o3s feature add ghcr.io/hansehart/devcontainer-features/claude-code
 **project**
 ```sh
 # Clones a repository into ~/projects in the cage and adds it to the workspace
-o3s project add hansehart/o3s
+o3s project add torvalds/linux
 ```
 
 **cage**
