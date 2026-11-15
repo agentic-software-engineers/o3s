@@ -75,7 +75,17 @@ jobs:
           limactl copy .github/vm/probe.sh o3s:/tmp/probe.sh
           limactl shell --tty=false o3s -- sudo sh /tmp/probe.sh
 
-  # boot the o3s VM with Lima's hcs driver, on the runner whose user is an Administrator (lima test.yml windows-plain-smoke)
+      # publish the end of Lima's host agent log as an annotation, readable without the log archive
+      - name: Report why the VM failed
+        if: failure()
+        env:
+          LIMA_HOME: ${{ runner.temp }}/lima-home
+        run: |
+          log="${LIMA_HOME}/o3s/ha.stderr.log"
+          # report only when the host agent left a log behind
+          if [ -f "${log}" ]; then
+            echo "::error title=ha.stderr.log::$(tail -n 15 "${log}" | sed -e 's/%/%25/g' | awk '{printf "%s%%0A", $0}')"
+          fi, on the runner whose user is an Administrator (lima test.yml windows-plain-smoke)
   hcs:
     runs-on: windows-2025
     timeout-minutes: 30
