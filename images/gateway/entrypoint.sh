@@ -56,7 +56,7 @@ fail_closed() {
 locate_interfaces() {
   [ -n "${GW_CAGE_IP:-}" ] || die "GW_CAGE_IP not set (expected from docker-compose environment)"
 
-  # The cage interface holds the known cage IP, and egress is the other non-loopback interface.
+  # The cage interface holds the known cage IP, and egress is the other non-loopback interface
   ADDRS="$(ip -o -4 addr show)"
   CAGE_IF="$(echo "$ADDRS" | awk -v ip="$GW_CAGE_IP" '{split($4,a,"/"); if (a[1]==ip) {print $2; exit}}')"
   [ -n "$CAGE_IF" ] || die "no interface holds cage IP $GW_CAGE_IP"
@@ -67,7 +67,7 @@ locate_interfaces() {
   EGRESS_IF="$(echo "$ADDRS" | awk -v c="$CAGE_IF" '$2 != "lo" && $2 != c {print $2; exit}')"
   [ -n "$EGRESS_IF" ] || die "cannot find egress interface (is the gateway attached to the egress network?)"
 
-  # The gateway's own default route must exit via egress, at the .1 of that subnet.
+  # The gateway's own default route must exit via egress, at the .1 of that subnet
   EGRESS_NET="$(link_subnet "$EGRESS_IF")"
   [ -n "$EGRESS_NET" ] || die "cannot determine egress subnet on $EGRESS_IF"
   EGRESS_GW="${EGRESS_NET%/*}"; EGRESS_GW="${EGRESS_GW%.*}.1"
@@ -78,12 +78,12 @@ locate_interfaces() {
 
 # One set per distinct port, with static addresses seeding theirs directly and domains on resolve.
 parse_allowlist() {
-  # Read each host's ports and optional secret, failing on malformed config.
+  # Read each host's ports and optional secret, failing on malformed config
   local config_tsv
   config_tsv="$(yq -p=json -o=tsv '[ .hosts[] | [.name, (.ports | join(" ")), (.secret // "")] ]' "$CONFIG_FILE")" \
     || die "config file $CONFIG_FILE is not valid JSON"
 
-  # Validate each entry and sort it into a static seed or a domain's set list.
+  # Validate each entry and sort it into a static seed or a domain's set list
   while IFS=$'\t' read -r addr ports secret; do
     [ -n "$addr" ] || continue
     [ -n "$ports" ] || die "host $addr has no port"
@@ -91,12 +91,12 @@ parse_allowlist() {
     domain="$(bare_domain "$addr")"
     is_ipv4 "$addr" || is_domain "$domain" \
       || die "invalid address $addr (a wildcard is written as *.example.com)"
-    # Injection identifies the host by SNI, so an inject-host must be a domain.
+    # Injection identifies the host by SNI, so an inject-host must be a domain
     if [ -n "$secret" ] && is_ipv4 "$addr"; then
       die "inject-host $addr needs a hostname not an IP"
     fi
 
-    # Each port contributes its own set, joined into the entry's domain.
+    # Each port contributes its own set, joined into the entry's domain
     for p in $ports; do
       case "$p" in ''|*[!0-9]*) die "invalid port $p for $addr";; esac
       { [ "$p" -ge 1 ] && [ "$p" -le 65535 ]; } || die "port $p out of range for $addr"
@@ -112,7 +112,7 @@ parse_allowlist() {
     done
   done <<< "$config_tsv"
 
-  # Each domain gets its own upstream, plus the set line capturing what it resolves to.
+  # Each domain gets its own upstream, plus the set line capturing what it resolves to
   for domain in "${!DOMAIN_SETS[@]}"; do
     DOMAIN_LINES+=("server=/$domain/$UPSTREAM_DNS")
     DOMAIN_LINES+=("ipset=/$domain/${DOMAIN_SETS[$domain]}")
@@ -125,7 +125,7 @@ create_sets() {
     ipset create "allowed-p$p" hash:net timeout "$IPSET_TIMEOUT" -exist
   done
 
-  # Addresses named directly, which carry no name to check and so keep the address-only path.
+  # Addresses named directly, which carry no name to check and so keep the address-only path
   ipset create static-hosts hash:net timeout 0 -exist
 }
 
@@ -136,40 +136,40 @@ require_forwarding() {
 
 # Turn the parsed sets into NAT, INPUT and FORWARD rules.
 apply_firewall() {
-  # NAT the cage out, added idempotently so the rules already in this table survive.
+  # NAT the cage out, added idempotently so the rules already in this table survive
   iptables -t nat -C POSTROUTING -s "$CAGE_SUBNET" -o "$EGRESS_IF" -j MASQUERADE 2>/dev/null \
     || iptables -t nat -A POSTROUTING -s "$CAGE_SUBNET" -o "$EGRESS_IF" -j MASQUERADE
 
-  # Divert cage HTTPS to the proxy, which decides the name once the address is already allowed.
+  # Divert cage HTTPS to the proxy, which decides the name once the address is already allowed
   if ipset list -n allowed-p443 >/dev/null 2>&1; then
     iptables -t nat -C PREROUTING -s "$CAGE_SUBNET" -p tcp --dport 443 -m set --match-set allowed-p443 dst -m set ! --match-set static-hosts dst -j REDIRECT --to-ports "$PROXY_PORT" 2>/dev/null \
       || iptables -t nat -A PREROUTING -s "$CAGE_SUBNET" -p tcp --dport 443 -m set --match-set allowed-p443 dst -m set ! --match-set static-hosts dst -j REDIRECT --to-ports "$PROXY_PORT"
   fi
 
-  # Clamp MSS to path MTU on SYN to avoid stalls through nested NAT.
+  # Clamp MSS to path MTU on SYN to avoid stalls through nested NAT
   iptables -t mangle -F FORWARD
   iptables -t mangle -A FORWARD -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu
 
-  # Only cage DNS, loopback and return traffic reach the gateway itself.
+  # Only cage DNS, loopback and return traffic reach the gateway itself
   iptables -F INPUT
   iptables -A INPUT -i lo -j ACCEPT
   iptables -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
   iptables -A INPUT -s "$CAGE_SUBNET" -p udp --dport 53 -j ACCEPT
   iptables -A INPUT -s "$CAGE_SUBNET" -p tcp --dport 53 -j ACCEPT
-  # A diverted packet arrives locally, so admit it here.
+  # A diverted packet arrives locally, so admit it here
   iptables -A INPUT -s "$CAGE_SUBNET" -p tcp --dport "$PROXY_PORT" -j ACCEPT
   iptables -A INPUT -p icmp -j ACCEPT
 
-  # Default-deny, so only allow-listed destinations leave the cage on their declared ports.
+  # Default-deny, so only allow-listed destinations leave the cage on their declared ports
   iptables -F FORWARD
   iptables -A FORWARD -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
-  # One rule per port, pairing it with the set of addresses allowed on it.
+  # One rule per port, pairing it with the set of addresses allowed on it
   for p in $PORTS; do
     iptables -A FORWARD -s "$CAGE_SUBNET" -p tcp -m set --match-set "allowed-p$p" dst --dport "$p" -j ACCEPT
   done
-  # Deny cage QUIC/HTTP-3, since interception is TCP-only and UDP would bypass the proxy.
+  # Deny cage QUIC/HTTP-3, since interception is TCP-only and UDP would bypass the proxy
   iptables -A FORWARD -s "$CAGE_SUBNET" -p udp -m multiport --dports 80,443 -j REJECT --reject-with icmp-port-unreachable
-  # Fail fast instead of hanging on blocked connections.
+  # Fail fast instead of hanging on blocked connections
   iptables -A FORWARD -j REJECT --reject-with icmp-admin-prohibited
 }
 
@@ -178,7 +178,7 @@ seed_static() {
   if [ ${#STATIC_SEEDS[@]} -gt 0 ]; then
     for seed in "${STATIC_SEEDS[@]}"; do
       read -r sp saddr <<<"$seed"
-      # A zero timeout keeps the entry permanently, since static seeds are added once.
+      # A zero timeout keeps the entry permanently, since static seeds are added once
       ipset add -exist "allowed-p$sp" "$saddr" timeout 0
       ipset add -exist static-hosts "$saddr" timeout 0
     done
@@ -209,5 +209,5 @@ write_resolver_conf
 log "loaded ${#DOMAIN_SETS[@]} domain(s) + ${#STATIC_SEEDS[@]} static entry(ies) on port(s)${PORTS}"
 log "starting dnsmasq on ${GW_CAGE_IP} port 53 (upstream ${UPSTREAM_DNS})"
 
-# Run the resolver as PID 1.
+# Run the resolver as PID 1
 exec dnsmasq --keep-in-foreground --conf-file="$CONF"
