@@ -20,7 +20,7 @@
 
 ## Tests
 
-- **Layers** run from many unit tests next to their code, through integration tests in `test/integration` that raise one component, to a few e2e tests in `test/e2e` that raise the whole stack, each behind its build tag.
+- **Layers** run from many unit tests next to their code, through integration tests in `test/integration` that raise one component, to a few e2e tests in `test/e2e` that raise the whole stack, one package per isolation (`process`, `vm`), each layer behind its build tag.
 - **Names** state the behavior under test, a comment above each test repeats it as a sentence, and fixtures take the names RFC 2606 and RFC 5737 reserve for examples, the same name wherever a fixture plays the same part.
 - **Bodies** check one behavior each, in setup, action and check set apart by blank lines.
 - **Checks** use the standard library and go-cmp, compare whole values, test errors by identity, and report what they got against what they wanted.

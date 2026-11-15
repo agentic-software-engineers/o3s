@@ -1,7 +1,7 @@
 //go:build e2e
 
-// Package e2e_test covers the whole o3s stack on a real host, raised the way the editor raises it.
-package e2e_test
+// Package process_test covers the whole o3s stack raised straight on a real host, the way the editor raises it.
+package process_test
 
 import (
 	"strings"

@@ -1,0 +1,45 @@
+# vm start creates the home's VM from the template in o3s's own VM folder, and leaves this folder as it was
+mkdir home
+cd home
+exec o3s vm start
+stdout '^The VM o3s-[0-9a-f]{12} runs$'
+grep 'LIMA_HOME=\S+/\.local/share/o3s/lima --tty=false start --name=o3s-[0-9a-f]{12} --vm-type=qemu -$' $WORK/limactl.log
+grep 'plain: true' $WORK/template.yaml
+! exists o3s.json
+
+# Starting again starts the VM the home has
+exec o3s vm start
+grep 'tty=false start o3s-[0-9a-f]{12}$' $WORK/limactl.log
+
+# A command in the VM runs with its exit code passed on
+exec o3s vm shell -- echo inside
+stdout '^inside$'
+! exec o3s vm shell -- sh -c 'exit 7'
+[exec:sh] ! stderr 'error'
+
+# stop stops the VM
+exec o3s vm stop
+stdout '^Stopped the VM o3s-[0-9a-f]{12}$'
+grep 'tty=false stop o3s-[0-9a-f]{12}$' $WORK/limactl.log
+
+# rm deletes the VM, after which nothing runs in it
+exec o3s vm rm
+stdout '^Deleted the VM o3s-[0-9a-f]{12}$'
+! exec o3s vm shell -- true
+stderr 'does not exist'
+
+# The engine that needs a DNS server gets one
+env O3S_ENGINE=hcs
+exec o3s vm start
+grep 'vm-type=hcs --dns=8.8.8.8 -$' $WORK/limactl.log
+
+# An unknown engine is turned away
+env O3S_ENGINE=firecracker
+! exec o3s vm start
+stderr 'O3S_ENGINE=firecracker, where o3s boots a VM with qemu, vz, hcs'
+env O3S_ENGINE=
+
+# A host that needs the VM manager gets pointed at its installation
+env PATH=$O3S_DIR
+! exec o3s vm start
+stderr 'put limactl on PATH'

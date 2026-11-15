@@ -1,6 +1,6 @@
 //go:build e2e
 
-package e2e_test
+package process_test
 
 import (
 	"crypto/sha256"
@@ -8,12 +8,12 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"regexp"
 	"testing"
-)
 
-// installer is the script whose pin the test checks.
-const installer = "../../install.sh"
+	"github.com/hansehart/o3s/test/stacktest"
+)
 
 // pinned reads a value install.sh pins, by its variable's name.
 func pinned(t *testing.T, script []byte, name string) string {
@@ -28,7 +28,7 @@ func pinned(t *testing.T, script []byte, name string) string {
 
 // The devcontainer CLI's installer at the pinned tag still has the checksum install.sh pins, so a bump carries both.
 func TestTheDevcontainersInstallerMatchesItsPin(t *testing.T) {
-	script, err := os.ReadFile(installer)
+	script, err := os.ReadFile(filepath.Join(stacktest.Repo(t), "install.sh"))
 	// Stop when the script fails to read
 	if err != nil {
 		t.Fatalf("ReadFile(install.sh) = %v", err)

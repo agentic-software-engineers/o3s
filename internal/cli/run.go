@@ -22,7 +22,7 @@ type Streams struct {
 	Out, Err io.Writer
 }
 
-// Run executes a command line and returns 0, 2 for a usage error, or 1 for any other failure.
+// Run executes a command line and returns 0, 2 for a usage error, the exit code of a command run in the VM, or 1 for any other failure.
 func Run(ctx context.Context, args []string, s Streams) int {
 	home.Version = version()
 	home.Digests = Digests
@@ -37,6 +37,10 @@ func Run(ctx context.Context, args []string, s Streams) int {
 	// Report success
 	if err == nil {
 		return 0
+	}
+	// Pass on the exit code of a command that ran in the VM and failed, which printed its own failure
+	if exit, ok := errors.AsType[errExit](err); ok {
+		return exit.code
 	}
 	fmt.Fprintf(s.Err, "error: %v\n", err)
 	// Point a usage error at the help of the command it hit

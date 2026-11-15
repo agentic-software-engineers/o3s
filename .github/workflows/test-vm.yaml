@@ -1,0 +1,103 @@
+name: Test vm
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+env:
+  LIMA_VERSION: 2.3.0
+
+jobs:
+  unix:
+    # boot a home's VM through the o3s CLI on the runners that offer virtualization
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            archive: lima-2.3.0-Linux-x86_64.tar.gz
+            sha256: cc8ba97f1c801b899f7c9eda9919dfc4ce4fa2c140c53e5add15aa2d0a1936f9
+          - runner: macos-26-intel
+            archive: lima-2.3.0-Darwin-x86_64.tar.gz
+            sha256: d58bc7d6b8158d638720d8c8fdb17eb58527dfead6a29a5b60f48a35ee4a65a6
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    steps:
+      # check out the code the suite builds
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # install the Go toolchain the module names
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+
+      # hand the runner user the hardware virtualization
+      - name: Set up QEMU and KVM
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y --no-install-recommends ovmf qemu-system-x86 qemu-utils
+          sudo modprobe kvm
+          sudo chown "${USER}" /dev/kvm
+
+      # install the pinned VM manager, checked against its published sum
+      - name: Install Lima
+        env:
+          ARCHIVE: ${{ matrix.archive }}
+          SHA256: ${{ matrix.sha256 }}
+        run: |
+          curl -fsSLo "${RUNNER_TEMP}/${ARCHIVE}" "https://github.com/lima-vm/lima/releases/download/v${LIMA_VERSION}/${ARCHIVE}"
+          echo "${SHA256}  ${RUNNER_TEMP}/${ARCHIVE}" | shasum -a 256 -c
+          mkdir "${RUNNER_TEMP}/lima"
+          tar -C "${RUNNER_TEMP}/lima" -xzf "${RUNNER_TEMP}/${ARCHIVE}"
+          echo "${RUNNER_TEMP}/lima/bin" >> "${GITHUB_PATH}"
+
+      # run the suite that boots the home's VM through the o3s CLI
+      - name: Run the VM tests
+        run: go test -tags e2e -count=1 -timeout 40m -v ./test/e2e/vm/...
+
+  hcs:
+    # boot a home's VM on Windows, on the runner whose user is an Administrator
+    runs-on: windows-2025
+    timeout-minutes: 45
+    steps:
+      # keep LF endings, so the checkout matches the other runners
+      - name: Set gitconfig
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.eol lf
+
+      # check out the code the suite builds
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # install the Go toolchain the module names
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+
+      # install the pinned VM manager, checked against its published sum
+      - name: Install Lima
+        env:
+          ARCHIVE: lima-2.3.0-Windows-AMD64.zip
+          SHA256: fbd49036909ba3833ea8618743bd3a051eb21049c80c0772452f79ed45af99dc
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $zip = Join-Path $env:RUNNER_TEMP $env:ARCHIVE
+          Invoke-WebRequest -Uri "https://github.com/lima-vm/lima/releases/download/v$env:LIMA_VERSION/$env:ARCHIVE" -OutFile $zip
+          $hash = (Get-FileHash -Algorithm SHA256 $zip).Hash.ToLower()
+          # stop on an archive that differs from the published one
+          if ($hash -ne $env:SHA256) { throw "checksum mismatch: $hash" }
+          Expand-Archive -Path $zip -DestinationPath (Join-Path $env:RUNNER_TEMP 'lima')
+          Add-Content -Path $env:GITHUB_PATH -Value (Join-Path $env:RUNNER_TEMP 'lima\bin')
+
+      # run the suite that boots the home's VM through the o3s CLI
+      - name: Run the VM tests
+        run: go test -tags e2e -count=1 -timeout 40m -v ./test/e2e/vm/...

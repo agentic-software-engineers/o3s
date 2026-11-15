@@ -64,7 +64,7 @@ jobs:
           # let bake read the Dockerfile the CLI writes outside the build context, which the runners' Compose
           # withholds by default
           BUILDX_BAKE_ENTITLEMENTS_FS: 0
-        run: go test -tags e2e -count=1 -v ./test/e2e/...
+        run: go test -tags e2e -count=1 -v ./test/e2e/process/...
 
       # require the checkout as clean as the suites found it, since every test works in a home of its own
       - name: Check the checkout stays clean

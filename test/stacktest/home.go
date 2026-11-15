@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"testing"
 )
@@ -50,6 +51,10 @@ func aHome(tb testing.TB) string {
 func o3sBinary(tb testing.TB) string {
 	tb.Helper()
 	path := filepath.Join(tb.TempDir(), "o3s")
+	// Name the binary the way Windows finds a program
+	if runtime.GOOS == "windows" {
+		path += ".exe"
+	}
 	cmd := exec.CommandContext(tb.Context(), "go", "build", "-o", path, "./cmd/o3s")
 	cmd.Dir = Repo(tb)
 	out, err := cmd.CombinedOutput()
