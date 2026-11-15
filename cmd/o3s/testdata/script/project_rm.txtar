@@ -20,4 +20,4 @@ stderr 'unknown project example/absent'
 
 -- want.log --
 up --workspace-folder $WORK/home
-exec --workspace-folder $WORK/home rm -rf /home/ubuntu/projects/github.com/example/scratch
+exec --workspace-folder $WORK/home --container-id cage-id rm -rf /home/ubuntu/projects/github.com/example/scratch

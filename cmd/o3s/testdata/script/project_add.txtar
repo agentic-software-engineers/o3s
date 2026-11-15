@@ -31,7 +31,7 @@ rm $WORK/no-agent
 
 # An HTTPS URL clones as given, over the port the gateway opens for it
 exec o3s project add https://github.com/hansehart/devcontainer-features
-grep 'exec --workspace-folder '$WORK'/home git clone https://github.com/hansehart/devcontainer-features /home/ubuntu/projects/github.com/hansehart/devcontainer-features$' $WORK/devcontainer.log
+grep 'exec --workspace-folder '$WORK'/home --container-id cage-id git clone https://github.com/hansehart/devcontainer-features /home/ubuntu/projects/github.com/hansehart/devcontainer-features$' $WORK/devcontainer.log
 
 # A clone git turns down leaves the workspace as it was
 exec o3s firewall add example.com --port 22
@@ -49,8 +49,8 @@ stderr 'Run ''o3s project add --help'' for usage.'
 
 -- want-clone.log --
 up --workspace-folder $WORK/home
-exec --workspace-folder $WORK/home ssh-add -l
-exec --workspace-folder $WORK/home git clone git@github.com:torvalds/linux.git /home/ubuntu/projects/github.com/torvalds/linux
+exec --workspace-folder $WORK/home --container-id cage-id ssh-add -l
+exec --workspace-folder $WORK/home --container-id cage-id git clone git@github.com:torvalds/linux.git /home/ubuntu/projects/github.com/torvalds/linux
 -- want.code-workspace --
 {
 	"folders": [

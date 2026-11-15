@@ -21,6 +21,6 @@ stderr 'invalid repository "example/.."'
 
 -- want.log --
 up --workspace-folder $WORK/home
-exec --workspace-folder $WORK/home ls -A /home/ubuntu/projects/github.com/example/scratch
-exec --workspace-folder $WORK/home git init --quiet /home/ubuntu/projects/github.com/example/scratch
+exec --workspace-folder $WORK/home --container-id cage-id ls -A /home/ubuntu/projects/github.com/example/scratch
+exec --workspace-folder $WORK/home --container-id cage-id git init --quiet /home/ubuntu/projects/github.com/example/scratch
 -- empty --

@@ -61,7 +61,7 @@ func newProjectAdd() *cobra.Command {
 			if listed(ws, repo.Path()) {
 				return fmt.Errorf("%s is %w", repo.Path(), workspace.ErrListed)
 			}
-			cli, err := raise(cmd, dir)
+			cg, err := raise(cmd, dir)
 			// Hand back a cage that fails to come up
 			if err != nil {
 				return err
@@ -69,7 +69,7 @@ func newProjectAdd() *cobra.Command {
 			cloned := true
 			// Look for the SSH agent a clone over SSH signs with
 			if repo.SSH {
-				_, code, err := inCage(cmd, cli, dir, "ssh-add", "-l")
+				_, code, err := cg.run(cmd, "ssh-add", "-l")
 				// Hand back an agent check that fails to run
 				if err != nil {
 					return err
@@ -78,7 +78,7 @@ func newProjectAdd() *cobra.Command {
 			}
 			// Clone where the cage can sign, and leave the clone to the user otherwise
 			if cloned {
-				_, code, err := inCage(cmd, cli, dir, "git", "clone", repo.URL, repo.Path())
+				_, code, err := cg.run(cmd, "git", "clone", repo.URL, repo.Path())
 				// Hand back a clone that fails to run
 				if err != nil {
 					return err
@@ -127,12 +127,12 @@ func newProjectCreate() *cobra.Command {
 			if listed(ws, path) {
 				return fmt.Errorf("%s is %w", path, workspace.ErrListed)
 			}
-			cli, err := raise(cmd, dir)
+			cg, err := raise(cmd, dir)
 			// Hand back a cage that fails to come up
 			if err != nil {
 				return err
 			}
-			held, _, err := inCage(cmd, cli, dir, "ls", "-A", path)
+			held, _, err := cg.run(cmd, "ls", "-A", path)
 			// Hand back a look into the folder that fails to run
 			if err != nil {
 				return err
@@ -141,7 +141,7 @@ func newProjectCreate() *cobra.Command {
 			if strings.TrimSpace(held) != "" {
 				return fmt.Errorf("%s holds files already, add it with o3s project add or pick another name", path)
 			}
-			_, code, err := inCage(cmd, cli, dir, "git", "init", "--quiet", path)
+			_, code, err := cg.run(cmd, "git", "init", "--quiet", path)
 			// Hand back a repository that fails to start
 			if err != nil {
 				return err
@@ -192,7 +192,7 @@ func newProjectRm() *cobra.Command {
 			if !yes && !isTerminal(cmd.InOrStdin()) {
 				return fmt.Errorf("%w: pass --yes to delete without a terminal", ErrUsage)
 			}
-			cli, err := raise(cmd, dir)
+			cg, err := raise(cmd, dir)
 			// Hand back a cage that fails to come up
 			if err != nil {
 				return err
@@ -204,7 +204,7 @@ func newProjectRm() *cobra.Command {
 					return err
 				}
 			}
-			_, code, err := inCage(cmd, cli, dir, "rm", "-rf", path)
+			_, code, err := cg.run(cmd, "rm", "-rf", path)
 			// Hand back a deletion that fails to run
 			if err != nil {
 				return err
