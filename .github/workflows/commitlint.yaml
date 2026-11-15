@@ -1,5 +1,8 @@
 name: Lint commits
-on: pull_request
+on:
+  # lint again when the title changes, since a squash merge lands the title on main
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
 
 permissions:
   contents: read
@@ -27,3 +30,9 @@ jobs:
           .github/tools/node_modules/.bin/commitlint --config .github/tools/commitlint.json --verbose
           --from ${{ github.event.pull_request.base.sha }}
           --to ${{ github.event.pull_request.head.sha }}
+
+      # lint the pull request's title, which a squash merge lands on main and release-please reads
+      - name: Lint the title
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: printf '%s\n' "${TITLE}" | .github/tools/node_modules/.bin/commitlint --config .github/tools/commitlint.json --verbose
