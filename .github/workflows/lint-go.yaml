@@ -38,7 +38,7 @@ jobs:
       # check the release config, so a broken one fails here rather than at release
       - uses: goreleaser/goreleaser-action@a4f02ab5355a589de60d917a659ce617ed19b3de # v7.3.0
         with:
-          version: v2.20.1
+          version: v2.20.2
           args: check
 
       # check the installer with the shellcheck the runner image ships
