@@ -49,5 +49,9 @@ release:
   mode: keep-existing
   # Keep a release candidate marked as a prerelease, so the latest release stays the last stable one
   prerelease: auto
+  # Name the release by its tag, the name release-please gives the draft
+  name_template: "{{ .Tag }}"
+  # Upload into the draft release-please created, and publish it once every file is in place
+  use_existing_draft: true
   extra_files:
     - glob: ./install.sh
