@@ -179,7 +179,7 @@ func appArmorProfile(cmd *cobra.Command, dir string) (string, error) {
 	}
 	// Run unconfined where the home opts out, and say so
 	if c.AppArmorProfile == config.Unconfined {
-		warn(cmd.ErrOrStderr(), "the cage runs without AppArmor, as o3s.json's appArmorProfile asks")
+		warn(cmd.ErrOrStderr(), `the cage runs without AppArmor, remove "appArmorProfile" from o3s.json to go back to the secure default`)
 		return config.Unconfined, nil
 	}
 	confines, err := host.DaemonAppArmor(cmd.Context())

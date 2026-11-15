@@ -15,7 +15,7 @@ cmp .devcontainer/.env $WORK/env-before
 # A home that opts out starts unconfined, and says so
 cp $WORK/opted.json o3s.json
 exec o3s init
-stderr '^warning: the cage runs without AppArmor, as o3s.json''s appArmorProfile asks$'
+stderr '^warning: the cage runs without AppArmor, remove "appArmorProfile" from o3s.json to go back to the secure default$'
 grep '^O3S_APPARMOR_PROFILE=unconfined$' .devcontainer/.env
 
 -- no-apparmor-marker --
