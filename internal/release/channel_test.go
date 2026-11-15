@@ -18,8 +18,8 @@ func TestChannelOfReadsTheBinarysName(t *testing.T) {
 		{"/home/ubuntu/.local/bin/o3s-latest", release.Stable, ""},
 		{"/home/ubuntu/.local/bin/o3s", release.Stable, ""},
 		{"/home/ubuntu/.local/bin/o3s-rc", release.Candidates, ""},
-		{"/home/ubuntu/.local/bin/o3s-0.8.0", release.Pinned, "0.8.0"},
-		{"/home/ubuntu/.local/bin/o3s-0.8.0-rc.2", release.Pinned, "0.8.0-rc.2"},
+		{"/home/ubuntu/.local/bin/o3s-1.0.0", release.Pinned, "1.0.0"},
+		{"/home/ubuntu/.local/bin/o3s-1.0.0-rc.2", release.Pinned, "1.0.0-rc.2"},
 	}
 	// Read every name
 	for _, tt := range tests {
@@ -35,9 +35,9 @@ func TestChannelOfReadsTheBinarysName(t *testing.T) {
 // feed is a releases feed whose newest entry is not the highest release, with a tag of no release among them.
 const feed = `<?xml version="1.0" encoding="UTF-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
-  <entry><link rel="alternate" type="text/html" href="https://github.com/hansehart/o3s/releases/tag/v0.7.5"/></entry>
-  <entry><link rel="alternate" type="text/html" href="https://github.com/hansehart/o3s/releases/tag/v0.8.0-rc.10"/></entry>
-  <entry><link rel="alternate" type="text/html" href="https://github.com/hansehart/o3s/releases/tag/v0.8.0-rc.2"/></entry>
+  <entry><link rel="alternate" type="text/html" href="https://github.com/hansehart/o3s/releases/tag/v1.0.0"/></entry>
+  <entry><link rel="alternate" type="text/html" href="https://github.com/hansehart/o3s/releases/tag/v1.1.0-rc.10"/></entry>
+  <entry><link rel="alternate" type="text/html" href="https://github.com/hansehart/o3s/releases/tag/v1.1.0-rc.2"/></entry>
   <entry><link rel="alternate" type="text/html" href="https://github.com/hansehart/o3s/releases/tag/nightly"/></entry>
 </feed>`
 
@@ -54,7 +54,7 @@ func TestNewestReadsTheFeed(t *testing.T) {
 	got, err := release.Newest(t.Context())
 
 	// Require the highest release in the feed
-	if err != nil || got != "0.8.0-rc.10" {
-		t.Errorf("Newest() = %q, %v, want 0.8.0-rc.10", got, err)
+	if err != nil || got != "1.1.0-rc.10" {
+		t.Errorf("Newest() = %q, %v, want 1.1.0-rc.10", got, err)
 	}
 }

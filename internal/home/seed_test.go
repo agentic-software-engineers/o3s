@@ -60,7 +60,7 @@ func TestInitWritesTheBinaryAsTheStartHook(t *testing.T) {
 		version, executable, want string
 	}{
 		{"0.7.0", "/home/ubuntu/.local/bin/o3s", `"initializeCommand": ["/home/ubuntu/.local/bin/o3s", "init"]`},
-		{"0.8.0-rc.1", "/home/ubuntu/.local/bin/o3s-rc", `"initializeCommand": ["/home/ubuntu/.local/bin/o3s-rc", "init"]`},
+		{"1.0.0-rc.1", "/home/ubuntu/.local/bin/o3s-rc", `"initializeCommand": ["/home/ubuntu/.local/bin/o3s-rc", "init"]`},
 		{"dev", "/tmp/go-build/o3s", `"initializeCommand": "o3s init"`},
 	}
 	// Check every kind of build

@@ -88,9 +88,9 @@ func TestSelfUpdateFollowsTheChannel(t *testing.T) {
 		name, binary, running, stable, want string
 		feed                                []string
 	}{
-		{"latest moves to the newest stable", "o3s-latest", "0.7.0", "0.8.0", "0.8.0", []string{"0.8.1-rc.1"}},
-		{"rc moves to the next rc", "o3s-rc", "0.8.1-rc.1", "0.8.0", "0.8.1-rc.2", []string{"0.8.1-rc.2"}},
-		{"rc moves to the stable it leads to", "o3s-rc", "0.8.1-rc.2", "0.8.1", "0.8.1", []string{"0.8.1-rc.2"}},
+		{"latest moves to the newest stable", "o3s-latest", "0.9.0", "1.0.0", "1.0.0", []string{"1.1.0-rc.1"}},
+		{"rc moves to the next rc", "o3s-rc", "1.1.0-rc.1", "1.0.0", "1.1.0-rc.2", []string{"1.1.0-rc.2"}},
+		{"rc moves to the stable it leads to", "o3s-rc", "1.1.0-rc.2", "1.1.0", "1.1.0", []string{"1.1.0-rc.2"}},
 	}
 	// Update every channel
 	for _, tt := range tests {
@@ -113,8 +113,8 @@ func TestSelfUpdateFollowsTheChannel(t *testing.T) {
 
 // A plain o3s from before the channels becomes o3s-latest, and o3s a link to it, so homes that name o3s keep working.
 func TestSelfUpdateMovesAPlainBinaryToLatest(t *testing.T) {
-	aReleasePage(t, "0.8.0")
-	path, restarted := aRunningBinary(t, "0.7.0", "o3s")
+	aReleasePage(t, "1.0.0")
+	path, restarted := aRunningBinary(t, "0.9.0", "o3s")
 	latestPath := filepath.Join(filepath.Dir(path), "o3s-latest")
 	var out strings.Builder
 
@@ -126,7 +126,7 @@ func TestSelfUpdateMovesAPlainBinaryToLatest(t *testing.T) {
 	}
 	link, _ := os.Readlink(path)
 	// Require o3s-latest in place and o3s linking to it
-	if contents(latestPath) != binaryAt("0.8.0") || link != "o3s-latest" {
+	if contents(latestPath) != binaryAt("1.0.0") || link != "o3s-latest" {
 		t.Errorf("o3s-latest = %q, o3s links to %q, want the release and o3s-latest", contents(latestPath), link)
 	}
 	// Require o3s-latest to take over the update
@@ -134,7 +134,7 @@ func TestSelfUpdateMovesAPlainBinaryToLatest(t *testing.T) {
 		t.Errorf("restarted as %q, want %q", *restarted, want)
 	}
 	// Require the version line, the confirmation and the hint for checking by hand
-	for _, want := range []string{"o3s            0.7.0 -> 0.8.0", "Updated o3s to 0.8.0", "gh attestation verify " + latestPath} {
+	for _, want := range []string{"o3s            0.9.0 -> 1.0.0", "Updated o3s to 1.0.0", "gh attestation verify " + latestPath} {
 		// Report a line the output lacks
 		if !strings.Contains(out.String(), want) {
 			t.Errorf("selfUpdate() output lacks %q:\n%s", want, out.String())
@@ -148,15 +148,15 @@ func TestSelfUpdateGoesOnToTheHome(t *testing.T) {
 		name, binary, version, note string
 		reachable                   bool
 	}{
-		{"the latest release", "o3s-latest", "0.8.0", "", true},
-		{"stable past a newer rc", "o3s-latest", "0.8.0", "", true},
-		{"a pinned release", "o3s-0.7.0", "0.7.0", "o3s-0.7.0 stays at 0.7.0, install another with install.sh --version <X.Y.Z>", true},
+		{"the latest release", "o3s-latest", "1.0.0", "", true},
+		{"stable past a newer rc", "o3s-latest", "1.0.0", "", true},
+		{"a pinned release", "o3s-0.9.0", "0.9.0", "o3s-0.9.0 stays at 0.9.0, install another with install.sh --version <X.Y.Z>", true},
 		{"a dev build", "o3s", "dev", "o3s dev builds update with go install or install.sh", true},
-		{"releases out of reach", "o3s-latest", "0.7.0", "warning: releases out of reach, o3s stays at 0.7.0", false},
+		{"releases out of reach", "o3s-latest", "0.9.0", "warning: releases out of reach, o3s stays at 0.9.0", false},
 	}
 	// Check every case
 	for _, tt := range tests {
-		aReleasePage(t, "0.8.0", "0.8.1-rc.1")
+		aReleasePage(t, "1.0.0", "1.1.0-rc.1")
 		// Point the releases at a closed port where the case plays them out of reach
 		if !tt.reachable {
 			t.Setenv("O3S_RELEASES_URL", "http://127.0.0.1:1")
