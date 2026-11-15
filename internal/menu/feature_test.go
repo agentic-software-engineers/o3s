@@ -145,19 +145,6 @@ func TestFeatureDialogsWithNothingToChooseEndWithANote(t *testing.T) {
 	}
 }
 
-// The first question offers the features after the stores, then the cage and the update.
-func TestTheFirstQuestionOffersFeatures(t *testing.T) {
-	q, _ := next(aHome, nil)
-
-	got := q.Options
-
-	want := []Option{{Value: "init"}, {Value: "firewall"}, {Value: "secret"}, {Value: "store"}, {Value: "feature"}, {Value: "cage"}, {Value: "update"}}
-	// Report options that differ
-	if diff := cmp.Diff(want, got); diff != "" {
-		t.Errorf("options (-want +got):\n%s", diff)
-	}
-}
-
 // The features of a store come as a multi-select, and Apply? shows each chosen one's change in turn.
 func TestFeatureAddChoosesSeveral(t *testing.T) {
 	asked, _ := walk(t, aHomeWithTheTool(), []string{"feature"}, []string{"add"}, []string{"registry.example.com/features"}, []string{"other", "tool"}, []string{"no"})

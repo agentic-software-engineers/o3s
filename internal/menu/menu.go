@@ -11,7 +11,9 @@ import (
 
 // Home is what the menu knows about the home it runs in when it starts, and where it asks the stores.
 type Home struct {
-	Dir      string
+	Dir string
+	// Exists marks a folder that holds a home already.
+	Exists   bool
 	Hosts    []config.Host
 	Secrets  []Secret
 	Stores   []string
@@ -117,6 +119,8 @@ type Command struct {
 	Args  []string
 	Stdin *string
 	Note  string
+	// Terminal marks a command that needs the real terminal: to ask for sudo, to restart as another binary, or to hand it to a shell.
+	Terminal bool
 }
 
 // Answers the dialogs give.
@@ -127,11 +131,45 @@ const (
 	yes   = "yes"
 )
 
+// entries are the groups of the main menu, each with what it does.
+var entries = []Option{
+	{Value: "init", Note: "make this folder a home"},
+	{Value: "firewall", Note: "allow hosts the cage reaches"},
+	{Value: "secret", Note: "values the proxy injects"},
+	{Value: "store", Note: "where features come from"},
+	{Value: "feature", Note: "tools in the cage"},
+	{Value: "cage", Note: "open VS Code or a shell"},
+	{Value: "update", Note: "binary, stack and features"},
+}
+
+// Next hands back the question a dialog asks next, or reports that it asks nothing more.
+func Next(h Home, a Answers) (Question, bool) {
+	return next(h, a)
+}
+
+// Plan builds the command lines the answers lead to, in the order they run.
+func Plan(h Home, a Answers) []Command {
+	return plan(h, a)
+}
+
+// mainMenu offers the groups that work where the menu runs: inside a home every group but init, outside one init and the secrets.
+func mainMenu(h Home) Question {
+	q := Question{Key: "do", Kind: Select, Title: "What do you want to do?"}
+	// Offer every group that works here
+	for _, e := range entries {
+		// Take init outside a home, every other group inside one, and the secrets in both
+		if e.Value == "init" && !h.Exists || e.Value != "init" && (h.Exists || e.Value == "secret") {
+			q.Options = append(q.Options, e)
+		}
+	}
+	return q
+}
+
 // next hands back the question a dialog asks next, or reports that it asks nothing more.
 func next(h Home, a Answers) (Question, bool) {
 	// Ask what to do first
 	if !a.has("do") {
-		return choose("do", "What do you want to do?", "init", "firewall", "secret", "store", "feature", "cage", "update"), false
+		return mainMenu(h), false
 	}
 	do := a.get("do")
 	// Ask for the confirmation a new home needs
@@ -260,11 +298,11 @@ func plan(h Home, a Answers) []Command {
 		if a.get("init") != yes {
 			return nil
 		}
-		return []Command{{Args: []string{"init"}}}
+		return []Command{{Args: []string{"init"}, Terminal: true}}
 	case do == "update":
-		return []Command{{Args: []string{"update"}}}
+		return []Command{{Args: []string{"update"}, Terminal: true}}
 	case do == "cage":
-		return []Command{{Args: []string{"cage", action}}}
+		return []Command{{Args: []string{"cage", action}, Terminal: action == "shell"}}
 	case action == "ls":
 		return []Command{{Args: []string{do, "ls"}}}
 	case do == "feature":
