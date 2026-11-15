@@ -1,8 +1,10 @@
 package cli
 
 import (
+	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os/exec"
 
 	"github.com/spf13/cobra"
@@ -15,19 +17,46 @@ type errExit struct{ code int }
 
 func (e errExit) Error() string { return fmt.Sprintf("the command in the VM exited with %d", e.code) }
 
-// newVM builds the commands that reach the home's VM.
+// newVM builds the commands that run the home's VM, named the way Lima and Podman machine name theirs.
 func newVM() *cobra.Command {
-	c := group("vm", "Reach the VM the home runs in")
-	c.AddCommand(newVMSSH(), newVMRm())
+	c := group("vm", "Run the VM the home lives in")
+	c.AddCommand(
+		newVMLifecycle("start", "Create the home's VM where it is missing and start it", "The VM %s runs\n", vm.Lima.Start),
+		newVMShell(),
+		newVMLifecycle("stop", "Stop the home's VM", "Stopped the VM %s\n", vm.Lima.Stop),
+		newVMLifecycle("rm", "Delete the home's VM and its disk", "Deleted the VM %s\n", vm.Lima.Delete),
+	)
 	return c
 }
 
-// newVMSSH builds the command that runs a command in the home's VM.
-func newVMSSH() *cobra.Command {
+// newVMLifecycle builds a command that takes the home's VM one step through its life, with Lima's progress on stderr.
+func newVMLifecycle(use, short, done string, step func(vm.Lima, context.Context, string, io.Writer) error) *cobra.Command {
 	return &cobra.Command{
-		Use:   "ssh -- <command> [args...]",
-		Short: "Run a command in the home's VM",
-		Args:  usage(cobra.MinimumNArgs(1)),
+		Use:   use,
+		Short: short,
+		Args:  usage(cobra.NoArgs),
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			lima, name, err := homeVM()
+			// Hand back a host that can't reach the VM
+			if err != nil {
+				return err
+			}
+			// Hand back a VM that fails to take the step
+			if err := step(lima, cmd.Context(), name, cmd.ErrOrStderr()); err != nil {
+				return fmt.Errorf("%s the VM %s: %w", use, name, err)
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), done, name)
+			return nil
+		},
+	}
+}
+
+// newVMShell builds the command that runs a command in the home's VM, or its shell where none is named.
+func newVMShell() *cobra.Command {
+	return &cobra.Command{
+		Use:   "shell [-- <command> [args...]]",
+		Short: "Open a shell in the home's VM, or run a command there",
+		Args:  usage(cobra.ArbitraryArgs),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			lima, name, err := homeVM()
 			// Hand back a host that can't reach the VM
@@ -42,44 +71,6 @@ func newVMSSH() *cobra.Command {
 			return err
 		},
 	}
-}
-
-// newVMRm builds the command that deletes the home's VM.
-func newVMRm() *cobra.Command {
-	return &cobra.Command{
-		Use:   "rm",
-		Short: "Delete the home's VM and its disk",
-		Args:  usage(cobra.NoArgs),
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			lima, name, err := homeVM()
-			// Hand back a host that can't reach the VM
-			if err != nil {
-				return err
-			}
-			// Hand back a VM that stays
-			if err := lima.Delete(cmd.Context(), name, cmd.ErrOrStderr()); err != nil {
-				return fmt.Errorf("delete the VM %s: %w", name, err)
-			}
-			fmt.Fprintf(cmd.OutOrStdout(), "Deleted the VM %s\n", name)
-			return nil
-		},
-	}
-}
-
-// bootVM creates the home's VM where it is missing and starts it.
-func bootVM(cmd *cobra.Command, dir string) error {
-	lima, err := vm.Find()
-	// Hand back a host without Lima or with an engine it can't run
-	if err != nil {
-		return err
-	}
-	name := vm.Name(dir)
-	// Hand back a VM that fails to come up
-	if err := lima.Up(cmd.Context(), name, cmd.ErrOrStderr()); err != nil {
-		return fmt.Errorf("boot the VM %s: %w", name, err)
-	}
-	fmt.Fprintf(cmd.OutOrStdout(), "The VM %s runs\n", name)
-	return nil
 }
 
 // homeVM finds Lima and the name of the working folder's VM.

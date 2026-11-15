@@ -85,8 +85,8 @@ func Name(dir string) string {
 	return "o3s-" + paths.ID(dir)
 }
 
-// Up creates a home's VM from the template where it is missing and starts it, its progress on out.
-func (l Lima) Up(ctx context.Context, name string, out io.Writer) error {
+// Start creates a home's VM from the template where it is missing and starts it, its progress on out, the way limactl start takes a name or a template.
+func (l Lima) Start(ctx context.Context, name string, out io.Writer) error {
 	names, err := l.output(ctx, "list", "--quiet")
 	// Hand back a Lima that fails to list its VMs
 	if err != nil {
@@ -102,6 +102,11 @@ func (l Lima) Up(ctx context.Context, name string, out io.Writer) error {
 		args = append(args, "--dns=8.8.8.8")
 	}
 	return l.run(ctx, bytes.NewReader(template), out, out, append(args, "-")...)
+}
+
+// Stop stops a home's VM.
+func (l Lima) Stop(ctx context.Context, name string, out io.Writer) error {
+	return l.run(ctx, nil, out, out, "stop", name)
 }
 
 // Exec runs a command in a home's VM, with the given streams, and hands back the command's failure.
@@ -120,7 +125,7 @@ func (l Lima) Delete(ctx context.Context, name string, out io.Writer) error {
 	// Stop the VM first where it runs
 	if strings.TrimSpace(status) == "Running" {
 		// Hand back a VM that keeps running
-		if err := l.run(ctx, nil, out, out, "stop", name); err != nil {
+		if err := l.Stop(ctx, name, out); err != nil {
 			return err
 		}
 	}
