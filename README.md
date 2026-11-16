@@ -83,7 +83,7 @@ o3s update
 
 ## Getting started
 
-**Prerequisites:** Linux on amd64 or arm64, [Docker](https://docs.docker.com/engine/install/) with Compose, [VS Code](https://code.visualstudio.com/download) with the [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers), and tar and xz.
+**Prerequisites:** Linux or macOS on amd64 or arm64, QEMU on Linux, which runs the VM through [Lima](https://lima-vm.io) the installer brings along, [VS Code](https://code.visualstudio.com/download) with the [Dev Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers), and tar and xz. A home without its VM runs on [Docker](https://docs.docker.com/engine/install/) with Compose.
 
 1. Install o3s.
    ```sh
