@@ -18,6 +18,8 @@ type Home struct {
 	Secrets  []Secret
 	Stores   []string
 	Features []string
+	// Blocked are the names the gateway refused, each noting how often and when.
+	Blocked []Option
 	// Projects are the projects the workspace lists, as host/owner/name.
 	Projects []string
 	Lookup   Lookup
@@ -187,6 +189,10 @@ func next(h Home, a Answers) (Question, bool) {
 	if do == "cage" {
 		return ask(a, choose("action", "Action", "ide", "shell"))
 	}
+	// Ask which action of the firewall comes next, which may also show its log or its blocked hosts
+	if do == "firewall" && !a.has("action") {
+		return choose("action", "Action", "add", "rm", "ls", "log", "blocked"), false
+	}
 	// Ask which action of the projects comes next, which may also create one
 	if do == "project" && !a.has("action") {
 		return choose("action", "Action", "add", "create", "rm", "ls"), false
@@ -197,7 +203,7 @@ func next(h Home, a Answers) (Question, bool) {
 	}
 	action := a.get("action")
 	// List without a further question
-	if action == "ls" {
+	if action == "ls" || action == "log" {
 		return Question{}, true
 	}
 	// Follow the dialog of the group
@@ -217,6 +223,22 @@ func next(h Home, a Answers) (Question, bool) {
 
 // firewall asks what adding or removing a host needs.
 func firewall(h Home, a Answers, action string) (Question, bool) {
+	// Ask which blocked hosts to allow, then their ports
+	if action == "blocked" {
+		// End the dialog where nothing is blocked
+		if len(h.Blocked) == 0 {
+			return Question{}, true
+		}
+		// Ask for the hosts first, as many as the user likes
+		if !a.has("blocked") {
+			return Question{Key: "blocked", Kind: Multi, Title: "Blocked", Options: h.Blocked}, false
+		}
+		// End the dialog where the user chose no host
+		if len(a.all("blocked")) == 0 {
+			return Question{}, true
+		}
+		return ask(a, Question{Key: "ports", Kind: Input, Title: "Ports", Default: []string{"443"}})
+	}
 	// Ask which of the user's hosts to remove
 	if action == "rm" {
 		return pick(a, "host", "Host", userHosts(h))
@@ -334,8 +356,10 @@ func plan(h Home, a Answers) []Command {
 		return []Command{{Args: []string{"update"}, Terminal: true}}
 	case do == "cage":
 		return []Command{{Args: []string{"cage", action}, Terminal: action == "shell"}}
-	case action == "ls":
-		return []Command{{Args: []string{do, "ls"}}}
+	case action == "ls" || action == "log":
+		return []Command{{Args: []string{do, action}}}
+	case do == "firewall" && action == "blocked":
+		return blockedPlan(a)
 	case do == "feature":
 		return featurePlan(h, a, action)
 	case do == "project":
@@ -520,6 +544,20 @@ func remove(a Answers, do string) Command {
 		return Command{Note: "No " + nouns[do] + " to remove"}
 	}
 	return Command{Args: []string{do, "rm", a.get(keys[do])}}
+}
+
+// blockedPlan allows every blocked host the user chose on the ports given, or notes that none was there to choose.
+func blockedPlan(a Answers) []Command {
+	// Name that nothing was blocked or chosen
+	if len(a.all("blocked")) == 0 {
+		return []Command{{Note: "No blocked host"}}
+	}
+	var cmds []Command
+	// Allow every chosen host
+	for _, host := range a.all("blocked") {
+		cmds = append(cmds, Command{Args: []string{"firewall", "add", host, "--port", a.get("ports")}})
+	}
+	return cmds
 }
 
 // firewallSecret hands back the secret a host is to carry, and empty for none.

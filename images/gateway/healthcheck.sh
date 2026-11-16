@@ -34,5 +34,6 @@ case "$ADDR" in
 esac
 [ -n "$IP" ] || die "dnsmasq did not resolve $ADDR"
 
-nc -w3 "$IP" "$PORT" </dev/null >/dev/null 2>&1 \
+# Probe as the probe user, whose connections the gateway keeps out of every host's traffic.
+su nobody -s /bin/sh -c 'nc -w3 "$1" "$2" </dev/null >/dev/null 2>&1' probe "$IP" "$PORT" \
   || die "no egress to $ADDR ($IP) on TCP $PORT"

@@ -20,6 +20,7 @@ var aHome = Home{
 	Secrets:  []Secret{{Name: "EXAMPLE_TOKEN", Set: false}, {Name: "OTHER_TOKEN", Set: true}},
 	Stores:   []string{"registry.example.com/features"},
 	Projects: []string{"example.com/team/app"},
+	Blocked:  []Option{{Value: "blocked.example", Note: "3 attempts, 5m ago"}, {Value: "other.example", Note: "1 attempt, 2h ago"}},
 }
 
 // walk answers each question the core asks in turn and hands back what it asked and the command it ends in.
@@ -85,6 +86,21 @@ func TestEveryDialogEndsInItsCommand(t *testing.T) {
 			[][]string{{"firewall"}, {"ls"}},
 			[]string{"What do you want to do?", "Action"},
 			[]Command{{Args: []string{"firewall", "ls"}}},
+		},
+		{
+			"showing the log",
+			[][]string{{"firewall"}, {"log"}},
+			[]string{"What do you want to do?", "Action"},
+			[]Command{{Args: []string{"firewall", "log"}}},
+		},
+		{
+			"allowing two blocked hosts at once",
+			[][]string{{"firewall"}, {"blocked"}, {"blocked.example", "other.example"}, {"443"}},
+			[]string{"What do you want to do?", "Action", "Blocked", "Ports"},
+			[]Command{
+				{Args: []string{"firewall", "add", "blocked.example", "--port", "443"}},
+				{Args: []string{"firewall", "add", "other.example", "--port", "443"}},
+			},
 		},
 		{
 			"a value for a known secret",
@@ -225,6 +241,33 @@ func TestFirewallAddOffersEverySecret(t *testing.T) {
 	}
 }
 
+// The firewall offers its actions, the log and the blocked hosts among them.
+func TestFirewallOffersTheLogAndTheBlockedHosts(t *testing.T) {
+	q, _ := next(aHome, Answers{}.With("do", []string{"firewall"}))
+
+	want := []Option{{Value: "add"}, {Value: "rm"}, {Value: "ls"}, {Value: "log"}, {Value: "blocked"}}
+	// Report actions that differ
+	if diff := cmp.Diff(want, q.Options); diff != "" {
+		t.Errorf("firewall actions (-want +got):\n%s", diff)
+	}
+}
+
+// The blocked hosts come as a multi-select, each noting how often and when it was refused.
+func TestBlockedOffersEveryRefusedName(t *testing.T) {
+	asked, _ := walk(t, aHome, []string{"firewall"}, []string{"blocked"}, []string{"blocked.example"}, []string{"443"})
+
+	got := asked[2]
+
+	// Report a question that takes one answer alone
+	if got.Kind != Multi {
+		t.Errorf("Blocked kind = %v, want Multi", got.Kind)
+	}
+	// Report options that differ
+	if diff := cmp.Diff(aHome.Blocked, got.Options); diff != "" {
+		t.Errorf("options (-want +got):\n%s", diff)
+	}
+}
+
 // Removing offers the hosts the user needs alone, since features own the rest.
 func TestFirewallRmOffersTheUsersHosts(t *testing.T) {
 	asked, _ := walk(t, aHome, []string{"firewall"}, []string{"rm"}, []string{"example.com"})
@@ -257,6 +300,16 @@ func TestRmWithNothingToRemoveEndsWithANote(t *testing.T) {
 		if diff := cmp.Diff([]Command{{Note: tt.want}}, got); diff != "" {
 			t.Errorf("%s rm (-want +got):\n%s", tt.group, diff)
 		}
+	}
+}
+
+// Without a blocked host the dialog ends with a note.
+func TestBlockedWithNothingBlockedEndsWithANote(t *testing.T) {
+	_, got := walk(t, Home{Dir: "/home/ubuntu/o3s", Exists: true}, []string{"firewall"}, []string{"blocked"})
+
+	// Report a command that differs
+	if diff := cmp.Diff([]Command{{Note: "No blocked host"}}, got); diff != "" {
+		t.Errorf("firewall blocked (-want +got):\n%s", diff)
 	}
 }
 

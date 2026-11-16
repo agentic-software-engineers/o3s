@@ -3,6 +3,12 @@ exec o3s firewall ls
 cmp stdout want.txt
 ! stderr .
 
+# With the gateway's record, every host shows the data it moved and when, and a host without data for 30 days reads as dead
+exec sh -c 'now=$(date +%s); touch $WORK/stack-up; printf "{\"since\": %s, \"updated\": %s, \"hosts\": {\"example.com\": {\"bytes\": 1234567890, \"last_seen\": %s, \"since\": %s}, \"api.example.com\": {\"bytes\": 0, \"last_seen\": 0, \"since\": %s}}, \"blocked\": {}}" $((now-3456000)) $now $((now-300)) $((now-3456000)) $((now-3456000)) > $WORK/traffic.json'
+exec o3s firewall ls
+cmp stdout want-traffic.txt
+! stderr .
+
 -- o3s.json --
 {
   "$schema": "./.devcontainer/o3s.schema.json",
@@ -13,8 +19,15 @@ cmp stdout want.txt
   ]
 }
 -- want.txt --
-HOST             PORTS   SECRET           BY
-example.com      22,443                   user
-api.example.com  443     EXAMPLE_TOKEN !  registry.example.com/features/tool
+HOST             PORTS   DATA  LAST SEEN  SECRET           BY
+example.com      22,443  –     –                           user
+api.example.com  443     –     –          EXAMPLE_TOKEN !  registry.example.com/features/tool
 
 ! waits for its value: echo "$TOKEN" | o3s secret add <NAME>
+-- want-traffic.txt --
+HOST             PORTS   DATA    LAST SEEN    SECRET           BY
+example.com      22,443  1.2 GB  5m ago                        user
+api.example.com  443     0 B     never, dead  EXAMPLE_TOKEN !  registry.example.com/features/tool
+
+! waits for its value: echo "$TOKEN" | o3s secret add <NAME>
+dead: no data in 30 days, remove it with o3s firewall rm <host>
