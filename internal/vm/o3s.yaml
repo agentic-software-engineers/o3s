@@ -19,7 +19,7 @@ provision:
       set -eu
       command -v docker >/dev/null 2>&1 && exit 0
       mkdir -p /etc/systemd/system/docker.socket.d
-      printf '[Socket]\nSocketUser=%s\n' "${LIMA_CIDATA_USER}" > /etc/systemd/system/docker.socket.d/override.conf
+      printf '[Socket]\nSocketUser=%s\n' "{{.User}}" > /etc/systemd/system/docker.socket.d/override.conf
       curl -fsSLo /tmp/install-docker.sh https://raw.githubusercontent.com/docker/docker-install/8ad27bd3ac871feabe62f1d926c4067800c1732f/install.sh
       echo "77f623a9f23857ebc45a50e37696fc406e3a60bda4ef17399444f792ecf8895d  /tmp/install-docker.sh" | sha256sum -c
       sh /tmp/install-docker.sh --version 29.9.3
@@ -29,5 +29,5 @@ probes:
   - script: |
       #!/bin/sh
       set -eu
-      timeout 300 sh -c 'until docker info >/dev/null 2>&1; do sleep 3; done'
+      timeout 1200 sh -c 'until docker info >/dev/null 2>&1; do sleep 3; done'
     hint: See "/var/log/cloud-init-output.log" in the guest

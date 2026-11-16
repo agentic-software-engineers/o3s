@@ -14,6 +14,7 @@ import (
 	"runtime"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/hansehart/o3s/internal/paths"
 )
@@ -80,6 +81,10 @@ func Engine() (string, error) {
 	}
 }
 
+// firstStart is how long a home's VM may take to boot the first time, its setup included, longer than the VM manager's default,
+// which fits a VM that boots without one.
+const firstStart = 30 * time.Minute
+
 // Start boots a home's VM, created from the template on its first start, with its progress and its setup's log on out.
 func (l Lima) Start(ctx context.Context, name string, out io.Writer) error {
 	names, err := l.output(ctx, "list", "--quiet")
@@ -91,7 +96,7 @@ func (l Lima) Start(ctx context.Context, name string, out io.Writer) error {
 	if slices.Contains(strings.Fields(names), name) {
 		return l.run(ctx, nil, out, out, "start", name)
 	}
-	args := []string{"start", "--name=" + name, "--vm-type=" + l.engine, "--progress"}
+	args := []string{"start", "--name=" + name, "--vm-type=" + l.engine, "--progress", "--timeout=" + firstStart.String()}
 	// Name a DNS server for the engine that needs one set
 	if l.engine == "hcs" {
 		args = append(args, "--dns=8.8.8.8")
