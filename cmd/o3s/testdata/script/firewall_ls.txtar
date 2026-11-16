@@ -14,20 +14,22 @@ cmp stdout want-traffic.txt
   "$schema": "./.devcontainer/o3s.schema.json",
   "stores": [],
   "hosts": [
-    {"name": "example.com", "ports": [22, 443], "by": ["user"]},
+    {"name": "example.com", "ports": [22, 443], "by": ["user"], "expires": "2020-01-01T00:00:00Z"},
     {"name": "api.example.com", "ports": [443], "secret": "EXAMPLE_TOKEN", "inject": ["header"], "by": ["registry.example.com/features/tool"]}
   ]
 }
 -- want.txt --
-HOST             PORTS   DATA  LAST SEEN  SECRET           BY
-example.com      22,443  –     –                           user
-api.example.com  443     –     –          EXAMPLE_TOKEN !  registry.example.com/features/tool
+HOST             PORTS   DATA  LAST SEEN  EXPIRES  SECRET           BY
+example.com      22,443  –     –          expired                   user
+api.example.com  443     –     –                   EXAMPLE_TOKEN !  registry.example.com/features/tool
 
 ! waits for its value: echo "$TOKEN" | o3s secret add <NAME>
+expired: past its end time, remove these with o3s firewall prune
 -- want-traffic.txt --
-HOST             PORTS   DATA    LAST SEEN    SECRET           BY
-example.com      22,443  1.2 GB  5m ago                        user
-api.example.com  443     0 B     never, dead  EXAMPLE_TOKEN !  registry.example.com/features/tool
+HOST             PORTS   DATA    LAST SEEN    EXPIRES  SECRET           BY
+example.com      22,443  1.2 GB  5m ago       expired                   user
+api.example.com  443     0 B     never, dead           EXAMPLE_TOKEN !  registry.example.com/features/tool
 
 ! waits for its value: echo "$TOKEN" | o3s secret add <NAME>
 dead: no data in 30 days, remove it with o3s firewall rm <host>
+expired: past its end time, remove these with o3s firewall prune

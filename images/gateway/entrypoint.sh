@@ -32,6 +32,10 @@ declare -a DOMAIN_LINES=()  # resolver config lines, an upstream and a set line 
 declare -A DOMAIN_SETS=()
 declare -a HOST_NAMES=()    # every allowed host, in policy order, its counting set named by its index
 declare -a HOST_STATIC=()   # "set address" for each IPv4/CIDR host, seeded into its counting set
+declare -a TIMED=()         # "set port stop kind" for each port of a host with an end time, kind domain or address
+
+# The latest moment the kernel's time match can stop at, which a later end time waits for.
+LAST_STOP=2038-01-19T03:14:07
 
 # The connection mark of the gateway's own probes, kept out of every host's traffic.
 PROBE_MARK=0x1
@@ -87,15 +91,16 @@ locate_interfaces() {
 
 # One set per distinct port, with static addresses seeding theirs directly and domains on resolve.
 parse_allowlist() {
-  # Read each host's ports and optional secret, failing on malformed config
-  local config_tsv
-  config_tsv="$(yq -p=json -o=tsv '[ .hosts[] | [.name, (.ports | join(" ")), (.secret // "")] ]' "$CONFIG_FILE")" \
+  # Read each host's ports, end time and optional secret, failing on malformed config
+  local config_tsv now
+  config_tsv="$(yq -p=json -o=tsv '[ .hosts[] | [.name, (.ports | join(" ")), (.expires // "-"), (.secret // "")] ]' "$CONFIG_FILE")" \
     || die "config file $CONFIG_FILE is not valid JSON"
+  now="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
   # Validate each entry and sort it into a static seed or a domain's set list
   local count_set
   # Read every host of the policy
-  while IFS=$'\t' read -r addr ports secret; do
+  while IFS=$'\t' read -r addr ports expires secret; do
     [ -n "$addr" ] || continue
     [ -n "$ports" ] || die "host $addr has no port"
     case "$addr" in *:*) die "IPv6 address $addr unsupported (gateway is IPv4-only)";; esac
@@ -107,11 +112,33 @@ parse_allowlist() {
       die "inject-host $addr needs a hostname not an IP"
     fi
 
+    # Leave out a host whose end time has passed, so the cage neither reaches nor resolves it
+    if [ "$expires" != "-" ] && [[ ! "$expires" > "$now" ]]; then
+      log "leaving out $addr, closed at $expires"
+      continue
+    fi
+    count_set="o3s-h${#HOST_NAMES[@]}"
+
     # Each port contributes its own set, joined into the entry's domain
     for p in $ports; do
       case "$p" in ''|*[!0-9]*) die "invalid port $p for $addr";; esac
       { [ "$p" -ge 1 ] && [ "$p" -le 65535 ]; } || die "port $p out of range for $addr"
       case " $PORTS " in *" $p "*) ;; *) PORTS="$PORTS $p";; esac
+      # Admit a host with an end time through rules of its own, which stop at that time
+      if [ "$expires" != "-" ]; then
+        stop="${expires%Z}"
+        # Hold an end beyond the kernel's last moment at that moment, where the proxy still checks the exact end
+        if [[ "$stop" > "$LAST_STOP" ]]; then
+          stop="$LAST_STOP"
+        fi
+        # Note whether the proxy sees the host by name or the gateway by address alone
+        if is_ipv4 "$addr"; then
+          TIMED+=("$count_set $p $stop address")
+        else
+          TIMED+=("$count_set $p $stop domain")
+        fi
+        continue
+      fi
       # Seed an address host directly, and add a domain's set to the line that fills it on resolve
       if is_ipv4 "$addr"; then
         STATIC_SEEDS+=("$p $addr")
@@ -124,13 +151,12 @@ parse_allowlist() {
     done
 
     # Each host gets a set of its own, which counts its traffic apart from every other host
-    count_set="o3s-h${#HOST_NAMES[@]}"
     HOST_NAMES+=("$addr")
     # Seed an address host into its counting set, and fill a domain's on resolve
     if is_ipv4 "$addr"; then
       HOST_STATIC+=("$count_set $addr")
     else
-      DOMAIN_SETS[$domain]="${DOMAIN_SETS[$domain]},$count_set"
+      DOMAIN_SETS[$domain]="${DOMAIN_SETS[$domain]:+${DOMAIN_SETS[$domain]},}$count_set"
     fi
   done <<< "$config_tsv"
 
@@ -174,6 +200,18 @@ apply_firewall() {
       || iptables -t nat -A PREROUTING -s "$CAGE_SUBNET" -p tcp --dport 443 -m set --match-set allowed-p443 dst -m set ! --match-set static-hosts dst -j REDIRECT --to-ports "$PROXY_PORT"
   fi
 
+  # Divert a timed domain's HTTPS to the proxy as well, until its end time
+  if [ ${#TIMED[@]} -gt 0 ]; then
+    # Divert every timed domain on the HTTPS port
+    for rule in "${TIMED[@]}"; do
+      read -r set p stop kind <<<"$rule"
+      # Divert only a domain on the HTTPS port, since the proxy checks names
+      if [ "$kind" = domain ] && [ "$p" = 443 ]; then
+        iptables -t nat -A PREROUTING -s "$CAGE_SUBNET" -p tcp --dport 443 -m set --match-set "$set" dst -m time --datestop "$stop" -j REDIRECT --to-ports "$PROXY_PORT"
+      fi
+    done
+  fi
+
   # Clamp MSS to path MTU on SYN to avoid stalls through nested NAT
   iptables -t mangle -F FORWARD
   iptables -t mangle -A FORWARD -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu
@@ -212,6 +250,14 @@ apply_firewall() {
   for p in $PORTS; do
     iptables -A FORWARD -s "$CAGE_SUBNET" -p tcp -m set --match-set "allowed-p$p" dst --dport "$p" -j ACCEPT
   done
+  # Admit each timed host on its own ports until its end time, which the kernel enforces
+  if [ ${#TIMED[@]} -gt 0 ]; then
+    # Admit every port of every timed host
+    for rule in "${TIMED[@]}"; do
+      read -r set p stop kind <<<"$rule"
+      iptables -A FORWARD -s "$CAGE_SUBNET" -p tcp -m set --match-set "$set" dst --dport "$p" -m time --datestop "$stop" -j ACCEPT
+    done
+  fi
   # Deny cage QUIC/HTTP-3, since interception is TCP-only and UDP would bypass the proxy
   iptables -A FORWARD -s "$CAGE_SUBNET" -p udp -m multiport --dports 80,443 -j REJECT --reject-with icmp-port-unreachable
   # Fail fast instead of hanging on blocked connections

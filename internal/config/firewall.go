@@ -67,7 +67,7 @@ func (c *Config) Remove(name string) ([]string, error) {
 
 // newHost builds a host from a change, filling what the change leaves empty with its default.
 func newHost(ch Change) Host {
-	h := Host{Name: ch.Name, Ports: ch.Ports, Secret: ch.Secret, Inject: ch.Inject, By: []string{user}}
+	h := Host{Name: ch.Name, Ports: ch.Ports, Secret: ch.Secret, Inject: ch.Inject, By: []string{user}, Expires: ch.Expires}
 	// Allow the HTTPS port when no port is named
 	if len(h.Ports) == 0 {
 		h.Ports = []int{443}
@@ -102,6 +102,11 @@ func update(h Host, ch Change) (Host, []Diff) {
 	if len(inject) > 0 && !slices.Equal(h.Inject, inject) {
 		diffs = append(diffs, Diff{Field: "inject", Old: strings.Join(h.Inject, ","), New: strings.Join(inject, ",")})
 		h.Inject = inject
+	}
+	// Take a new end time, reporting the one it replaces
+	if ch.Expires != "" && ch.Expires != h.Expires {
+		diffs = append(diffs, Diff{Field: "expires", Old: h.Expires, New: ch.Expires})
+		h.Expires = ch.Expires
 	}
 	// Make the host the user's as well
 	if !slices.Contains(h.By, user) {

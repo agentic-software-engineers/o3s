@@ -183,3 +183,60 @@ func countsHost(rules, host, way string) bool {
 	}
 	return false
 }
+
+// A host with an end time gets rules of its own that stop at that time, and stays out of the sets every port shares.
+func TestTheGatewayAdmitsATimedHostUntilItsEnd(t *testing.T) {
+	stacktest.AHomePolicy(t, `{"hosts": [{"name": "example.com", "ports": [443], "by": ["user"]}, {"name": "example.org", "ports": [443, 22], "by": ["user"], "expires": "2030-01-01T00:00:00Z"}]}`)
+	// Stop when the gateway fails to come up
+	if err := stacktest.Up(t, "gateway"); err != nil {
+		t.Fatalf("Setup: Up(gateway): %v", err)
+	}
+
+	forward, err := stacktest.Exec(t, "gateway", "iptables", "-S", "FORWARD")
+
+	// Stop when reading the rules fails
+	if err != nil {
+		t.Fatalf("Exec(gateway, iptables -S FORWARD) = %v", err)
+	}
+	// Require a rule per port that stops at the host's end time
+	for _, port := range []string{"443", "22"} {
+		// Flag a port of the timed host the chain leaves without its own stop
+		if !strings.Contains(forward, "--dport "+port+" -m time --datestop 2030-01-01T00:00:00 -j ACCEPT") {
+			t.Errorf("FORWARD admits example.org on %s without its end time, rules:\n%s", port, forward)
+		}
+	}
+	nat, err := stacktest.Exec(t, "gateway", "iptables", "-t", "nat", "-S", "PREROUTING")
+	// Stop when reading the diversion fails
+	if err != nil {
+		t.Fatalf("Exec(gateway, iptables -t nat -S PREROUTING) = %v", err)
+	}
+	// Require the timed host's HTTPS to reach the proxy until its end time
+	if !strings.Contains(nat, "-m time --datestop 2030-01-01T00:00:00 -j REDIRECT") {
+		t.Errorf("PREROUTING diverts no HTTPS of the timed host, rules:\n%s", nat)
+	}
+	conf, err := stacktest.Exec(t, "gateway", "grep", "ipset=/example.org/", "/etc/dnsmasq.conf")
+	// Require the timed host to fill its own set alone
+	if err != nil || strings.Contains(conf, "allowed-p") {
+		t.Errorf("resolver fills %q for example.org, want its counting set alone (%v)", conf, err)
+	}
+}
+
+// A host whose end time passed before the gateway started gets no rule and no resolution.
+func TestTheGatewayLeavesOutAnExpiredHost(t *testing.T) {
+	stacktest.AHomePolicy(t, `{"hosts": [{"name": "example.com", "ports": [443], "by": ["user"]}, {"name": "example.org", "ports": [443], "by": ["user"], "expires": "2020-01-01T00:00:00Z"}]}`)
+	// Stop when the gateway fails to come up
+	if err := stacktest.Up(t, "gateway"); err != nil {
+		t.Fatalf("Setup: Up(gateway): %v", err)
+	}
+
+	conf, err := stacktest.Exec(t, "gateway", "cat", "/etc/dnsmasq.conf")
+
+	// Stop when reading the resolver's config fails
+	if err != nil {
+		t.Fatalf("Exec(gateway, cat /etc/dnsmasq.conf) = %v", err)
+	}
+	// Report an expired host the resolver still answers for
+	if strings.Contains(conf, "example.org") {
+		t.Errorf("resolver still names example.org after its end time:\n%s", conf)
+	}
+}

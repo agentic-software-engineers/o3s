@@ -20,19 +20,56 @@ import (
 // newFirewall builds the commands that allow, remove and list hosts.
 func newFirewall() *cobra.Command {
 	fw := group("firewall", "Allow or remove the hosts the cage may reach")
-	fw.AddCommand(newFirewallAdd(), newFirewallRm(), newFirewallLs(), newFirewallLog())
+	fw.AddCommand(newFirewallAdd(), newFirewallRm(), newFirewallLs(), newFirewallLog(), newFirewallPrune())
 	return fw
 }
 
 // newFirewallAdd builds the command that allows a host, or updates the one it names.
 func newFirewallAdd() *cobra.Command {
 	var ch config.Change
+	var forValue string
+	var yes bool
 	cmd := &cobra.Command{
 		Use:   "add <host>",
 		Short: "Allow a host, or update it",
 		Args:  usage(cobra.ExactArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ch.Name = args[0]
+			now := time.Now()
+			// Give the host the end time its duration reaches
+			if forValue != "" {
+				d, err := parseFor(forValue)
+				// Hand back a duration that reads as no time
+				if err != nil {
+					return err
+				}
+				ch.Expires = config.EndTime(now.Add(d))
+			}
+			dir, err := workingHome()
+			// Hand back a working folder that stays unknown
+			if err != nil {
+				return err
+			}
+			c, err := config.Load(dir)
+			// Hand back a home that fails to load
+			if err != nil {
+				return err
+			}
+			// Ask before a host closes sooner than it would, naming everyone it reaches
+			if h, ok := c.Find(ch.Name); ok && narrows(h.Expires, ch.Expires) {
+				out := cmd.OutOrStdout()
+				consequences(out, h, forValue, ch.Expires, now)
+				ok, err := confirm(cmd.InOrStdin(), out, isTerminal(cmd.InOrStdin()), yes)
+				// Hand back an answer that fails to arrive
+				if err != nil {
+					return err
+				}
+				// Leave the allowlist as it was when the user declines
+				if !ok {
+					fmt.Fprintln(out, "Left the allowlist as it was")
+					return nil
+				}
+			}
 			return change(cmd, func(c *config.Config) error {
 				diffs, err := c.Allow(ch)
 				// Hand back a change the allowlist turns away
@@ -45,15 +82,21 @@ func newFirewallAdd() *cobra.Command {
 					fmt.Fprintln(out, ch.Name)
 					// Show every changed field with its value before and after
 					for _, d := range diffs {
+						// Show end times as the local clock time they close at
+						if d.Field == "expires" {
+							d.Old, d.New = closesAtOrNone(d.Old, now), closesAt(d.New, now)
+						}
 						fmt.Fprintf(out, "  ~ %s %s -> %s\n", d.Field, orNone(d.Old), orNone(d.New))
 					}
 				}
 				h, _ := c.Find(ch.Name)
-				fmt.Fprintln(out, allowed(h))
+				fmt.Fprintln(out, allowed(h, now))
 				return nil
 			})
 		},
 	}
+	cmd.Flags().StringVar(&forValue, "for", "", "keep the host open this long, as seconds or a duration like 20m or 1h (default for good)")
+	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "close a host sooner without asking")
 	cmd.Flags().IntSliceVarP(&ch.Ports, "port", "p", nil, "a port to allow, 1-65535, repeatable (default 443)")
 	cmd.Flags().StringVar(&ch.Secret, "secret", "", "the name of the secret the proxy injects for this host")
 	cmd.Flags().StringSliceVar(&ch.Inject, "inject", nil, "where the secret goes: header, query or body, repeatable (default header)")
@@ -111,8 +154,8 @@ func newFirewallLs() *cobra.Command {
 			record, _ := askGateway(cmd, dir)
 			now := time.Now()
 			w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 2, ' ', 0)
-			fmt.Fprintln(w, "HOST\tPORTS\tDATA\tLAST SEEN\tSECRET\tBY")
-			waiting, dead := false, false
+			fmt.Fprintln(w, "HOST\tPORTS\tDATA\tLAST SEEN\tEXPIRES\tSECRET\tBY")
+			waiting, dead, expired := false, false, false
 			// Write a row per host, in the order the file holds them
 			for _, h := range c.Hosts {
 				secret := h.Secret
@@ -131,14 +174,16 @@ func newFirewallLs() *cobra.Command {
 						dead = true
 					}
 				}
-				fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n", h.Name, joinPorts(h.Ports), data, seen, secret, strings.Join(h.By, ", "))
+				expires := until(h.Expires, now)
+				expired = expired || h.Expired(now)
+				fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n", h.Name, joinPorts(h.Ports), data, seen, expires, secret, strings.Join(h.By, ", "))
 			}
 			// Hand back a table that fails to write
 			if err := w.Flush(); err != nil {
 				return err
 			}
 			// Leave a line between the table and the notes below it
-			if waiting || dead {
+			if waiting || dead || expired {
 				fmt.Fprintln(cmd.OutOrStdout())
 			}
 			// Explain the mark below a table that carries it
@@ -148,6 +193,10 @@ func newFirewallLs() *cobra.Command {
 			// Point a dead host at the command that removes it
 			if dead {
 				fmt.Fprintln(cmd.OutOrStdout(), "dead: no data in 30 days, remove it with o3s firewall rm <host>")
+			}
+			// Point the expired hosts at the command that removes them
+			if expired {
+				fmt.Fprintln(cmd.OutOrStdout(), "expired: past its end time, remove these with o3s firewall prune")
 			}
 			return nil
 		},
@@ -223,6 +272,60 @@ func newFirewallLog() *cobra.Command {
 	}
 	cmd.Flags().IntVar(&limit, "limit", 0, "show up to this many entries per table, 0 for all")
 	cmd.Flags().BoolVar(&asJSON, "json", false, "write both tables as JSON")
+	return cmd
+}
+
+// newFirewallPrune builds the command that takes every expired host off the allowlist, once the user agrees.
+func newFirewallPrune() *cobra.Command {
+	var yes bool
+	cmd := &cobra.Command{
+		Use:   "prune",
+		Short: "Remove every host whose end time has come",
+		Args:  usage(cobra.NoArgs),
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			dir, err := workingHome()
+			// Hand back a working folder that stays unknown
+			if err != nil {
+				return err
+			}
+			c, err := config.Load(dir)
+			// Hand back a home that fails to load
+			if err != nil {
+				return err
+			}
+			now := time.Now()
+			out := cmd.OutOrStdout()
+			var names []string
+			// Name every expired host
+			for _, h := range c.Expired(now) {
+				names = append(names, h.Name)
+			}
+			// Say that nothing has expired
+			if len(names) == 0 {
+				fmt.Fprintln(out, "No expired host")
+				return nil
+			}
+			fmt.Fprintf(out, "Removes the expired hosts %s from %s.\n", strings.Join(names, ", "), config.File)
+			ok, err := confirm(cmd.InOrStdin(), out, isTerminal(cmd.InOrStdin()), yes)
+			// Hand back an answer that fails to arrive
+			if err != nil {
+				return err
+			}
+			// Leave the allowlist as it was when the user declines
+			if !ok {
+				fmt.Fprintln(out, "Left the allowlist as it was")
+				return nil
+			}
+			return change(cmd, func(c *config.Config) error {
+				// Name every host that leaves
+				for _, name := range c.Prune(now) {
+					fmt.Fprintf(out, "Removed %s\n", name)
+				}
+				return nil
+			})
+		},
+	}
+	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "remove without asking")
 	return cmd
 }
 
@@ -341,11 +444,15 @@ func edit(apply func(*config.Config) error) (string, error) {
 }
 
 // allowed confirms a host with its ports, and its secret where it carries one.
-func allowed(h config.Host) string {
+func allowed(h config.Host, now time.Time) string {
 	line := fmt.Sprintf("Allowed %s:%s", h.Name, joinPorts(h.Ports))
 	// Add the secret and where it goes
 	if h.Secret != "" {
 		line += fmt.Sprintf(" with %s in %s", h.Secret, strings.Join(h.Inject, ", "))
+	}
+	// Add when a host with an end closes
+	if h.Expires != "" {
+		line += " until " + closesAt(h.Expires, now)
 	}
 	return line
 }

@@ -1,0 +1,25 @@
+# Pruning names the expired hosts and needs a yes, and --yes without a terminal
+! exec o3s firewall prune
+stdout '^Removes the expired hosts old\.example\.com from o3s\.json\.$'
+stderr 'pass --yes to apply without a terminal'
+grep 'old.example.com' o3s.json
+
+# With --yes the expired hosts leave and every other host stays
+exec o3s firewall prune --yes
+stdout '^Removed old\.example\.com$'
+! grep 'old.example.com' o3s.json
+grep 'example.com' o3s.json
+
+# With nothing expired there is nothing to prune
+exec o3s firewall prune
+stdout '^No expired host$'
+
+-- o3s.json --
+{
+  "$schema": "./.devcontainer/o3s.schema.json",
+  "stores": [],
+  "hosts": [
+    {"name": "example.com", "ports": [443], "by": ["user"]},
+    {"name": "old.example.com", "ports": [443], "by": ["user"], "expires": "2020-01-01T00:00:00Z"}
+  ]
+}

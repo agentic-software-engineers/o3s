@@ -1,6 +1,6 @@
 //go:build e2e
 
-package e2e_test
+package process_test
 
 import (
 	"strings"
@@ -74,4 +74,32 @@ func firstLine(out, host string) string {
 		}
 	}
 	return ""
+}
+
+// A host allowed for a set time is reachable until its end and refused after it, without a restart in between.
+func TestATimedHostClosesAtItsEnd(t *testing.T) {
+	opened := time.Now()
+	_, err := stacktest.O3s(t, "firewall", "add", "github.com", "--port", "443", "--for", "90s")
+	// Stop when the host stays closed
+	if err != nil {
+		t.Fatalf("o3s firewall add --for 90s = %v", err)
+	}
+	raised, err := stacktest.DevcontainerUp(t)
+	// Stop when the stack fails to come up
+	if err != nil {
+		t.Fatalf("DevcontainerUp() = %v, want the stack raised", err)
+	}
+
+	_, before := stacktest.ContainerExec(t, raised.ContainerID, "curl", "-fsS", "--max-time", "10", "-o", "/dev/null", "https://github.com")
+	time.Sleep(time.Until(opened.Add(95 * time.Second)))
+	_, after := stacktest.ContainerExec(t, raised.ContainerID, "curl", "-fsS", "--max-time", "10", "-o", "/dev/null", "https://github.com")
+
+	// Report a host the cage failed to reach while it was open
+	if before != nil {
+		t.Errorf("curl https://github.com before the end = %v, want it reached", before)
+	}
+	// Report a host the cage still reached after its end
+	if after == nil {
+		t.Errorf("curl https://github.com after the end succeeded, want it refused")
+	}
 }

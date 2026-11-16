@@ -15,8 +15,8 @@ set -euo pipefail
 
 die() { echo "[healthcheck] ERROR: $*" >&2; exit 1; }
 
-# Probe the first allow-listed host by connecting to its address on its first port.
-read -r ADDR PORT < <(yq -p=json -o=tsv '[ .hosts[0:1][] | [.name, .ports[0]] ]' /config/o3s.json) || true
+# Probe the first allow-listed host that stays open, by connecting to its address on its first port.
+read -r ADDR PORT < <(yq -p=json -o=tsv '[ [ .hosts[] | select(.expires == null) ][0:1][] | [.name, .ports[0]] ]' /config/o3s.json) || true
 # On an empty policy, report healthy once the resolver runs, which starts after the firewall.
 if [ -z "$ADDR" ] || [ -z "$PORT" ]; then
   pgrep -x dnsmasq > /dev/null || die "dnsmasq is not running"
