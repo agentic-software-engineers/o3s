@@ -110,7 +110,7 @@ services:
       # The allow-listed hosts
       - ../o3s.json:/config/o3s.json:ro
       # The gateway's own state, where it records each host's traffic and the names it refused
-      - gateway-state:/state
+      - gateway:/state
     networks:
       cage:
         ipv4_address: *gateway_ip
@@ -203,4 +203,4 @@ networks:
 volumes:
   features:
   projects:
-  gateway-state:
+  gateway:
