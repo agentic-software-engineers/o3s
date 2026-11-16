@@ -45,10 +45,15 @@ type Config struct {
 	Hosts  []Host  `json:"hosts"`
 	// AppArmorProfile opts the cage out of its own AppArmor profile where it reads unconfined, for a Docker daemon without AppArmor.
 	AppArmorProfile string `json:"appArmorProfile,omitempty"`
+	// Isolation opts the home out of its VM where it reads process, so the stack shares the kernel of the machine it runs on.
+	Isolation string `json:"isolation,omitempty"`
 }
 
 // Unconfined is the one value of AppArmorProfile, the opt-out from the cage's own profile.
 const Unconfined = "unconfined"
+
+// Process is the one value of Isolation, the opt-out from the home's VM.
+const Process = "process"
 
 // Store is a feature collection the menu offers features from.
 type Store struct {
@@ -110,6 +115,10 @@ func (c Config) check() error {
 	// Name an AppArmor profile other than the opt-out
 	if c.AppArmorProfile != "" && c.AppArmorProfile != Unconfined {
 		return fmt.Errorf("appArmorProfile %q, where only %q opts out", c.AppArmorProfile, Unconfined)
+	}
+	// Name an isolation other than the opt-out
+	if c.Isolation != "" && c.Isolation != Process {
+		return fmt.Errorf("isolation %q, where only %q opts out", c.Isolation, Process)
 	}
 	stores := map[string]bool{}
 	// Check every store

@@ -35,8 +35,8 @@ type Lima struct {
 	engine string
 }
 
-// Find picks the engine for this host, or the one the user names, and the VM manager o3s installed or one on PATH.
-func Find() (Lima, error) {
+// Manager picks the engine for this host, or the one the user names, and the VM manager o3s installed or one on PATH.
+func Manager() (Lima, error) {
 	engine, err := Engine()
 	// Hand back why the engine is turned away
 	if err != nil {
@@ -78,11 +78,6 @@ func Engine() (string, error) {
 	default:
 		return "qemu", nil
 	}
-}
-
-// Name is the name of a home's VM, after the same hash as its state folder.
-func Name(dir string) string {
-	return "o3s-" + paths.ID(dir)
 }
 
 // Start boots a home's VM, created from the template on its first start, with its progress on out.

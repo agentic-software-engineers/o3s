@@ -9,3 +9,27 @@ images:
 
 # Reach the host over the network alone
 plain: true
+
+provision:
+  # Hand the container engine's socket to the VM's user, so every session reaches it from the start
+  - mode: yq
+    path: /etc/systemd/system/docker.socket.d/override.conf
+    format: ini
+    expression: .Socket.SocketUser="{{.User}}"
+  # Install the pinned container engine through its pinned installer, checked against its checksum
+  - mode: system
+    script: |
+      #!/bin/sh
+      set -eu
+      command -v docker >/dev/null 2>&1 && exit 0
+      curl -fsSLo /tmp/install-docker.sh https://raw.githubusercontent.com/docker/docker-install/8ad27bd3ac871feabe62f1d926c4067800c1732f/install.sh
+      echo "77f623a9f23857ebc45a50e37696fc406e3a60bda4ef17399444f792ecf8895d  /tmp/install-docker.sh" | sha256sum -c
+      sh /tmp/install-docker.sh --version 29.9.3
+
+probes:
+  # Hold the start until the container engine answers
+  - script: |
+      #!/bin/sh
+      set -eu
+      timeout 600 sh -c 'until docker info >/dev/null 2>&1; do sleep 3; done'
+    hint: See "/var/log/cloud-init-output.log" in the guest

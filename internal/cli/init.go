@@ -1,8 +1,10 @@
 package cli
 
 import (
+	"context"
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 	"text/tabwriter"
 
@@ -12,12 +14,15 @@ import (
 	"github.com/hansehart/o3s/internal/home"
 	"github.com/hansehart/o3s/internal/host"
 	"github.com/hansehart/o3s/internal/paths"
+	"github.com/hansehart/o3s/internal/release"
 	"github.com/hansehart/o3s/internal/secrets"
+	"github.com/hansehart/o3s/internal/vm"
 )
 
 // newInit builds the command that makes the working folder a home, and prepares the host for it on every start.
 func newInit() *cobra.Command {
-	return &cobra.Command{
+	var skipVM, guest bool
+	c := &cobra.Command{
 		Use:   "init",
 		Short: "Make this folder an o3s home, or prepare the host for the home it is",
 		Args:  usage(cobra.NoArgs),
@@ -26,6 +31,10 @@ func newInit() *cobra.Command {
 			// Hand back a working folder that stays unknown
 			if err != nil {
 				return err
+			}
+			// Make the home inside its VM, where this folder holds no home of its own and the VM stays chosen
+			if !guest && !skipVM && !home.Exists(dir) {
+				return initVM(cmd, dir)
 			}
 			secretsFile, err := secrets.Path()
 			// Hand back a secrets file whose place stays unknown
@@ -47,6 +56,13 @@ func newInit() *cobra.Command {
 				}
 				fmt.Fprintf(out, "Wrote %s\n", written[0])
 				fmt.Fprintf(out, "Wrote %s%c (%d files)\n", filepath.Join(dir, ".devcontainer"), filepath.Separator, len(written)-1)
+				// Record the choice of a home without its VM, which every later start reads
+				if skipVM {
+					// Hand back a choice that stays unrecorded
+					if err := recordProcess(dir); err != nil {
+						return err
+					}
+				}
 			}
 			seeded, err := home.Seed(dir)
 			// Hand back a home whose missing files stay unwritten
@@ -74,6 +90,79 @@ func newInit() *cobra.Command {
 			return nil
 		},
 	}
+	c.Flags().BoolVar(&skipVM, "dangerously-skip-vm", false, "run the stack on this machine's kernel, without the home's VM")
+	c.Flags().BoolVar(&guest, "guest", false, "make the home inside the VM it runs in")
+	_ = c.Flags().MarkHidden("guest")
+	return c
+}
+
+// initVM makes the home inside its VM: it binds this folder to the VM, starts the VM, puts this o3s into it where it runs
+// another, and makes the home there.
+func initVM(cmd *cobra.Command, dir string) error {
+	current := version()
+	folder, err := release.Folder(current)
+	// Hand back a build without release files to install from
+	if err != nil {
+		return err
+	}
+	lima, err := vm.Manager()
+	// Hand back a host without the VM manager
+	if err != nil {
+		return err
+	}
+	name, err := vm.Bind(dir)
+	// Hand back a folder that fails to hold its VM's ID
+	if err != nil {
+		return err
+	}
+	ctx, errOut := cmd.Context(), cmd.ErrOrStderr()
+	// Hand back a VM that fails to come up
+	if err := lima.Start(ctx, name, errOut); err != nil {
+		return fmt.Errorf("start the VM %s: %w", name, err)
+	}
+	// Put this o3s into the VM where it runs another, and a dev build every time
+	if !release.IsRelease(current) || !lima.Installed(ctx, name, current) {
+		// Hand back o3s that fails to reach the VM
+		if err := installInVM(ctx, lima, name, folder, errOut); err != nil {
+			return err
+		}
+	}
+	return lima.Init(ctx, name, cmd.InOrStdin(), cmd.OutOrStdout(), errOut)
+}
+
+// installInVM checks the release files of a folder on this host and installs o3s from them in a home's VM.
+func installInVM(ctx context.Context, lima vm.Lima, name, folder string, out io.Writer) error {
+	staging, err := os.MkdirTemp("", "o3s")
+	// Hand back a host without room for the release files
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(staging)
+	bundle := filepath.Join(staging, "o3s-release")
+	// Hand back a folder for the release files that fails to appear
+	if err := os.Mkdir(bundle, 0o755); err != nil { //nolint:gosec // the folder goes into the VM, which reads it as its user
+		return err
+	}
+	// Hand back release files that fail to download or differ from their checksums
+	if err := release.Bundle(ctx, folder, bundle); err != nil {
+		return err
+	}
+	// Hand back an install that fails in the VM
+	if err := lima.Install(ctx, name, bundle, out); err != nil {
+		return fmt.Errorf("install o3s in the VM %s: %w", name, err)
+	}
+	return nil
+}
+
+// recordProcess records in a home's settings that its stack runs on this machine's kernel.
+func recordProcess(dir string) error {
+	c, err := config.Load(dir)
+	// Hand back settings that fail to load
+	if err != nil {
+		return err
+	}
+	c.Isolation = config.Process
+	return c.Save(dir)
 }
 
 // prepare readies the host for a home: the secrets file, the proxy's CA, the cage's confinement and the values compose reads.
@@ -99,6 +188,10 @@ func prepare(cmd *cobra.Command, dir string) error {
 		fmt.Fprintf(out, "Made the proxy's CA in %s\n", caDir)
 	} else {
 		fmt.Fprintf(out, "The proxy's CA is ready in %s\n", caDir)
+	}
+	// Name a home that runs without its VM on every start
+	if c, err := config.Load(dir); err == nil && c.Isolation == config.Process {
+		warn(cmd.ErrOrStderr(), `the home runs without its VM, remove "isolation" from o3s.json to go back to the secure default`)
 	}
 	profile, err := appArmorProfile(cmd, dir)
 	// Hand back a cage that would run without the confinement it asks for

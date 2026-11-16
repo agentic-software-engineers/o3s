@@ -6,7 +6,7 @@ exec o3s init
 exists .o3s/id
 ! exists o3s.json
 grep 'tty=false start --name=o3s-[0-9a-f]{12} --vm-type=qemu -$' $WORK/limactl.log
-grep 'tty=false copy -r \S+ o3s-[0-9a-f]{12}:/tmp/o3s-release$' $WORK/limactl.log
+grep 'tty=false copy -r \S+/o3s-release o3s-[0-9a-f]{12}:/tmp/$' $WORK/limactl.log
 grep '^O3S_RELEASE_URL=file:///tmp/o3s-release sh /tmp/o3s-release/install.sh$' $WORK/vm.log
 grep 'init --guest' $WORK/vm.log
 
