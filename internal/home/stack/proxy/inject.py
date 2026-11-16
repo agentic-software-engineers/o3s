@@ -37,6 +37,8 @@ import json
 import logging
 import os
 import re
+import time
+from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import quote
 
@@ -45,6 +47,14 @@ from mitmproxy.proxy import server_hooks
 
 CONFIG_FILE = os.environ.get("O3S_CONFIG_FILE", "/etc/o3s/o3s.json")
 SECRETS_FILE = os.environ.get("O3S_SECRETS_FILE", "/secrets/secrets.env")
+
+def _end_of(stamp: str) -> float:
+    """Read an end time in UTC with whole seconds, and one in any other shape as already passed."""
+    try:
+        return datetime.strptime(stamp, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc).timestamp()
+    except (TypeError, ValueError):
+        return 0.0
+
 
 # Where in a request a host may carry its credential, and what it carries there unless it says so.
 SITES = frozenset({"header", "query", "body"})
@@ -184,6 +194,7 @@ class InjectCredentials:
         # Every key the allowlist declares, and the subset of them permitted on HTTPS.
         self._keys = frozenset()
         self._allowed = frozenset()
+        self._ends = {}
         self._load()
 
     def _load(self):
@@ -206,6 +217,7 @@ class InjectCredentials:
         sites = {}
         keys = set()
         allowed = set()
+        ends = {}
         # Index every host by its match key, keeping the secret and sites it declares alongside.
         for spec in listed if isinstance(listed, list) else ():
             # Skip an entry that is no host
@@ -218,6 +230,9 @@ class InjectCredentials:
             keys.add(key)
             if 443 in (spec.get("ports") or ()):
                 allowed.add(key)
+            # Keep the moment a host with an end time closes, and close a malformed one at once
+            if spec.get("expires"):
+                ends[key] = _end_of(spec["expires"])
             name = spec.get("secret")
             if name:
                 hosts[key] = secrets.get(name)  # None until the secret is filled in
@@ -228,6 +243,7 @@ class InjectCredentials:
         self._sites = sites
         self._keys = frozenset(keys)
         self._allowed = frozenset(allowed)
+        self._ends = ends
 
     def _resolve(self, sni: str):
         """Match a name to its allowlist key: the exact entry, else the nearest `*.` entry above it.
@@ -246,8 +262,9 @@ class InjectCredentials:
         return None
 
     def _permits(self, sni: str) -> bool:
-        """Accept a name whose allowlist entry declares HTTPS."""
-        return self._resolve(sni) in self._allowed
+        """Accept a name whose allowlist entry declares HTTPS and has not reached its end time."""
+        key = self._resolve(sni)
+        return key in self._allowed and time.time() < self._ends.get(key, float("inf"))
 
     def _masker(self, toks, host: str):
         """Mask every form of the secret with same-length filler as a body streams past.

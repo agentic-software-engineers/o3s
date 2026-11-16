@@ -25,8 +25,8 @@ Run `o3s` alone for a menu that leads through each of them.
 
 **firewall**
 ```sh
-# Allows the hosts the cage may reach
-o3s firewall add github.com --port 22 --port 443
+# Allows the hosts the cage may reach, for good or for a set time
+o3s firewall add github.com --port 22 --port 443 --for 1h
 ```
 
 **secret**
@@ -57,11 +57,6 @@ o3s project add torvalds/linux
 ```sh
 # Opens the home's workspace in VS Code inside the cage
 o3s cage ide
-```
-or
-```sh
-# Opens a shell inside the cage
-o3s cage shell
 ```
 
 **update**

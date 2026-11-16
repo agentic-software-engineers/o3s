@@ -27,4 +27,9 @@ cache-size=1000
 # Cap cached record lifetime below the ipset timeout so a re-resolve refreshes the ipset
 max-cache-ttl=1800
 
+# Log every query with its serial, so a refused name pairs with the query that asked for it
+log-queries=extra
+# Write that log where the gateway reads the refused names from
+log-facility=__DNS_LOG_DIR__/dns.log
+
 # generated server=/ipset= allowlist lines are appended below by entrypoint.sh
