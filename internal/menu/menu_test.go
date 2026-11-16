@@ -321,13 +321,23 @@ func TestRmWithNothingToRemoveEndsWithANote(t *testing.T) {
 	}
 }
 
-// Without a blocked host the dialog ends with a note.
+// Without a blocked host the dialog ends with a note, which points a stopped stack at starting it.
 func TestBlockedWithNothingBlockedEndsWithANote(t *testing.T) {
-	_, got := walk(t, Home{Dir: "/home/ubuntu/o3s", Exists: true}, []string{"firewall"}, []string{"blocked"})
+	tests := []struct {
+		running bool
+		want    string
+	}{
+		{true, "No blocked host"},
+		{false, "Start the stack to see the blocked hosts"},
+	}
+	// Check a running and a stopped stack
+	for _, tt := range tests {
+		_, got := walk(t, Home{Dir: "/home/ubuntu/o3s", Exists: true, Running: tt.running}, []string{"firewall"}, []string{"blocked"})
 
-	// Report a command that differs
-	if diff := cmp.Diff([]Command{{Note: "No blocked host"}}, got); diff != "" {
-		t.Errorf("firewall blocked (-want +got):\n%s", diff)
+		// Report a command that differs
+		if diff := cmp.Diff([]Command{{Note: tt.want}}, got); diff != "" {
+			t.Errorf("firewall blocked with running %v (-want +got):\n%s", tt.running, diff)
+		}
 	}
 }
 

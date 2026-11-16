@@ -127,7 +127,8 @@ func menuHome(ctx context.Context) menu.Home {
 			}
 		}
 	}
-	record, _, err := traffic.Read(ctx, dir)
+	record, running, err := traffic.Read(ctx, dir)
+	h.Running = running
 	// Offer every name the gateway refused, noting how often and when
 	if err == nil {
 		now := time.Now()

@@ -96,3 +96,18 @@ func TestRunPassesTheDigestsOn(t *testing.T) {
 		t.Errorf("home.Digests = %v, want %v", home.Digests, digests)
 	}
 }
+
+// A failure also lands in the file the menu names, so the menu still shows it once the terminal it printed on is gone.
+func TestRunWritesItsErrorWhereTheMenuAsks(t *testing.T) {
+	aHome(t)
+	file := filepath.Join(t.TempDir(), "error")
+	t.Setenv("O3S_ERROR_FILE", file)
+
+	status, _ := run(t, "firewall", "rm", "absent.example")
+
+	got, err := os.ReadFile(file)
+	// Require the failure's own line in the file
+	if status != 1 || err != nil || !strings.HasPrefix(string(got), "error: unknown host absent.example") {
+		t.Errorf("Run() = %d, file %q (%v), want 1 and the error line", status, got, err)
+	}
+}
