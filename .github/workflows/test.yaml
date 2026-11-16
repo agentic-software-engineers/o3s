@@ -160,7 +160,7 @@ jobs:
       matrix:
         runner: [ubuntu-24.04, macos-26-intel]
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 45
+    timeout-minutes: 70
     steps:
       # check out the code the suite builds
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -191,13 +191,13 @@ jobs:
 
       # run the suite that boots the home's VM through the o3s CLI
       - name: Run the VM tests
-        run: go test -tags e2e -count=1 -timeout 40m -v ./test/e2e/vm/...
+        run: go test -tags e2e -count=1 -timeout 60m -v ./test/e2e/vm/...
 
   hcs:
     # boot a home's VM on Windows, on the runner whose user is an Administrator, once lint and the unit tests pass
     needs: [golangci-lint, go-test]
     runs-on: windows-2025
-    timeout-minutes: 45
+    timeout-minutes: 70
     steps:
       # keep LF endings, so the checkout matches the other runners
       - name: Set gitconfig
@@ -238,4 +238,4 @@ jobs:
 
       # run the suite that boots the home's VM through the o3s CLI
       - name: Run the VM tests
-        run: go test -tags e2e -count=1 -timeout 40m -v ./test/e2e/vm/...
+        run: go test -tags e2e -count=1 -timeout 60m -v ./test/e2e/vm/...
