@@ -25,16 +25,15 @@ Run `o3s` alone for a menu that leads through each of them.
 
 **firewall**
 ```sh
-# Allows the hosts the cage may reach
-o3s firewall add github.com --port 22 --port 443
+# Allows the hosts the cage may reach, for good or for a set time
+o3s firewall add github.com --port 22 --port 443 --for 1h
 ```
 ```sh
 # Shows the names the cage was refused and the data each allowed host moved
 o3s firewall log
 ```
 ```sh
-# Opens a host for a set time, then removes every host whose time ran out
-o3s firewall add pypi.org --for 1h
+# Removes every host whose time ran out
 o3s firewall prune
 ```
 
@@ -66,9 +65,7 @@ o3s project add torvalds/linux
 ```sh
 # Opens the home's workspace in VS Code inside the cage
 o3s cage ide
-```
-or
-```sh
+# or
 # Opens a shell inside the cage
 o3s cage shell
 ```
