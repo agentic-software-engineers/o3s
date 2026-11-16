@@ -152,18 +152,13 @@ jobs:
           test -z "$(git status --porcelain)"
 
   unix:
-    # boot a home's VM through the o3s CLI on the runners that offer virtualization, once lint and the unit tests pass
+    # install o3s on a bare host the way a user does and boot a home's VM through it, on the runners that offer virtualization,
+    # once lint and the unit tests pass
     needs: [golangci-lint, go-test]
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - runner: ubuntu-24.04
-            archive: lima-2.3.0-Linux-x86_64.tar.gz
-            sha256: cc8ba97f1c801b899f7c9eda9919dfc4ce4fa2c140c53e5add15aa2d0a1936f9
-          - runner: macos-26-intel
-            archive: lima-2.3.0-Darwin-x86_64.tar.gz
-            sha256: d58bc7d6b8158d638720d8c8fdb17eb58527dfead6a29a5b60f48a35ee4a65a6
+        runner: [ubuntu-24.04, macos-26-intel]
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 45
     steps:
@@ -185,18 +180,6 @@ jobs:
           sudo apt-get install -y --no-install-recommends ovmf qemu-system-x86 qemu-utils
           sudo modprobe kvm
           sudo chown "${USER}" /dev/kvm
-
-      # install the pinned VM manager, checked against its published sum
-      - name: Install Lima
-        env:
-          ARCHIVE: ${{ matrix.archive }}
-          SHA256: ${{ matrix.sha256 }}
-        run: |
-          curl -fsSLo "${RUNNER_TEMP}/${ARCHIVE}" "https://github.com/lima-vm/lima/releases/download/v${LIMA_VERSION}/${ARCHIVE}"
-          echo "${SHA256}  ${RUNNER_TEMP}/${ARCHIVE}" | shasum -a 256 -c
-          mkdir "${RUNNER_TEMP}/lima"
-          tar -C "${RUNNER_TEMP}/lima" -xzf "${RUNNER_TEMP}/${ARCHIVE}"
-          echo "${RUNNER_TEMP}/lima/bin" >> "${GITHUB_PATH}"
 
       # restore the VM image from an earlier run, kept per system until the template pins another
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0

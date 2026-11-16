@@ -11,7 +11,8 @@
 version: 2
 
 builds:
-  # The CLI, static and stripped, naming the version it was released at and the digests of its images
+  # The CLI, static and stripped, naming the version it was released at and the digests of its images, for the systems a home's
+  # host runs and the Linux its VM runs
   - id: o3s
     main: ./cmd/o3s
     binary: o3s
@@ -19,6 +20,7 @@ builds:
       - CGO_ENABLED=0
     goos:
       - linux
+      - darwin
     goarch:
       - amd64
       - arm64

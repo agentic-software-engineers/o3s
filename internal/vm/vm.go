@@ -129,7 +129,7 @@ func (l Lima) Delete(ctx context.Context, name string, out io.Writer) error {
 // run runs the VM manager for o3s's own VMs, in its automation mode.
 func (l Lima) run(ctx context.Context, in io.Reader, out, errOut io.Writer, args ...string) error {
 	cmd := exec.CommandContext(ctx, l.path, append([]string{"--tty=false"}, args...)...) //nolint:gosec // o3s runs the limactl it found, with arguments it builds itself
-	cmd.Env = append(os.Environ(), "LIMA_HOME="+paths.Lima())
+	cmd.Env = append(os.Environ(), "LIMA_HOME="+paths.VMs())
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = in, out, errOut
 	return cmd.Run()
 }

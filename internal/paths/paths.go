@@ -44,9 +44,14 @@ func ID(dir string) string {
 	return hex.EncodeToString(sum[:])[:12]
 }
 
-// Lima is where o3s keeps its homes' VMs, apart from the user's own.
+// Lima is where o3s's installer puts the VM manager it runs the homes' VMs with.
 func Lima() string {
 	return filepath.Join(Data(), "lima")
+}
+
+// VMs is where o3s keeps its homes' VMs, apart from the user's own.
+func VMs() string {
+	return filepath.Join(Data(), "vm")
 }
 
 // base hands back a base folder from its XDG variable where that is absolute, else from its default below the home folder.
