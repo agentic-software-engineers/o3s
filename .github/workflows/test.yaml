@@ -37,7 +37,7 @@ jobs:
         with:
           go-version-file: go.mod
 
-      # install this commit's build with this branch's install.sh into a fresh home, the devcontainer CLI included, the way a bare machine does, with gh logged out since a local build carries no attestation
+      # install this commit's build with this branch's install.sh into a fresh home, the devcontainer CLI included, the way a bare machine does
       - name: Install o3s on a bare home
         run: |
           release="$(mktemp -d)"
@@ -45,7 +45,7 @@ jobs:
           asset="o3s-linux-$(go env GOARCH)"
           go build -o "${release}/${asset}" ./cmd/o3s
           (cd "${release}" && sha256sum "${asset}" > checksums.txt)
-          env -u GH_TOKEN -u GITHUB_TOKEN GH_CONFIG_DIR="$(mktemp -d)" HOME="${home}" O3S_RELEASE_URL="file://${release}" sh install.sh
+          HOME="${home}" O3S_RELEASE_URL="file://${release}" sh install.sh
           "${home}/.local/share/o3s/devcontainers/bin/devcontainer" --version
 
       # run the tests that raise one component of the stack, built from this branch

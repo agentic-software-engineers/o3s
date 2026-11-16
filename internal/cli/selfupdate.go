@@ -73,11 +73,6 @@ func selfUpdate(ctx context.Context, in io.Reader, out, errOut io.Writer, yes bo
 	if err != nil {
 		return false, err
 	}
-	verified, err := release.Verify(ctx, bin)
-	// Hand back a release whose attestation fails to verify
-	if err != nil {
-		return false, err
-	}
 	dest := path
 	// Give a plain o3s from before the channels the name of the stable channel
 	if filepath.Base(path) == "o3s" {
@@ -95,10 +90,7 @@ func selfUpdate(ctx context.Context, in io.Reader, out, errOut io.Writer, yes bo
 		}
 	}
 	fmt.Fprintf(out, "Updated o3s to %s\n", target)
-	// Show how to check the attestation where gh checked none
-	if !verified {
-		fmt.Fprintf(out, "Verify its build attestation with: %s\n", release.VerifyHint(dest))
-	}
+	fmt.Fprintf(out, "Verify its build attestation with: %s\n", release.VerifyHint(dest))
 	args := []string{dest, "update"}
 	// Pass the answer on to the new binary's own question
 	if yes {

@@ -8,11 +8,12 @@
 #
 # DESCRIPTION
 #        Downloads the o3s binary of a release for this host, checks it against the release's
-#        checksums, verifies its build attestation where gh is logged in, and installs it to
-#        ~/.local/bin under its channel's name. The latest stable release goes to o3s-latest, which
-#        o3s links to. --rc takes the newest release, release candidates included, as o3s-rc, and
-#        --version a given release as o3s-<version>. Each updates within its channel. Then installs the devcontainer CLI o3s rebuilds the cage with, with its own
-#        Node, into ~/.local/share/o3s/devcontainers.
+#        checksums, installs it to ~/.local/bin under its channel's name, and names the command
+#        that verifies its build attestation by hand. The latest stable release goes to
+#        o3s-latest, which o3s links to. --rc takes the newest release, release candidates
+#        included, as o3s-rc, and --version a given release as o3s-<version>. Each updates
+#        within its channel. Then installs the devcontainer CLI o3s rebuilds the cage with, with
+#        its own Node, into ~/.local/share/o3s/devcontainers.
 #
 # ENVIRONMENT
 #        O3S_INSTALL_DIR             where the binary goes (default: ~/.local/bin)
@@ -145,13 +146,6 @@ fetch "${base}/checksums.txt" "${tmp}/checksums.txt" || die "failed to download 
 grep "  ${asset}\$" "${tmp}/checksums.txt" >"${tmp}/${asset}.sha256" || die "checksums.txt names no ${asset}"
 check_sums "${tmp}" "${asset}.sha256" || die "${asset} differs from its line in checksums.txt, so the download stays uninstalled"
 
-verified="no"
-# Verify the build attestation where gh is installed and logged in
-if command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1; then
-	(cd "${tmp}" && gh attestation verify "${asset}" --repo "${repo}" --signer-workflow "${signer}" >/dev/null 2>&1) || die "the build attestation of ${asset} fails to verify, so the download stays uninstalled"
-	verified="yes"
-fi
-
 dir="${O3S_INSTALL_DIR:-${HOME}/.local/bin}"
 mkdir -p "${dir}"
 name="o3s-${channel}"
@@ -165,12 +159,7 @@ if [ "${channel}" = "latest" ]; then
 	ln -sfn "${name}" "${dir}/o3s"
 fi
 say "Installed $("${dir}/${name}" --version) to ${dir}/${name}"
-# Confirm the attestation, or show how to verify it by hand
-if [ "${verified}" = "yes" ]; then
-	say "Verified its build attestation"
-else
-	say "Verify its build attestation with: gh attestation verify ${dir}/${name} --repo ${repo} --signer-workflow ${signer}"
-fi
+say "Verify its build attestation with: gh attestation verify ${dir}/${name} --repo ${repo} --signer-workflow ${signer}"
 # Show how to reach the binary from a folder outside the PATH
 case ":${PATH}:" in
 *":${dir}:"*) ;;

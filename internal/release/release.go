@@ -11,7 +11,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"os/exec"
 	"path"
 	"path/filepath"
 	"regexp"
@@ -94,25 +93,6 @@ func Fetch(ctx context.Context, version, dir string) (string, error) {
 	}
 	target := filepath.Join(dir, Asset())
 	return target, atomicfile.Write(target, data, 0o755)
-}
-
-// Verify checks a binary's build attestation where gh is installed and logged in, and reports whether it checked.
-func Verify(ctx context.Context, binary string) (bool, error) {
-	gh, err := exec.LookPath("gh")
-	// Leave the check to the user where gh is missing
-	if err != nil {
-		return false, nil
-	}
-	// Leave the check to the user where gh is logged out
-	if exec.CommandContext(ctx, gh, "auth", "status").Run() != nil {
-		return false, nil
-	}
-	out, err := exec.CommandContext(ctx, gh, "attestation", "verify", binary, "--repo", repo, "--signer-workflow", signer).CombinedOutput()
-	// Turn away a binary whose attestation fails to verify
-	if err != nil {
-		return false, fmt.Errorf("the build attestation of %s fails to verify: %s", binary, strings.TrimSpace(string(out)))
-	}
-	return true, nil
 }
 
 // VerifyHint is the command a user runs to check a binary's build attestation by hand.
