@@ -80,7 +80,7 @@ func Engine() (string, error) {
 	}
 }
 
-// Start boots a home's VM, created from the template on its first start, with its progress on out.
+// Start boots a home's VM, created from the template on its first start, with its progress and its setup's log on out.
 func (l Lima) Start(ctx context.Context, name string, out io.Writer) error {
 	names, err := l.output(ctx, "list", "--quiet")
 	// Hand back a manager that fails to list its VMs
@@ -91,7 +91,7 @@ func (l Lima) Start(ctx context.Context, name string, out io.Writer) error {
 	if slices.Contains(strings.Fields(names), name) {
 		return l.run(ctx, nil, out, out, "start", name)
 	}
-	args := []string{"start", "--name=" + name, "--vm-type=" + l.engine}
+	args := []string{"start", "--name=" + name, "--vm-type=" + l.engine, "--progress"}
 	// Name a DNS server for the engine that needs one set
 	if l.engine == "hcs" {
 		args = append(args, "--dns=8.8.8.8")
