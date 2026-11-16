@@ -57,9 +57,6 @@ o3s project add torvalds/linux
 ```sh
 # Opens the home's workspace in VS Code inside the cage
 o3s cage ide
-# or
-# Opens a shell inside the cage
-o3s cage shell
 ```
 
 **update**
