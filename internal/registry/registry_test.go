@@ -60,7 +60,7 @@ func TestCollectionReadsWhatAFeatureNeeds(t *testing.T) {
 	}
 	want := []registry.Feature{{
 		ID:      "tool",
-		Version: "1.2.3",
+		Version: "1.0.0",
 		Options: []registry.Option{
 			{Name: "channel", Type: "string", Default: "stable", Enum: []string{"stable", "beta"}},
 			{Name: "debug", Type: "boolean", Default: "false", Description: "Log every step"},
@@ -79,7 +79,7 @@ func TestCollectionReadsWhatAFeatureNeeds(t *testing.T) {
 // aTool is the metadata of a feature that needs a host with a secret and sets env from its state dir.
 const aTool = `{
   "id": "tool",
-  "version": "1.2.3",
+  "version": "1.0.0",
   "options": {
     "version": {"type": "string", "proposals": ["latest", "lts"], "default": "latest", "description": "Which release to install"},
     "channel": {"type": "string", "enum": ["stable", "beta"], "default": "stable"},

@@ -35,7 +35,7 @@ func TestResolveWorksOutWhatAFeatureSetsUp(t *testing.T) {
 	dir := "/home/ubuntu/features/" + ref.Package()
 	want := registry.Setup{
 		Ref:     registry.Ref{Store: ref.Store, ID: "tool", Tag: "1"},
-		Version: "1.2.3",
+		Version: "1.0.0",
 		Options: map[string]any{"stateDir": dir},
 		Offered: []registry.Option{
 			{Name: "channel", Type: "string", Default: "stable", Enum: []string{"stable", "beta"}},
@@ -101,7 +101,7 @@ func TestResolverReadsEachStoreOnce(t *testing.T) {
 // A feature without a version follows the newest release.
 func TestMajorReadsTheMajorPart(t *testing.T) {
 	// Check every version
-	for in, want := range map[string]string{"2.1.0": "2", "3": "3", "": "latest"} {
+	for in, want := range map[string]string{"2.0.0": "2", "3": "3", "": "latest"} {
 		// Report a major part that differs
 		if got := registry.Major(in); got != want {
 			t.Errorf("Major(%q) = %q, want %q", in, got, want)

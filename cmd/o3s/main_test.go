@@ -82,7 +82,7 @@ exit 1
 // tool is a feature that needs a host with a secret, sets env, and keeps its data in a state dir.
 const tool = `{
   "id": "tool",
-  "version": "2.1.0",
+  "version": "2.0.0",
   "options": {
     "stateDir": {"type": "string", "default": ""},
     "mode": {"type": "string", "enum": ["strict", "loose"], "default": "strict", "description": "How strictly the tool checks"},
@@ -112,7 +112,7 @@ func TestScripts(t *testing.T) {
 	}
 	t.Cleanup(reg.Close)
 	// Stop when the store fails to publish
-	if err := reg.PushFeatures("features", `{"id": "node"}`, `{"id": "go", "version": "1.4.0", "options": {"version": {"type": "string", "default": "latest"}}}`, tool); err != nil {
+	if err := reg.PushFeatures("features", `{"id": "node"}`, `{"id": "go", "version": "1.0.0", "options": {"version": {"type": "string", "default": "latest"}}}`, tool); err != nil {
 		t.Fatalf("Setup: PushFeatures(features) = %v", err)
 	}
 	testscript.Run(t, testscript.Params{

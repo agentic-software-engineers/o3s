@@ -23,10 +23,10 @@ stderr 'no feature here offers the option color'
 stderr 'invalid option "mode", want name=value or id:name=value'
 
 # An option two features offer needs the feature's id
-! exec o3s feature add $REGISTRY/features/tool $REGISTRY/features/go --option version=1.23
-stderr 'tool and go both offer the option version, name one as in --option go:version=1.23'
-exec o3s feature add $REGISTRY/features/tool $REGISTRY/features/go --option go:version=1.23
-grep '"version": "1.23"' .devcontainer/devcontainer.json
+! exec o3s feature add $REGISTRY/features/tool $REGISTRY/features/go --option version=1.0.0
+stderr 'tool and go both offer the option version, name one as in --option go:version=1.0.0'
+exec o3s feature add $REGISTRY/features/tool $REGISTRY/features/go --option go:version=1.0.0
+grep '"version": "1.0.0"' .devcontainer/devcontainer.json
 
 # The folder o3s gives a feature stays o3s's own
 ! exec o3s feature add $REGISTRY/features/tool --option stateDir=/tmp
