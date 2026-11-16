@@ -41,6 +41,8 @@ func (c *Config) Need(by string, ch Change) error {
 	if !slices.Contains(h.By, by) {
 		h.By = append(slices.Clone(h.By), by)
 	}
+	// Keep the host open for good, since a feature needs it for as long as it is installed
+	h.Expires = ""
 	c.Hosts[i] = h
 	return nil
 }

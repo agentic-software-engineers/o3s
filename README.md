@@ -32,6 +32,11 @@ o3s firewall add github.com --port 22 --port 443
 # Shows the names the cage was refused and the data each allowed host moved
 o3s firewall log
 ```
+```sh
+# Opens a host for a set time, then removes every host whose time ran out
+o3s firewall add pypi.org --for 1h
+o3s firewall prune
+```
 
 **secret**
 ```sh

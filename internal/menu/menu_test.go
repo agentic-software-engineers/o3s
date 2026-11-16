@@ -65,15 +65,33 @@ func TestEveryDialogEndsInItsCommand(t *testing.T) {
 	}{
 		{
 			"a new host with a new secret and two sites",
-			[][]string{{"firewall"}, {"add"}, {"example.net"}, {"443,8443"}, {"new"}, {"NEW_TOKEN"}, {"header", "body"}},
-			[]string{"What do you want to do?", "Action", "Host", "Ports", "Secret", "Secret name", "Inject"},
+			[][]string{{"firewall"}, {"add"}, {"example.net"}, {"443,8443"}, {"new"}, {"NEW_TOKEN"}, {"header", "body"}, {"always"}},
+			[]string{"What do you want to do?", "Action", "Host", "Ports", "Secret", "Secret name", "Inject", "For"},
 			[]Command{{Args: []string{"firewall", "add", "example.net", "--port", "443,8443", "--secret", "NEW_TOKEN", "--inject", "header,body"}}},
 		},
 		{
 			"a host without a secret skips where to inject it",
-			[][]string{{"firewall"}, {"add"}, {"example.net"}, {"443"}, {"none"}},
-			[]string{"What do you want to do?", "Action", "Host", "Ports", "Secret"},
+			[][]string{{"firewall"}, {"add"}, {"example.net"}, {"443"}, {"none"}, {"always"}},
+			[]string{"What do you want to do?", "Action", "Host", "Ports", "Secret", "For"},
 			[]Command{{Args: []string{"firewall", "add", "example.net", "--port", "443"}}},
+		},
+		{
+			"a new host for a set time",
+			[][]string{{"firewall"}, {"add"}, {"example.net"}, {"443"}, {"none"}, {"1h"}},
+			[]string{"What do you want to do?", "Action", "Host", "Ports", "Secret", "For"},
+			[]Command{{Args: []string{"firewall", "add", "example.net", "--port", "443", "--for", "1h"}}},
+		},
+		{
+			"a known host for a set time, at the real terminal where the CLI asks before it closes sooner",
+			[][]string{{"firewall"}, {"add"}, {"example.com"}, {"22,443"}, {"none"}, {"1h"}},
+			[]string{"What do you want to do?", "Action", "Host", "Ports", "Secret", "For"},
+			[]Command{{Args: []string{"firewall", "add", "example.com", "--port", "22,443", "--for", "1h"}, Terminal: true}},
+		},
+		{
+			"pruning the expired hosts, at the real terminal where the CLI asks",
+			[][]string{{"firewall"}, {"prune"}},
+			[]string{"What do you want to do?", "Action"},
+			[]Command{{Args: []string{"firewall", "prune"}, Terminal: true}},
 		},
 		{
 			"removing a host the user needs",
@@ -204,7 +222,7 @@ func TestEveryDialogEndsInItsCommand(t *testing.T) {
 
 // A host the allowlist holds offers its ports, its secret and its sites as the defaults.
 func TestFirewallAddOffersTheHostsCurrentValues(t *testing.T) {
-	asked, _ := walk(t, aHome, []string{"firewall"}, []string{"add"}, []string{"api.example.com"}, []string{"443"}, []string{"EXAMPLE_TOKEN"}, []string{"header", "body"})
+	asked, _ := walk(t, aHome, []string{"firewall"}, []string{"add"}, []string{"api.example.com"}, []string{"443"}, []string{"EXAMPLE_TOKEN"}, []string{"header", "body"}, []string{"always"})
 
 	got := []any{asked[3].Default, asked[4].Default, asked[5].Default}
 
@@ -217,7 +235,7 @@ func TestFirewallAddOffersTheHostsCurrentValues(t *testing.T) {
 
 // A new host starts on the HTTPS port and puts a secret into the header.
 func TestFirewallAddOffersTheDefaultsOfANewHost(t *testing.T) {
-	asked, _ := walk(t, aHome, []string{"firewall"}, []string{"add"}, []string{"example.net"}, []string{"443"}, []string{"OTHER_TOKEN"}, []string{"header"})
+	asked, _ := walk(t, aHome, []string{"firewall"}, []string{"add"}, []string{"example.net"}, []string{"443"}, []string{"OTHER_TOKEN"}, []string{"header"}, []string{"always"})
 
 	got := []any{asked[3].Default, asked[4].Default, asked[5].Default}
 
@@ -230,7 +248,7 @@ func TestFirewallAddOffersTheDefaultsOfANewHost(t *testing.T) {
 
 // The secrets on offer show whether each holds a value, and leave room for none or a new one.
 func TestFirewallAddOffersEverySecret(t *testing.T) {
-	asked, _ := walk(t, aHome, []string{"firewall"}, []string{"add"}, []string{"example.net"}, []string{"443"}, []string{"none"})
+	asked, _ := walk(t, aHome, []string{"firewall"}, []string{"add"}, []string{"example.net"}, []string{"443"}, []string{"none"}, []string{"always"})
 
 	got := asked[4].Options
 
@@ -245,7 +263,7 @@ func TestFirewallAddOffersEverySecret(t *testing.T) {
 func TestFirewallOffersTheLogAndTheBlockedHosts(t *testing.T) {
 	q, _ := next(aHome, Answers{}.With("do", []string{"firewall"}))
 
-	want := []Option{{Value: "add"}, {Value: "rm"}, {Value: "ls"}, {Value: "log"}, {Value: "blocked"}}
+	want := []Option{{Value: "add"}, {Value: "rm"}, {Value: "ls"}, {Value: "log"}, {Value: "blocked"}, {Value: "prune"}}
 	// Report actions that differ
 	if diff := cmp.Diff(want, q.Options); diff != "" {
 		t.Errorf("firewall actions (-want +got):\n%s", diff)

@@ -133,6 +133,8 @@ const (
 	fresh = "new"
 	other = "other"
 	yes   = "yes"
+	// always keeps a host open without an end time.
+	always = "always"
 )
 
 // entries are the groups of the main menu, each with what it does.
@@ -191,7 +193,7 @@ func next(h Home, a Answers) (Question, bool) {
 	}
 	// Ask which action of the firewall comes next, which may also show its log or its blocked hosts
 	if do == "firewall" && !a.has("action") {
-		return choose("action", "Action", "add", "rm", "ls", "log", "blocked"), false
+		return choose("action", "Action", "add", "rm", "ls", "log", "blocked", "prune"), false
 	}
 	// Ask which action of the projects comes next, which may also create one
 	if do == "project" && !a.has("action") {
@@ -202,8 +204,8 @@ func next(h Home, a Answers) (Question, bool) {
 		return choose("action", "Action", "add", "rm", "ls"), false
 	}
 	action := a.get("action")
-	// List without a further question
-	if action == "ls" || action == "log" {
+	// List or prune without a further question, since the CLI names what prune removes
+	if action == "ls" || action == "log" || action == "prune" {
 		return Question{}, true
 	}
 	// Follow the dialog of the group
@@ -281,7 +283,7 @@ func firewall(h Home, a Answers, action string) (Question, bool) {
 		}
 		return Question{Key: "inject", Kind: Multi, Title: "Inject", Options: []Option{{Value: "header"}, {Value: "query"}, {Value: "body"}}, Default: sites}, false
 	}
-	return Question{}, true
+	return ask(a, Question{Key: "for", Kind: Input, Title: "For", Default: []string{always}})
 }
 
 // secret asks what storing or removing a secret needs.
@@ -358,6 +360,8 @@ func plan(h Home, a Answers) []Command {
 		return []Command{{Args: []string{"cage", action}, Terminal: action == "shell"}}
 	case action == "ls" || action == "log":
 		return []Command{{Args: []string{do, action}}}
+	case do == "firewall" && action == "prune":
+		return []Command{{Args: []string{"firewall", "prune"}, Terminal: true}}
 	case do == "firewall" && action == "blocked":
 		return blockedPlan(a)
 	case do == "feature":
@@ -371,6 +375,12 @@ func plan(h Home, a Answers) []Command {
 		// Name the secret and where it goes
 		if s := firewallSecret(a); s != "" {
 			args = append(args, "--secret", s, "--inject", strings.Join(a.all("inject"), ","))
+		}
+		limit := a.get("for")
+		// Keep the host open for the time given, letting the CLI ask at the real terminal before a known host closes sooner
+		if limit != "" && limit != always {
+			_, known := (&config.Config{Hosts: h.Hosts}).Find(a.get("host"))
+			return []Command{{Args: append(args, "--for", limit), Terminal: known}}
 		}
 		return []Command{{Args: args}}
 	case do == "secret":
