@@ -24,7 +24,7 @@ const script = "../../install.sh"
 const stub = "#!/bin/sh\necho o3s version " + fixture.Version + "\n"
 
 // tools are the commands install.sh may use beyond the ones a test fakes.
-var tools = []string{"sh", "curl", "sha256sum", "mktemp", "install", "rm", "mkdir", "grep", "cat", "ln", "head", "sed"}
+var tools = []string{"sh", "curl", "sha256sum", "mktemp", "install", "rm", "mkdir", "grep", "cat", "ln", "head", "sed", "tar", "tr", "dirname"}
 
 // feed is a releases feed whose newest entry is a release candidate.
 const feed = `<feed>
@@ -33,7 +33,7 @@ const feed = `<feed>
 </feed>
 `
 
-// aRelease serves a release holding the stub for amd64, and checksums that match it unless tampered.
+// aRelease serves a release holding the stub for Linux and macOS on amd64 and arm64, and checksums that match it unless tampered.
 func aRelease(t *testing.T, tampered bool) string {
 	t.Helper()
 	dir := t.TempDir()
@@ -43,11 +43,14 @@ func aRelease(t *testing.T, tampered bool) string {
 	if tampered {
 		digest = strings.Repeat("0", 64)
 	}
-	files := map[string]string{
-		"o3s-linux-amd64": stub,
-		"checksums.txt":   digest + "  o3s-linux-amd64\n" + strings.Repeat("1", 64) + "  install.sh\n",
-		"releases.atom":   feed,
+	files := map[string]string{"releases.atom": feed}
+	sums := ""
+	// Serve the stub for every system and architecture a release ships
+	for _, asset := range []string{"o3s-linux-amd64", "o3s-linux-arm64", "o3s-darwin-amd64", "o3s-darwin-arm64"} {
+		files[asset] = stub
+		sums += digest + "  " + asset + "\n"
 	}
+	files["checksums.txt"] = sums + strings.Repeat("1", 64) + "  install.sh\n"
 	// Write every file of the release
 	for name, body := range files {
 		// Stop when a file stays unwritten
@@ -94,10 +97,10 @@ func aHost(t *testing.T, kernel, arch string, fakes map[string]string) host {
 	return h
 }
 
-// install runs install.sh on the host against a release, without the devcontainer CLI.
+// install runs install.sh on the host against a release, without the devcontainer CLI and Lima.
 func (h host) install(t *testing.T, release string) (string, error) {
 	t.Helper()
-	return h.run(t, release, "--no-devcontainer")
+	return h.run(t, release, "--no-devcontainer", "--no-lima")
 }
 
 // run runs install.sh on the host against a release with the options given.
@@ -164,7 +167,7 @@ func TestInstallStopsOnATamperedDownload(t *testing.T) {
 func TestInstallTurnsAwayAnUnsupportedHost(t *testing.T) {
 	tests := []struct{ kernel, arch, want string }{
 		{"Linux", "riscv64", "riscv64"},
-		{"Darwin", "arm64", "Darwin"},
+		{"FreeBSD", "amd64", "FreeBSD"},
 	}
 	// Check every host
 	for _, tt := range tests {
@@ -204,7 +207,7 @@ func TestInstallLeavesTheAttestationToTheUser(t *testing.T) {
 func TestInstallNamesTheMissingXz(t *testing.T) {
 	h := aHost(t, "Linux", "x86_64", map[string]string{})
 
-	out, err := h.run(t, aRelease(t, false))
+	out, err := h.run(t, aRelease(t, false), "--no-lima")
 
 	// Require a stop that names xz and the way around it
 	if err == nil || !strings.Contains(out, "xz") || !strings.Contains(out, "--no-devcontainer") {
@@ -250,7 +253,7 @@ func TestInstallKeepsTheDevcontainerCLIItInstalled(t *testing.T) {
 		t.Fatalf("Setup: %v", err)
 	}
 
-	out, err := h.run(t, aRelease(t, false))
+	out, err := h.run(t, aRelease(t, false), "--no-lima")
 
 	// Require the install to keep the CLI, though the host lacks what a fresh install of it needs
 	if err != nil || !strings.Contains(out, "Found the devcontainer CLI in "+filepath.Dir(bin)) {
@@ -272,7 +275,7 @@ func TestInstallNamesTheChannelsBinary(t *testing.T) {
 	for _, tt := range tests {
 		h := aHost(t, "Linux", "x86_64", map[string]string{})
 
-		out, err := h.run(t, aRelease(t, false), append(tt.args, "--no-devcontainer")...)
+		out, err := h.run(t, aRelease(t, false), append(tt.args, "--no-devcontainer", "--no-lima")...)
 
 		// Require the channel's binary in place, the stable one left alone
 		if err != nil || !h.holds(tt.binary) || h.holds("o3s-latest") {
@@ -282,5 +285,79 @@ func TestInstallNamesTheChannelsBinary(t *testing.T) {
 		if !strings.Contains(out, tt.mentioning) {
 			t.Errorf("install.sh %v output lacks %q:\n%s", tt.args, tt.mentioning, out)
 		}
+	}
+}
+
+// A Mac gets the binary built for it, under the same names as on Linux.
+func TestInstallPutsTheMacBinaryInPlace(t *testing.T) {
+	h := aHost(t, "Darwin", "arm64", map[string]string{})
+
+	out, err := h.install(t, aRelease(t, false))
+
+	// Require the stable channel's binary in place
+	if err != nil || !h.installed() {
+		t.Errorf("install.sh on Darwin arm64 = %v, installed %v, want o3s-latest\n%s", err, h.installed(), out)
+	}
+}
+
+// aLima puts a Lima on the host where o3s installs its own, so the install finds it in place.
+func aLima(t *testing.T, h host) string {
+	t.Helper()
+	bin := filepath.Join(h.home, ".local", "share", "o3s", "lima", "bin")
+	// Stop when the folder of the Lima in place fails to appear
+	if err := os.MkdirAll(bin, 0o750); err != nil {
+		t.Fatalf("Setup: %v", err)
+	}
+	// Stop when the Lima in place stays unwritten
+	if err := os.WriteFile(filepath.Join(bin, "limactl"), []byte("#!/bin/sh\n"), 0o755); err != nil {
+		t.Fatalf("Setup: %v", err)
+	}
+	return filepath.Dir(bin)
+}
+
+// A Lima o3s installed before is kept, so a second install downloads nothing for it.
+func TestInstallKeepsTheLimaItInstalled(t *testing.T) {
+	h := aHost(t, "Darwin", "arm64", map[string]string{})
+	prefix := aLima(t, h)
+
+	out, err := h.run(t, aRelease(t, false), "--no-devcontainer")
+
+	// Require the install to keep Lima
+	if err != nil || !strings.Contains(out, "Found Lima in "+prefix) {
+		t.Errorf("install.sh with Lima in place = %v, want it kept\n%s", err, out)
+	}
+}
+
+// A Lima archive that differs from its pinned checksum stays unpacked.
+func TestInstallStopsOnATamperedLima(t *testing.T) {
+	h := aHost(t, "Darwin", "arm64", map[string]string{})
+	mirror := t.TempDir()
+	// Stop when the tampered archive stays unwritten
+	if err := os.WriteFile(filepath.Join(mirror, "lima-2.3.0-Darwin-arm64.tar.gz"), []byte("tampered"), 0o600); err != nil {
+		t.Fatalf("Setup: %v", err)
+	}
+	s := httptest.NewServer(http.FileServer(http.Dir(mirror)))
+	t.Cleanup(s.Close)
+	h.env = append(h.env, "O3S_LIMA_URL="+s.URL)
+
+	out, err := h.run(t, aRelease(t, false), "--no-devcontainer")
+
+	_, unpacked := os.Stat(filepath.Join(h.home, ".local", "share", "o3s", "lima", "bin", "limactl"))
+	// Require a stop that names the checksum, with Lima left out
+	if err == nil || !strings.Contains(out, "Lima") || !strings.Contains(out, "pinned checksum") || unpacked == nil {
+		t.Errorf("install.sh with a tampered Lima = %v, unpacked %v, want a stop\n%s", err, unpacked == nil, out)
+	}
+}
+
+// A Linux host without QEMU, which Lima runs VMs with there, is told how to add it.
+func TestInstallNamesTheMissingQEMU(t *testing.T) {
+	h := aHost(t, "Linux", "x86_64", map[string]string{})
+	aLima(t, h)
+
+	out, err := h.run(t, aRelease(t, false), "--no-devcontainer")
+
+	// Require the install to finish and name QEMU's packages
+	if err != nil || !strings.Contains(out, "QEMU") || !strings.Contains(out, "qemu-system-x86") {
+		t.Errorf("install.sh without QEMU = %v, want a hint naming QEMU\n%s", err, out)
 	}
 }

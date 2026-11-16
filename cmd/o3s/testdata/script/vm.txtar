@@ -2,7 +2,7 @@
 cd home
 exec o3s vm start
 stdout '^The VM o3s-0123456789ab runs$'
-grep 'LIMA_HOME=\S+/\.local/share/o3s/lima --tty=false start --name=o3s-0123456789ab --vm-type=qemu --timeout=30m0s -$' $WORK/limactl.log
+grep 'LIMA_HOME=\S+/\.local/share/o3s/vm --tty=false start --name=o3s-0123456789ab --vm-type=qemu --timeout=30m0s -$' $WORK/limactl.log
 grep 'plain: true' $WORK/template.yaml
 ! exists o3s.json
 
