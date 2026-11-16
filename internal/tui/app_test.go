@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"errors"
+	"os"
 	"os/exec"
 	"strings"
 	"testing"
@@ -126,6 +128,42 @@ func TestAppShowsAFailure(t *testing.T) {
 	view := stripped(m.View().Content)
 	// Require the output, the status and the failure
 	if !m.failed || !strings.Contains(view, "boom") || !strings.Contains(view, "error: exit status 3") {
+		t.Errorf("failed %v, view:\n%s", m.failed, view)
+	}
+}
+
+// A command on the real terminal that fails leaves its own reason in the menu, which outlasts the terminal it printed on.
+func TestAppKeepsTheReasonOfAFailureOnTheTerminal(t *testing.T) {
+	m, _ := anApp(t, nil)
+	m.cfg.Exec = func(cmd *exec.Cmd, fn tea.ExecCallback) tea.Cmd {
+		// Write the reason where the command is told to, as o3s does
+		for _, kv := range cmd.Env {
+			// Write into the file the menu named
+			if file, ok := strings.CutPrefix(kv, "O3S_ERROR_FILE="); ok {
+				_ = os.WriteFile(file, []byte("error: the cage needs AppArmor\n"), 0o600)
+			}
+		}
+		return func() tea.Msg { return fn(errors.New("exit status 1")) }
+	}
+
+	m, _ = drive(m, keys("cage", enter, "shell", enter)...)
+
+	view := stripped(m.View().Content)
+	// Require the reason in place of the exit status
+	if !m.failed || !strings.Contains(view, "error: the cage needs AppArmor") || strings.Contains(view, "exit status 1") {
+		t.Errorf("failed %v, view:\n%s", m.failed, view)
+	}
+}
+
+// A captured command that names its own error gets no second line with its exit status.
+func TestAppNamesACapturedErrorOnce(t *testing.T) {
+	m, _ := anApp(t, map[string]string{"firewall ls": "echo 'error: boom'; exit 3"})
+
+	m, _ = drive(m, keys("fir", enter, "ls", enter)...)
+
+	view := stripped(m.View().Content)
+	// Require the command's own error alone
+	if !m.failed || !strings.Contains(view, "error: boom") || strings.Contains(view, "exit status 3") {
 		t.Errorf("failed %v, view:\n%s", m.failed, view)
 	}
 }

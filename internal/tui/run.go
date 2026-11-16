@@ -3,6 +3,7 @@ package tui
 import (
 	"bufio"
 	"io"
+	"os"
 	"os/exec"
 	"strings"
 
@@ -12,9 +13,16 @@ import (
 // lineMsg is one line a running command printed.
 type lineMsg string
 
+// ErrorFileEnv names the file the menu hands a command on the real terminal to leave its error in.
+const ErrorFileEnv = "O3S_ERROR_FILE"
+
 // endMsg is the end of a running command, and how it ended.
 type endMsg struct {
 	err error
+	// reason is the error a command on the real terminal left behind.
+	reason string
+	// told marks a captured command whose output already named its error.
+	told bool
 }
 
 // stream carries a captured command's lines and then its end to the app, one message at a time.
@@ -44,17 +52,35 @@ func capture(cmd *exec.Cmd, stdin string) stream {
 			done <- err
 		}()
 		lines := bufio.NewScanner(r)
+		told := false
 		// Pass every line on as it comes, until the command closes its output
 		for lines.Scan() {
+			told = told || strings.HasPrefix(strings.TrimSpace(lines.Text()), "error:")
 			s <- lineMsg(lines.Text())
 		}
 		// Name output that fails to read
 		if err := lines.Err(); err != nil {
 			s <- lineMsg("error: " + err.Error())
 		}
-		s <- endMsg{err: <-done}
+		s <- endMsg{err: <-done, told: told}
 	}()
 	return s
+}
+
+// inTerminalLeaving runs a command on the real terminal, handing it a file to leave its error in, and reads that error back once it ends.
+func inTerminalLeaving(cmd *exec.Cmd, hand func(*exec.Cmd, tea.ExecCallback) tea.Cmd) tea.Cmd {
+	file, err := os.CreateTemp("", "o3s-error-*")
+	// Run without a file where none can be made, which leaves the exit status alone
+	if err != nil {
+		return hand(inTerminal(cmd), func(err error) tea.Msg { return endMsg{err: err} })
+	}
+	_ = file.Close()
+	cmd.Env = append(cmd.Environ(), ErrorFileEnv+"="+file.Name())
+	return hand(inTerminal(cmd), func(err error) tea.Msg {
+		data, _ := os.ReadFile(file.Name())
+		_ = os.Remove(file.Name())
+		return endMsg{err: err, reason: strings.TrimSpace(string(data))}
+	})
 }
 
 // inTerminal wraps a command that needs the real terminal, so its output stays on screen until the user goes back.

@@ -20,6 +20,8 @@ type Home struct {
 	Features []string
 	// Blocked are the names the gateway refused, each noting how often and when.
 	Blocked []Option
+	// Running marks a stack whose gateway answers, which alone knows what it blocked.
+	Running bool
 	// Projects are the projects the workspace lists, as host/owner/name.
 	Projects []string
 	Lookup   Lookup
@@ -363,7 +365,7 @@ func plan(h Home, a Answers) []Command {
 	case do == "firewall" && action == "prune":
 		return []Command{{Args: []string{"firewall", "prune"}, Terminal: true}}
 	case do == "firewall" && action == "blocked":
-		return blockedPlan(a)
+		return blockedPlan(h, a)
 	case do == "feature":
 		return featurePlan(h, a, action)
 	case do == "project":
@@ -557,7 +559,11 @@ func remove(a Answers, do string) Command {
 }
 
 // blockedPlan allows every blocked host the user chose on the ports given, or notes that none was there to choose.
-func blockedPlan(a Answers) []Command {
+func blockedPlan(h Home, a Answers) []Command {
+	// Point a stopped stack at starting it, since its gateway holds what it blocked
+	if len(a.all("blocked")) == 0 && !h.Running {
+		return []Command{{Note: "Start the stack to see the blocked hosts"}}
+	}
 	// Name that nothing was blocked or chosen
 	if len(a.all("blocked")) == 0 {
 		return []Command{{Note: "No blocked host"}}

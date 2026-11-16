@@ -112,7 +112,7 @@ func raise(cmd *cobra.Command, dir string) (cage, error) {
 	cli, ok := rebuild.CLI()
 	// Point at the installer where the devcontainer CLI is missing
 	if !ok {
-		return cage{}, fmt.Errorf("%s runs the devcontainer CLI, install it with o3s init", cmd.CommandPath())
+		return cage{}, fmt.Errorf("%s runs the devcontainer CLI, which install.sh installs unless run with --no-devcontainer", cmd.CommandPath())
 	}
 	up := exec.CommandContext(cmd.Context(), cli, "up", "--workspace-folder", dir)
 	var out bytes.Buffer

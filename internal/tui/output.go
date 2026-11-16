@@ -5,26 +5,48 @@ import (
 
 	"charm.land/bubbles/v2/viewport"
 	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
 )
 
-// pane holds the output of a dialog's commands, scrolled to its end as it grows.
+// nonBreakingHyphen stands in for a hyphen while a line breaks, since a hyphen always offers a break.
+const nonBreakingHyphen = "\u2011"
+
+// pane holds the output of a dialog's commands, broken at words to its width and scrolled to its end as it grows.
 type pane struct {
 	lines []string
+	width int
 	view  viewport.Model
 }
 
 // add appends a line and keeps the end in view.
 func (p *pane) add(line string) {
 	p.lines = append(p.lines, colored(line))
-	p.view.SetContentLines(p.lines)
-	p.view.GotoBottom()
+	p.fill()
 }
 
-// size fits the pane into the room the screen leaves it.
+// size fits the pane into the room the screen leaves it, breaking every line anew for its width.
 func (p *pane) size(width, height int) {
+	p.width = width
 	p.view.SetWidth(width)
 	p.view.SetHeight(max(height, 3))
-	p.view.SetContentLines(p.lines)
+	p.fill()
+}
+
+// fill shows every line broken at its words to the pane's width, and keeps the end in view.
+func (p *pane) fill() {
+	shown := make([]string, 0, len(p.lines))
+	// Break every line that is wider than the pane
+	for _, line := range p.lines {
+		// Keep a line whole where the pane has no width yet
+		if p.width <= 0 {
+			shown = append(shown, line)
+			continue
+		}
+		// Keep hyphens from breaking a line, so options like --port stay whole
+		held := strings.ReplaceAll(line, "-", nonBreakingHyphen)
+		shown = append(shown, strings.Split(strings.ReplaceAll(ansi.Wrap(held, p.width, ""), nonBreakingHyphen, "-"), "\n")...)
+	}
+	p.view.SetContentLines(shown)
 	p.view.GotoBottom()
 }
 
