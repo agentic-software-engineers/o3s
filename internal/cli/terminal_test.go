@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// The null device and a pipe read as no terminal, so a confirmation asks for --yes there instead of reading nothing.
+// The null device and a pipe read as streams with nobody behind them, so a confirmation asks to be given up front.
 func TestIsTerminalTellsATerminalFromTheNullDeviceAndAPipe(t *testing.T) {
 	null, err := os.Open(os.DevNull)
 	// Stop when the null device fails to open

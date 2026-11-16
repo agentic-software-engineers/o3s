@@ -13,7 +13,7 @@ import (
 // lineMsg is one line a running command printed.
 type lineMsg string
 
-// ErrorFileEnv names the file the menu hands a command on the real terminal to leave its error in.
+// ErrorFileEnv names where the menu asks a command on the real terminal to leave the reason it failed.
 const ErrorFileEnv = "O3S_ERROR_FILE"
 
 // endMsg is the end of a running command, and how it ended.
@@ -67,10 +67,10 @@ func capture(cmd *exec.Cmd, stdin string) stream {
 	return s
 }
 
-// inTerminalLeaving runs a command on the real terminal, handing it a file to leave its error in, and reads that error back once it ends.
+// inTerminalLeaving runs a command on the real terminal and keeps the reason it gives for failing.
 func inTerminalLeaving(cmd *exec.Cmd, hand func(*exec.Cmd, tea.ExecCallback) tea.Cmd) tea.Cmd {
 	file, err := os.CreateTemp("", "o3s-error-*")
-	// Run without a file where none can be made, which leaves the exit status alone
+	// Run the command as before where the handoff is out of reach
 	if err != nil {
 		return hand(inTerminal(cmd), func(err error) tea.Msg { return endMsg{err: err} })
 	}

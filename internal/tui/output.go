@@ -8,7 +8,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 )
 
-// nonBreakingHyphen stands in for a hyphen while a line breaks, since a hyphen always offers a break.
+// nonBreakingHyphen holds a hyphenated word together while its line breaks.
 const nonBreakingHyphen = "\u2011"
 
 // pane holds the output of a dialog's commands, broken at words to its width and scrolled to its end as it grows.
@@ -35,14 +35,14 @@ func (p *pane) size(width, height int) {
 // fill shows every line broken at its words to the pane's width, and keeps the end in view.
 func (p *pane) fill() {
 	shown := make([]string, 0, len(p.lines))
-	// Break every line that is wider than the pane
+	// Fit every line to the pane's width
 	for _, line := range p.lines {
 		// Keep a line whole where the pane has no width yet
 		if p.width <= 0 {
 			shown = append(shown, line)
 			continue
 		}
-		// Keep hyphens from breaking a line, so options like --port stay whole
+		// Hold every word together across its hyphens, so a command reads as written
 		held := strings.ReplaceAll(line, "-", nonBreakingHyphen)
 		shown = append(shown, strings.Split(strings.ReplaceAll(ansi.Wrap(held, p.width, ""), nonBreakingHyphen, "-"), "\n")...)
 	}

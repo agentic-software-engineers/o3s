@@ -7,7 +7,7 @@ import (
 	"github.com/charmbracelet/x/ansi"
 )
 
-// A line wider than the pane breaks at its words onto further lines, so nothing of it is cut off.
+// A line wider than the pane breaks at its words onto further lines, so all of it stays in view.
 func TestPaneWrapsALongLineAtItsWords(t *testing.T) {
 	var p pane
 	p.size(40, 10)
@@ -25,7 +25,7 @@ func TestPaneWrapsALongLineAtItsWords(t *testing.T) {
 	}
 	// Require every word of the line to stay whole
 	for word := range strings.FieldsSeq(line) {
-		// Report a word cut off or split across lines
+		// Report a word the pane lost
 		if !strings.Contains(shown, word) {
 			t.Errorf("pane lacks %q:\n%s", word, shown)
 		}

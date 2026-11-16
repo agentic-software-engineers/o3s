@@ -249,7 +249,7 @@ func (m model) ended(end endMsg) (tea.Model, tea.Cmd) {
 	if end.err == nil {
 		return m.runNext()
 	}
-	// Name the failure once: the reason a terminal command left, or the exit status where nothing named it yet
+	// Name each failure once, in the command's own words where it left any
 	switch {
 	case end.reason != "":
 		m.out.add(end.reason)

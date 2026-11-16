@@ -149,13 +149,13 @@ func TestAppKeepsTheReasonOfAFailureOnTheTerminal(t *testing.T) {
 	m, _ = drive(m, keys("cage", enter, "shell", enter)...)
 
 	view := stripped(m.View().Content)
-	// Require the reason in place of the exit status
+	// Require the command's own reason
 	if !m.failed || !strings.Contains(view, "error: the cage needs AppArmor") || strings.Contains(view, "exit status 1") {
 		t.Errorf("failed %v, view:\n%s", m.failed, view)
 	}
 }
 
-// A captured command that names its own error gets no second line with its exit status.
+// A captured command that names its own error shows that error alone.
 func TestAppNamesACapturedErrorOnce(t *testing.T) {
 	m, _ := anApp(t, map[string]string{"firewall ls": "echo 'error: boom'; exit 3"})
 
