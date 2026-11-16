@@ -36,9 +36,15 @@ func TestResolveWorksOutWhatAFeatureSetsUp(t *testing.T) {
 	want := registry.Setup{
 		Ref:     registry.Ref{Store: ref.Store, ID: "tool", Tag: "1"},
 		Version: "1.2.3",
-		Options: map[string]string{"stateDir": dir},
-		Hosts:   []registry.Host{{Name: "example.com", Ports: []int{443}, Secret: "EXAMPLE_TOKEN", Inject: []string{"header"}}},
-		Env:     []registry.Env{{Name: "EXAMPLE_HOME", Value: dir}},
+		Options: map[string]any{"stateDir": dir},
+		Offered: []registry.Option{
+			{Name: "channel", Type: "string", Default: "stable", Enum: []string{"stable", "beta"}},
+			{Name: "debug", Type: "boolean", Default: "false", Description: "Log every step"},
+			{Name: "stateDir", Type: "string"},
+			{Name: "version", Type: "string", Default: "latest", Proposals: []string{"latest", "lts"}, Description: "Which release to install"},
+		},
+		Hosts: []registry.Host{{Name: "example.com", Ports: []int{443}, Secret: "EXAMPLE_TOKEN", Inject: []string{"header"}}},
+		Env:   []registry.Env{{Name: "EXAMPLE_HOME", Value: dir}},
 	}
 	// Report a setup that differs
 	if diff := cmp.Diff(want, got); diff != "" {

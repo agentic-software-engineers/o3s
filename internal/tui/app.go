@@ -274,6 +274,20 @@ func (m model) paneHeight() int {
 	return m.height - 5
 }
 
+// explanation draws what a question explains or changes, broken to the width, with a gap before the question.
+func explanation(lines []string, width int) string {
+	var out []string
+	// Draw every line of the explanation
+	for _, line := range lines {
+		out = append(out, wrapped(colored(line), width)...)
+	}
+	// Leave a gap between the explanation and the question
+	if len(out) > 0 {
+		out = append(out, "", "")
+	}
+	return strings.Join(out, "\n")
+}
+
 // View draws the whole screen from the state: header, trail, body, hint.
 func (m model) View() tea.View {
 	top := header.Render("o3s") + "  " + dim.Render(m.home.Dir) + "\n" + strings.Join(m.crumbs, separator) + "\n\n"
@@ -281,7 +295,7 @@ func (m model) View() tea.View {
 	// Draw the body and the hint of the state
 	switch m.state {
 	case asking:
-		body, hint = m.field.View(m.width), dim.Render(m.field.Hint())
+		body, hint = explanation(m.q.Preview, m.width)+m.field.View(m.width), dim.Render(m.field.Hint())
 	case loading:
 		body = dim.Render("...")
 	case running:

@@ -19,9 +19,18 @@ func (fakeLookup) Features(store string) ([]string, error) {
 	return []string{"other", "tool"}, nil
 }
 
-// Add shows what the tool brings.
+// Add shows what a feature brings, the tool with the options it offers.
 func (fakeLookup) Add(id string) (Preview, error) {
-	return Preview{Lines: []string{id + ":1", "  + example.com:443  EXAMPLE_TOKEN !", "  + example.org:443  OTHER_TOKEN !"}, Waiting: []string{"EXAMPLE_TOKEN", "OTHER_TOKEN"}}, nil
+	pv := Preview{Lines: []string{id + ":1", "  + example.com:443  EXAMPLE_TOKEN !", "  + example.org:443  OTHER_TOKEN !"}, Waiting: []string{"EXAMPLE_TOKEN", "OTHER_TOKEN"}}
+	// Offer the tool's options alone
+	if id == "registry.example.com/features/tool" {
+		pv.Options = []FeatureOption{
+			{Name: "debug", Type: "boolean", Default: "false", Description: "Log every step"},
+			{Name: "mode", Type: "string", Default: "strict", Enum: []string{"strict", "loose"}},
+			{Name: "version", Type: "string", Default: "latest", Proposals: []string{"latest", "lts"}},
+		}
+	}
+	return pv, nil
 }
 
 // Remove shows what leaves with the tool.
@@ -47,13 +56,19 @@ func TestFeatureDialogsEndInTheirCommands(t *testing.T) {
 		want    []Command
 	}{
 		{
-			"adding a feature with one value given and one skipped",
-			[][]string{{"feature"}, {"add"}, {"registry.example.com/features"}, {"tool"}, {"yes"}, {value}, {""}},
-			[]string{"What do you want to do?", "Action", "Store", "Features", "Apply?", "Value for EXAMPLE_TOKEN (empty to skip)", "Value for OTHER_TOKEN (empty to skip)"},
+			"adding a feature with one value given and one skipped, its options kept",
+			[][]string{{"feature"}, {"add"}, {"registry.example.com/features"}, {"tool"}, {"yes"}, {"keep defaults"}, {value}, {""}},
+			[]string{"What do you want to do?", "Action", "Store", "Features", "Apply?", "Options", "Value for EXAMPLE_TOKEN (empty to skip)", "Value for OTHER_TOKEN (empty to skip)"},
 			[]Command{
 				{Args: []string{"secret", "add", "EXAMPLE_TOKEN", "--no-bind-hint"}, Stdin: &value},
 				{Args: []string{"feature", "add", "registry.example.com/features/tool", "--no-preview"}},
 			},
+		},
+		{
+			"configuring every option a feature offers, each written as answered",
+			[][]string{{"feature"}, {"add"}, {"registry.example.com/features"}, {"tool"}, {"yes"}, {"configure"}, {"true"}, {"loose"}, {"lts"}, {""}, {""}},
+			[]string{"What do you want to do?", "Action", "Store", "Features", "Apply?", "Options", "tool debug", "tool mode", "tool version", "Value for EXAMPLE_TOKEN (empty to skip)", "Value for OTHER_TOKEN (empty to skip)"},
+			[]Command{{Args: []string{"feature", "add", "registry.example.com/features/tool", "--option", "registry.example.com/features/tool:debug=true", "--option", "registry.example.com/features/tool:mode=loose", "--option", "registry.example.com/features/tool:version=lts", "--no-preview"}}},
 		},
 		{
 			"declining a feature",
@@ -63,8 +78,8 @@ func TestFeatureDialogsEndInTheirCommands(t *testing.T) {
 		},
 		{
 			"adding two features that wait for the same secrets",
-			[][]string{{"feature"}, {"add"}, {"registry.example.com/features"}, {"other", "tool"}, {"yes"}, {value}, {""}},
-			[]string{"What do you want to do?", "Action", "Store", "Features", "Apply?", "Value for EXAMPLE_TOKEN (empty to skip)", "Value for OTHER_TOKEN (empty to skip)"},
+			[][]string{{"feature"}, {"add"}, {"registry.example.com/features"}, {"other", "tool"}, {"yes"}, {"keep defaults"}, {value}, {""}},
+			[]string{"What do you want to do?", "Action", "Store", "Features", "Apply?", "Options", "Value for EXAMPLE_TOKEN (empty to skip)", "Value for OTHER_TOKEN (empty to skip)"},
 			[]Command{
 				{Args: []string{"secret", "add", "EXAMPLE_TOKEN", "--no-bind-hint"}, Stdin: &value},
 				{Args: []string{"feature", "add", "registry.example.com/features/other", "registry.example.com/features/tool", "--no-preview"}},
@@ -109,6 +124,23 @@ func TestFeatureDialogsEndInTheirCommands(t *testing.T) {
 		if diff := cmp.Diff(tt.want, got); diff != "" {
 			t.Errorf("%s: commands (-want +got):\n%s", tt.name, diff)
 		}
+	}
+}
+
+// Each option asks in the shape of the value it takes, starting from its default.
+func TestFeatureOptionsAskByTheirKind(t *testing.T) {
+	asked, _ := walk(t, aHomeWithTheTool(), []string{"feature"}, []string{"add"}, []string{"registry.example.com/features"}, []string{"tool"}, []string{"yes"}, []string{"configure"}, []string{"false"}, []string{"strict"}, []string{"latest"}, []string{""}, []string{""})
+
+	got := asked[6:9]
+
+	want := []Question{
+		{Key: "option:registry.example.com/features/tool:debug", Kind: Select, Title: "tool debug", Options: []Option{{Value: "true"}, {Value: "false"}}, Default: []string{"false"}, Preview: []string{"Log every step"}},
+		{Key: "option:registry.example.com/features/tool:mode", Kind: Select, Title: "tool mode", Options: []Option{{Value: "strict"}, {Value: "loose"}}, Default: []string{"strict"}},
+		{Key: "option:registry.example.com/features/tool:version", Kind: Input, Title: "tool version", Default: []string{"latest"}, Preview: []string{"suggested: latest, lts"}},
+	}
+	// Report questions that differ
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("option questions (-want +got):\n%s", diff)
 	}
 }
 

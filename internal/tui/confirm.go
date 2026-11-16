@@ -52,17 +52,9 @@ func (c confirm) Update(msg tea.Msg) (field, result, tea.Cmd) {
 	return c, result{}, nil
 }
 
-// View draws the change, the question, and both answers with the chosen one highlighted.
+// View draws the question and both answers with the chosen one highlighted.
 func (c confirm) View(int) string {
 	var lines []string
-	// Show every line of the change
-	for _, line := range c.q.Preview {
-		lines = append(lines, colored(line))
-	}
-	// Leave a gap between the change and the question
-	if len(c.q.Preview) > 0 {
-		lines = append(lines, "")
-	}
 	yesLabel, noLabel := "  Yes  ", "  No  "
 	// Highlight the answer the user is on
 	if c.yes {

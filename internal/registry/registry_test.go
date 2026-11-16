@@ -61,9 +61,14 @@ func TestCollectionReadsWhatAFeatureNeeds(t *testing.T) {
 	want := []registry.Feature{{
 		ID:      "tool",
 		Version: "1.2.3",
-		Options: []string{"stateDir", "version"},
-		Hosts:   []registry.Host{{Name: "example.com", Ports: []int{443}, Secret: "EXAMPLE_TOKEN", Inject: []string{"header"}}},
-		Env:     []registry.Env{{Name: "EXAMPLE_HOME", Value: "${stateDir}"}},
+		Options: []registry.Option{
+			{Name: "channel", Type: "string", Default: "stable", Enum: []string{"stable", "beta"}},
+			{Name: "debug", Type: "boolean", Default: "false", Description: "Log every step"},
+			{Name: "stateDir", Type: "string"},
+			{Name: "version", Type: "string", Default: "latest", Proposals: []string{"latest", "lts"}, Description: "Which release to install"},
+		},
+		Hosts: []registry.Host{{Name: "example.com", Ports: []int{443}, Secret: "EXAMPLE_TOKEN", Inject: []string{"header"}}},
+		Env:   []registry.Env{{Name: "EXAMPLE_HOME", Value: "${stateDir}"}},
 	}}
 	// Report metadata that differs from the published one
 	if diff := cmp.Diff(want, got); diff != "" {
@@ -75,7 +80,12 @@ func TestCollectionReadsWhatAFeatureNeeds(t *testing.T) {
 const aTool = `{
   "id": "tool",
   "version": "1.2.3",
-  "options": {"version": {"type": "string", "default": "latest"}, "stateDir": {"type": "string", "default": ""}},
+  "options": {
+    "version": {"type": "string", "proposals": ["latest", "lts"], "default": "latest", "description": "Which release to install"},
+    "channel": {"type": "string", "enum": ["stable", "beta"], "default": "stable"},
+    "debug": {"type": "boolean", "default": false, "description": "Log every step"},
+    "stateDir": {"type": "string", "default": ""}
+  },
   "customizations": {
     "vscode": {"extensions": ["example.tool"]},
     "o3s": {

@@ -26,9 +26,31 @@ var ErrNoCollection = errors.New("holds no feature collection")
 type Feature struct {
 	ID      string
 	Version string
-	Options []string
+	Options []Option
 	Hosts   []Host
 	Env     []Env
+}
+
+// Option is a setting a feature offers, with the values it takes and the one it falls back to.
+type Option struct {
+	Name string
+	// Type is boolean or string.
+	Type    string
+	Default string
+	// Enum lists the only values the option takes, and Proposals the ones it suggests beside any other.
+	Enum      []string
+	Proposals []string
+	// Description says what the option does.
+	Description string
+}
+
+// optionSpec is an option as a feature's metadata writes it.
+type optionSpec struct {
+	Type        string   `json:"type"`
+	Default     any      `json:"default"`
+	Enum        []string `json:"enum"`
+	Proposals   []string `json:"proposals"`
+	Description string   `json:"description"`
 }
 
 // Host is a host a feature needs, with the secret the proxy injects there.
@@ -88,9 +110,9 @@ func features(l v1.Layer) ([]Feature, error) {
 	defer rc.Close()
 	var c struct {
 		Features []struct {
-			ID             string                     `json:"id"`
-			Version        string                     `json:"version"`
-			Options        map[string]json.RawMessage `json:"options"`
+			ID             string                `json:"id"`
+			Version        string                `json:"version"`
+			Options        map[string]optionSpec `json:"options"`
 			Customizations struct {
 				O3S struct {
 					Hosts []Host `json:"hosts"`
@@ -108,12 +130,25 @@ func features(l v1.Layer) ([]Feature, error) {
 	for i, f := range c.Features {
 		o := f.Customizations.O3S
 		fs[i] = Feature{ID: f.ID, Version: f.Version, Hosts: o.Hosts, Env: o.Env}
-		// List the options the feature offers, in order
-		for name := range f.Options {
-			fs[i].Options = append(fs[i].Options, name)
+		// List the options the feature offers, with what each takes
+		for name, o := range f.Options {
+			fs[i].Options = append(fs[i].Options, Option{Name: name, Type: o.Type, Default: defaultOf(o.Default), Enum: o.Enum, Proposals: o.Proposals, Description: o.Description})
 		}
-		slices.Sort(fs[i].Options)
+		slices.SortFunc(fs[i].Options, func(a, b Option) int { return strings.Compare(a.Name, b.Name) })
 	}
 	slices.SortFunc(fs, func(a, b Feature) int { return strings.Compare(a.ID, b.ID) })
 	return fs, nil
+}
+
+// defaultOf writes an option's fallback as text, a boolean as true or false.
+func defaultOf(v any) string {
+	// Write the fallback in the shape it came in
+	switch d := v.(type) {
+	case nil:
+		return ""
+	case string:
+		return d
+	default:
+		return fmt.Sprint(d)
+	}
 }
