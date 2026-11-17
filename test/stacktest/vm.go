@@ -115,15 +115,21 @@ func fileURL(dir string) string {
 	return "file://" + path
 }
 
-// O3sIn runs the o3s on PATH in a home's folder, and hands back what it printed on stdout, with stderr in its failure.
+// O3sIn runs the o3s on PATH in a home's folder, and hands back what it printed on stdout, with stderr in its failure. Its stderr
+// lands in the test's log either way, so a run that passes still shows what the VM manager did and when.
 func O3sIn(tb testing.TB, dir string, args ...string) (string, error) {
 	tb.Helper()
 	cmd := exec.CommandContext(tb.Context(), "o3s", args...)
 	cmd.Dir = dir
 	var stdout, stderr strings.Builder
 	cmd.Stdout, cmd.Stderr = &stdout, &stderr
-	// Hand back what o3s printed on stderr along with the failure
-	if err := cmd.Run(); err != nil {
+	err := cmd.Run()
+	// Log what o3s printed on stderr, where it printed anything
+	if stderr.Len() > 0 {
+		tb.Logf("o3s %s stderr:\n%s", strings.Join(args, " "), stderr.String())
+	}
+	// Hand back the failure with what o3s printed on stderr
+	if err != nil {
 		return stdout.String(), fmt.Errorf("o3s %s: %w\n%s", strings.Join(args, " "), err, stderr.String())
 	}
 	return stdout.String(), nil

@@ -2,7 +2,7 @@
 cd home
 exec o3s vm start
 stdout '^The VM o3s-0123456789ab runs$'
-grep 'LIMA_HOME=\S+/\.local/share/o3s/vm --tty=false start --name=o3s-0123456789ab --vm-type=qemu --progress --timeout=30m0s -$' $WORK/limactl.log
+grep 'LIMA_HOME=\S+/\.local/share/o3s/vm --tty=false start --name=o3s-0123456789ab --vm-type=qemu --timeout=30m0s -$' $WORK/limactl.log
 grep 'plain: true' $WORK/template.yaml
 ! exists o3s.json
 
@@ -30,7 +30,7 @@ stderr 'does not exist'
 # The engine that needs a DNS server gets one
 env O3S_ENGINE=hcs
 exec o3s vm start
-grep 'vm-type=hcs --progress --timeout=30m0s --dns=8.8.8.8 -$' $WORK/limactl.log
+grep 'vm-type=hcs --timeout=30m0s --dns=8.8.8.8 -$' $WORK/limactl.log
 
 # An unknown engine is turned away
 env O3S_ENGINE=firecracker
