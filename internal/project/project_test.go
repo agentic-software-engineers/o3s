@@ -2,25 +2,38 @@ package project
 
 import (
 	"errors"
+	"path"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+
+	"github.com/hansehart/o3s/internal/fixture"
+)
+
+// The parts of the repositories the set names, each as the parser reads it.
+var (
+	owner, name, _            = strings.Cut(fixture.Repo, "/")
+	nestedHost, nestedPath, _ = strings.Cut(fixture.NestedRepo, "/")
+	nestedOwner               = path.Dir(nestedPath)
+	nestedName                = path.Base(nestedPath)
 )
 
 // Every form a repository takes reads as the repository it names, the short ones cloned over SSH.
 func TestParseReadsEveryForm(t *testing.T) {
+	onHost := fixture.Host + "/" + fixture.Repo
 	tests := []struct {
 		arg  string
 		want Repository
 	}{
-		{"torvalds/linux", Repository{Host: "github.com", Port: 22, Owner: "torvalds", Name: "linux", URL: "git@github.com:torvalds/linux.git", SSH: true}},
-		{"torvalds/linux.git", Repository{Host: "github.com", Port: 22, Owner: "torvalds", Name: "linux", URL: "git@github.com:torvalds/linux.git", SSH: true}},
-		{"gitlab.com/group/app", Repository{Host: "gitlab.com", Port: 22, Owner: "group", Name: "app", URL: "git@gitlab.com:group/app.git", SSH: true}},
-		{"gitlab.com/group/sub/app", Repository{Host: "gitlab.com", Port: 22, Owner: "group/sub", Name: "app", URL: "git@gitlab.com:group/sub/app.git", SSH: true}},
-		{"git@github.com:torvalds/linux.git", Repository{Host: "github.com", Port: 22, Owner: "torvalds", Name: "linux", URL: "git@github.com:torvalds/linux.git", SSH: true}},
-		{"git@gitlab.com:group/sub/app.git", Repository{Host: "gitlab.com", Port: 22, Owner: "group/sub", Name: "app", URL: "git@gitlab.com:group/sub/app.git", SSH: true}},
-		{"ssh://git@example.com:2222/team/app.git", Repository{Host: "example.com", Port: 2222, Owner: "team", Name: "app", URL: "ssh://git@example.com:2222/team/app.git", SSH: true}},
-		{"https://github.com/torvalds/linux", Repository{Host: "github.com", Port: 443, Owner: "torvalds", Name: "linux", URL: "https://github.com/torvalds/linux"}},
+		{fixture.Repo, Repository{Host: "github.com", Port: 22, Owner: owner, Name: name, URL: "git@github.com:" + fixture.Repo + ".git", SSH: true}},
+		{fixture.Repo + ".git", Repository{Host: "github.com", Port: 22, Owner: owner, Name: name, URL: "git@github.com:" + fixture.Repo + ".git", SSH: true}},
+		{onHost, Repository{Host: fixture.Host, Port: 22, Owner: owner, Name: name, URL: "git@" + fixture.Host + ":" + fixture.Repo + ".git", SSH: true}},
+		{fixture.NestedRepo, Repository{Host: nestedHost, Port: 22, Owner: nestedOwner, Name: nestedName, URL: "git@" + nestedHost + ":" + nestedPath + ".git", SSH: true}},
+		{"git@github.com:" + fixture.Repo + ".git", Repository{Host: "github.com", Port: 22, Owner: owner, Name: name, URL: "git@github.com:" + fixture.Repo + ".git", SSH: true}},
+		{"git@" + nestedHost + ":" + nestedPath + ".git", Repository{Host: nestedHost, Port: 22, Owner: nestedOwner, Name: nestedName, URL: "git@" + nestedHost + ":" + nestedPath + ".git", SSH: true}},
+		{"ssh://git@" + fixture.Host + ":2222/" + fixture.Repo + ".git", Repository{Host: fixture.Host, Port: 2222, Owner: owner, Name: name, URL: "ssh://git@" + fixture.Host + ":2222/" + fixture.Repo + ".git", SSH: true}},
+		{"https://" + onHost, Repository{Host: fixture.Host, Port: 443, Owner: owner, Name: name, URL: "https://" + onHost}},
 	}
 	// Read every form
 	for _, tt := range tests {
@@ -54,10 +67,10 @@ func TestParseTurnsAwayWhatNamesNoRepository(t *testing.T) {
 // A repository lands in the projects volume by host, owner and name.
 func TestPathNestsByHostOwnerAndName(t *testing.T) {
 	tests := map[string]string{
-		"torvalds/linux":                    "/home/ubuntu/projects/github.com/torvalds/linux",
-		"git@gitlab.com:group/sub/app.git":  "/home/ubuntu/projects/gitlab.com/group/sub/app",
-		"https://example.com/team/app.git":  "/home/ubuntu/projects/example.com/team/app",
-		"ssh://git@example.com:2222/team/x": "/home/ubuntu/projects/example.com/team/x",
+		fixture.Repo: Dir + "/github.com/" + fixture.Repo,
+		"git@" + nestedHost + ":" + nestedPath + ".git":         Dir + "/" + fixture.NestedRepo,
+		"https://" + fixture.Host + "/" + fixture.Repo + ".git": Dir + "/" + fixture.Host + "/" + fixture.Repo,
+		"ssh://git@" + fixture.Host + ":2222/" + fixture.Repo:   Dir + "/" + fixture.Host + "/" + fixture.Repo,
 	}
 	// Place every repository
 	for arg, want := range tests {
@@ -72,11 +85,11 @@ func TestPathNestsByHostOwnerAndName(t *testing.T) {
 
 // A project's folder in the volume reads back as the repository it holds, in the short form Parse takes.
 func TestAtReadsAFolderBack(t *testing.T) {
-	r, ok := At("/home/ubuntu/projects/gitlab.com/group/sub/app")
+	r, ok := At(Dir + "/" + fixture.NestedRepo)
 
 	// Report a folder read wrong
-	if !ok || r.Short() != "gitlab.com/group/sub/app" || r.FullName() != "group/sub/app" {
-		t.Errorf("At = %+v, %v, want gitlab.com/group/sub/app", r, ok)
+	if !ok || r.Short() != fixture.NestedRepo || r.FullName() != nestedPath {
+		t.Errorf("At = %+v, %v, want %s", r, ok, fixture.NestedRepo)
 	}
 	// Report a folder outside the volume read as a project
 	if _, ok := At("/home/ubuntu/o3s"); ok {

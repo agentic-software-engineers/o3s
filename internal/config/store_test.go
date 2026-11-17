@@ -7,25 +7,26 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/hansehart/o3s/internal/config"
+	"github.com/hansehart/o3s/internal/fixture"
 )
 
 // A new store joins the list once, and a repeat reports it as known.
 func TestAddStoreAddsAStoreOnce(t *testing.T) {
 	var c config.Config
 
-	added, err := c.AddStore("registry.example.com/features")
+	added, err := c.AddStore(fixture.Store)
 	// Stop when the store is turned away
 	if err != nil || !added {
-		t.Fatalf("AddStore(registry.example.com/features) = %v, %v, want true, nil", added, err)
+		t.Fatalf("AddStore(%s) = %v, %v, want true, nil", fixture.Store, added, err)
 	}
-	again, err := c.AddStore("registry.example.com/features")
+	again, err := c.AddStore(fixture.Store)
 
 	// Require a repeat to report the store as known
 	if err != nil || again {
 		t.Errorf("AddStore again = %v, %v, want false, nil", again, err)
 	}
 	// Require the store listed once
-	if diff := cmp.Diff([]config.Store{{ID: "registry.example.com/features"}}, c.Stores); diff != "" {
+	if diff := cmp.Diff([]config.Store{{ID: fixture.Store}}, c.Stores); diff != "" {
 		t.Errorf("stores (-want +got):\n%s", diff)
 	}
 }
@@ -51,16 +52,16 @@ func TestAddStoreTurnsAwayAMalformedID(t *testing.T) {
 
 // Removing a store drops it from the list.
 func TestRemoveStoreDropsTheStore(t *testing.T) {
-	c := config.Config{Stores: []config.Store{{ID: "registry.example.com/features"}, {ID: "registry.example.org/features"}}}
+	c := config.Config{Stores: []config.Store{{ID: fixture.Store}, {ID: fixture.AbsentStore}}}
 
-	err := c.RemoveStore("registry.example.com/features")
+	err := c.RemoveStore(fixture.Store)
 
 	// Stop when the store is turned away
 	if err != nil {
-		t.Fatalf("RemoveStore(registry.example.com/features) = %v", err)
+		t.Fatalf("RemoveStore(%s) = %v", fixture.Store, err)
 	}
 	// Require the other store alone to stay
-	if diff := cmp.Diff([]config.Store{{ID: "registry.example.org/features"}}, c.Stores); diff != "" {
+	if diff := cmp.Diff([]config.Store{{ID: fixture.AbsentStore}}, c.Stores); diff != "" {
 		t.Errorf("stores (-want +got):\n%s", diff)
 	}
 }
@@ -69,10 +70,10 @@ func TestRemoveStoreDropsTheStore(t *testing.T) {
 func TestRemoveStoreTurnsAwayAnUnknownStore(t *testing.T) {
 	var c config.Config
 
-	err := c.RemoveStore("registry.example.com/features")
+	err := c.RemoveStore(fixture.Store)
 
 	// Require the error that names an unknown store
 	if !errors.Is(err, config.ErrUnknownStore) {
-		t.Errorf("RemoveStore(registry.example.com/features) = %v, want ErrUnknownStore", err)
+		t.Errorf("RemoveStore(%s) = %v, want ErrUnknownStore", fixture.Store, err)
 	}
 }

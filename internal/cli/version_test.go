@@ -3,11 +3,13 @@ package cli
 import (
 	"runtime/debug"
 	"testing"
+
+	"github.com/hansehart/o3s/internal/fixture"
 )
 
 // The version the release sets wins, a module build reads its own, and a checkout shows dev.
 func TestVersionNamesTheBuild(t *testing.T) {
-	module := &debug.BuildInfo{Main: debug.Module{Version: "v1.0.0"}}
+	module := &debug.BuildInfo{Main: debug.Module{Version: "v" + fixture.Version}}
 	checkout := &debug.BuildInfo{Main: debug.Module{Version: "(devel)"}}
 	tests := []struct {
 		name     string
@@ -15,8 +17,8 @@ func TestVersionNamesTheBuild(t *testing.T) {
 		info     *debug.BuildInfo
 		want     string
 	}{
-		{"a release", "1.0.0", checkout, "1.0.0"},
-		{"go install at a tag", "", module, "1.0.0"},
+		{"a release", fixture.Version, checkout, fixture.Version},
+		{"go install at a tag", "", module, fixture.Version},
 		{"a checkout", "", checkout, "dev"},
 		{"a build without its info", "", nil, "dev"},
 	}
