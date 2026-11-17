@@ -37,9 +37,15 @@ func TestResolveWorksOutWhatAFeatureSetsUp(t *testing.T) {
 	want := registry.Setup{
 		Ref:     registry.Ref{Store: ref.Store, ID: fixture.Feature, Tag: fixture.Major},
 		Version: fixture.Version,
-		Options: map[string]string{"stateDir": dir},
-		Hosts:   []registry.Host{{Name: fixture.Host, Ports: []int{fixture.Port}, Secret: fixture.Secret, Inject: []string{"header"}}},
-		Env:     []registry.Env{{Name: "EXAMPLE_HOME", Value: dir}},
+		Options: map[string]any{"stateDir": dir},
+		Offered: []registry.Option{
+			{Name: "channel", Type: "string", Default: "stable", Enum: []string{"stable", "beta"}},
+			{Name: "debug", Type: "boolean", Default: "false", Description: "Log every step"},
+			{Name: "stateDir", Type: "string"},
+			{Name: "version", Type: "string", Default: fixture.FloatingTag, Proposals: []string{fixture.FloatingTag, "lts"}, Description: "Which release to install"},
+		},
+		Hosts: []registry.Host{{Name: fixture.Host, Ports: []int{fixture.Port}, Secret: fixture.Secret, Inject: []string{"header"}}},
+		Env:   []registry.Env{{Name: "EXAMPLE_HOME", Value: dir}},
 	}
 	// Report a setup that differs
 	if diff := cmp.Diff(want, got); diff != "" {

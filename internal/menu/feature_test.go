@@ -31,9 +31,18 @@ func (fakeLookup) Features(store string) ([]string, error) {
 	return []string{fixture.OtherFeature, fixture.Feature}, nil
 }
 
-// Add shows what the tool brings.
+// Add shows what a feature brings, the tool with the options it offers.
 func (fakeLookup) Add(id string) (Preview, error) {
-	return Preview{Lines: []string{id + ":" + fixture.Major, hostLine, otherHostLine}, Waiting: []string{fixture.Secret, fixture.OtherSecret}}, nil
+	pv := Preview{Lines: []string{id + ":" + fixture.Major, hostLine, otherHostLine}, Waiting: []string{fixture.Secret, fixture.OtherSecret}}
+	// Offer the tool's options alone
+	if id == toolPkg {
+		pv.Options = []FeatureOption{
+			{Name: "debug", Type: "boolean", Default: "false", Description: "Log every step"},
+			{Name: "mode", Type: "string", Default: "strict", Enum: []string{"strict", "loose"}},
+			{Name: "version", Type: "string", Default: fixture.FloatingTag, Proposals: []string{fixture.FloatingTag, "lts"}},
+		}
+	}
+	return pv, nil
 }
 
 // Remove shows what leaves with the tool.
@@ -59,13 +68,19 @@ func TestFeatureDialogsEndInTheirCommands(t *testing.T) {
 		want    []Command
 	}{
 		{
-			"adding a feature with one value given and one skipped",
-			[][]string{{"feature"}, {"add"}, {fixture.Store}, {fixture.Feature}, {"yes"}, {value}, {""}},
-			[]string{"What do you want to do?", "Action", "Store", "Features", "Apply?", "Value for " + fixture.Secret + " (empty to skip)", "Value for " + fixture.OtherSecret + " (empty to skip)"},
+			"adding a feature with one value given and one skipped, its options kept",
+			[][]string{{"feature"}, {"add"}, {fixture.Store}, {fixture.Feature}, {"yes"}, {"keep defaults"}, {value}, {""}},
+			[]string{"What do you want to do?", "Action", "Store", "Features", "Apply?", "Options", "Value for " + fixture.Secret + " (empty to skip)", "Value for " + fixture.OtherSecret + " (empty to skip)"},
 			[]Command{
 				{Args: []string{"secret", "add", fixture.Secret, "--no-bind-hint"}, Stdin: &value},
 				{Args: []string{"feature", "add", toolPkg, "--no-preview"}},
 			},
+		},
+		{
+			"configuring every option a feature offers, each written as answered",
+			[][]string{{"feature"}, {"add"}, {fixture.Store}, {fixture.Feature}, {"yes"}, {"configure"}, {"true"}, {"loose"}, {"lts"}, {""}, {""}},
+			[]string{"What do you want to do?", "Action", "Store", "Features", "Apply?", "Options", fixture.Feature + " debug", fixture.Feature + " mode", fixture.Feature + " version", "Value for " + fixture.Secret + " (empty to skip)", "Value for " + fixture.OtherSecret + " (empty to skip)"},
+			[]Command{{Args: []string{"feature", "add", toolPkg, "--option", toolPkg + ":debug=true", "--option", toolPkg + ":mode=loose", "--option", toolPkg + ":version=lts", "--no-preview"}}},
 		},
 		{
 			"declining a feature",
@@ -75,8 +90,8 @@ func TestFeatureDialogsEndInTheirCommands(t *testing.T) {
 		},
 		{
 			"adding two features that wait for the same secrets",
-			[][]string{{"feature"}, {"add"}, {fixture.Store}, {fixture.OtherFeature, fixture.Feature}, {"yes"}, {value}, {""}},
-			[]string{"What do you want to do?", "Action", "Store", "Features", "Apply?", "Value for " + fixture.Secret + " (empty to skip)", "Value for " + fixture.OtherSecret + " (empty to skip)"},
+			[][]string{{"feature"}, {"add"}, {fixture.Store}, {fixture.OtherFeature, fixture.Feature}, {"yes"}, {"keep defaults"}, {value}, {""}},
+			[]string{"What do you want to do?", "Action", "Store", "Features", "Apply?", "Options", "Value for " + fixture.Secret + " (empty to skip)", "Value for " + fixture.OtherSecret + " (empty to skip)"},
 			[]Command{
 				{Args: []string{"secret", "add", fixture.Secret, "--no-bind-hint"}, Stdin: &value},
 				{Args: []string{"feature", "add", otherPkg, toolPkg, "--no-preview"}},
@@ -121,6 +136,23 @@ func TestFeatureDialogsEndInTheirCommands(t *testing.T) {
 		if diff := cmp.Diff(tt.want, got); diff != "" {
 			t.Errorf("%s: commands (-want +got):\n%s", tt.name, diff)
 		}
+	}
+}
+
+// Each option asks in the shape of the value it takes, starting from its default.
+func TestFeatureOptionsAskByTheirKind(t *testing.T) {
+	asked, _ := walk(t, aHomeWithTheTool(), []string{"feature"}, []string{"add"}, []string{fixture.Store}, []string{fixture.Feature}, []string{"yes"}, []string{"configure"}, []string{"false"}, []string{"strict"}, []string{fixture.FloatingTag}, []string{""}, []string{""})
+
+	got := asked[6:9]
+
+	want := []Question{
+		{Key: "option:" + toolPkg + ":debug", Kind: Select, Title: fixture.Feature + " debug", Options: []Option{{Value: "true"}, {Value: "false"}}, Default: []string{"false"}, Preview: []string{"Log every step"}},
+		{Key: "option:" + toolPkg + ":mode", Kind: Select, Title: fixture.Feature + " mode", Options: []Option{{Value: "strict"}, {Value: "loose"}}, Default: []string{"strict"}},
+		{Key: "option:" + toolPkg + ":version", Kind: Input, Title: fixture.Feature + " version", Default: []string{fixture.FloatingTag}, Preview: []string{"suggested: " + fixture.FloatingTag + ", lts"}},
+	}
+	// Report questions that differ
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("option questions (-want +got):\n%s", diff)
 	}
 }
 

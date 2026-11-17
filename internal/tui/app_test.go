@@ -181,6 +181,30 @@ func TestAppHandsTheTerminalToTheShell(t *testing.T) {
 	}
 }
 
+// Every kind of question shows what it explains above it, a long line broken at its words.
+func TestAppShowsTheExplanationOfEveryQuestion(t *testing.T) {
+	note := "Channel (lts|latest), a release line (major or major.minor) or an exact version to install"
+	// Ask every kind of question
+	for _, kind := range []menu.Kind{menu.Input, menu.Select, menu.Confirm} {
+		q := menu.Question{Key: "k", Kind: kind, Title: "node version", Options: []menu.Option{{Value: "lts"}}, Default: []string{"lts"}, Preview: []string{note}}
+		m := model{width: narrow, height: usualHeight, state: asking, q: q, field: newField(q)}
+
+		view := stripped(m.View().Content)
+
+		// Require every word of the explanation, with each line within the width
+		for word := range strings.FieldsSeq(note) {
+			// Report a word the screen lost
+			if !strings.Contains(view, word) {
+				t.Errorf("kind %v lacks %q:\n%s", kind, word, view)
+			}
+		}
+		// Require the explanation once
+		if n := strings.Count(view, "Channel"); n != 1 {
+			t.Errorf("kind %v shows the explanation %d times:\n%s", kind, n, view)
+		}
+	}
+}
+
 // A menu takes its size from the terminal's first report.
 func TestAppTakesItsSizeFromTheTerminal(t *testing.T) {
 	m, _ := anApp(t, nil)

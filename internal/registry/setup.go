@@ -11,6 +11,9 @@ import (
 // FeaturesRoot is where the cage keeps every feature's state dir.
 const FeaturesRoot = "/home/ubuntu/features/"
 
+// StateDir is the option through which o3s hands a feature the folder it keeps its data in.
+const StateDir = "stateDir"
+
 // ErrUnknownFeature marks a feature its store or the home lacks.
 var ErrUnknownFeature = errors.New("unknown feature")
 
@@ -18,7 +21,9 @@ var ErrUnknownFeature = errors.New("unknown feature")
 type Setup struct {
 	Ref     Ref
 	Version string
-	Options map[string]string
+	Options map[string]any
+	// Offered are the options the feature offers, the one o3s sets itself among them.
+	Offered []Option
 	Hosts   []Host
 	Env     []Env
 }
@@ -47,10 +52,10 @@ func (r *Resolver) Resolve(ctx context.Context, ref Ref) (Setup, error) {
 		ref.Tag = Major(f.Version)
 	}
 	dir := FeaturesRoot + ref.Package()
-	s := Setup{Ref: ref, Version: f.Version, Hosts: f.Hosts}
+	s := Setup{Ref: ref, Version: f.Version, Hosts: f.Hosts, Offered: f.Options}
 	// Give the feature its state dir where it takes one
-	if slices.Contains(f.Options, "stateDir") {
-		s.Options = map[string]string{"stateDir": dir}
+	if slices.ContainsFunc(f.Options, func(o Option) bool { return o.Name == StateDir }) {
+		s.Options = map[string]any{StateDir: dir}
 	}
 	// Fill the state dir into every variable
 	for _, e := range f.Env {

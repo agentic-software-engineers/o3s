@@ -83,8 +83,13 @@ exit 1
 // tool is a feature that needs a host with a secret, sets env, and keeps its data in a state dir.
 const tool = `{
   "id": "tool",
-  "version": "2.1.0",
-  "options": {"stateDir": {"type": "string", "default": ""}},
+  "version": "2.0.0",
+  "options": {
+    "stateDir": {"type": "string", "default": ""},
+    "mode": {"type": "string", "enum": ["strict", "loose"], "default": "strict", "description": "How strictly the tool checks"},
+    "debug": {"type": "boolean", "default": false, "description": "Log every step"},
+    "version": {"type": "string", "proposals": ["latest", "lts"], "default": "latest"}
+  },
   "customizations": {"o3s": {
     "hosts": [{"name": "example.com", "ports": [443], "secret": "EXAMPLE_TOKEN", "description": "API"}],
     "env": [
@@ -108,7 +113,7 @@ func TestScripts(t *testing.T) {
 	}
 	t.Cleanup(reg.Close)
 	// Stop when the store fails to publish
-	if err := reg.PushFeatures("features", `{"id": "node"}`, `{"id": "go", "version": "1.4.0"}`, tool); err != nil {
+	if err := reg.PushFeatures("features", `{"id": "node"}`, `{"id": "go", "version": "1.0.0", "options": {"version": {"type": "string", "default": "latest"}}}`, tool); err != nil {
 		t.Fatalf("Setup: PushFeatures(features) = %v", err)
 	}
 	testscript.Run(t, testscript.Params{

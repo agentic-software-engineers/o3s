@@ -59,3 +59,27 @@ func TestPaneRewrapsWhenItNarrows(t *testing.T) {
 		t.Errorf("pane lost the end of the line:\n%s", shown)
 	}
 }
+
+// A listed item too long for the screen stays on its own line and goes on under itself, so it reads as one item.
+func TestWrappedHangsAnItemUnderItself(t *testing.T) {
+	item := "NPM_CONFIG_CACHE=/home/ubuntu/features/" + fixture.Store + "/" + fixture.Feature + "/cache"
+	line := "  + " + item
+
+	got := wrapped(line, narrow)
+
+	// Require the item to start on its first line
+	if !strings.HasPrefix(got[0], "  + NPM_CONFIG_CACHE=") {
+		t.Errorf("first line = %q, want the item started on it", got[0])
+	}
+	// Require every further line under the item, within the width
+	for _, l := range got[1:] {
+		// Report a line that leaves the item or the width
+		if !strings.HasPrefix(l, "    ") || strings.HasPrefix(l, "     ") || ansi.StringWidth(l) > narrow {
+			t.Errorf("further line %q, want it under the item and at most %d wide", l, narrow)
+		}
+	}
+	// Require the whole item across the lines
+	if joined := strings.ReplaceAll(strings.Join(got, ""), " ", ""); !strings.Contains(joined, "+"+item) {
+		t.Errorf("lines %q lose part of the item", got)
+	}
+}

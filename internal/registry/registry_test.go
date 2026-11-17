@@ -63,9 +63,14 @@ func TestCollectionReadsWhatAFeatureNeeds(t *testing.T) {
 	want := []registry.Feature{{
 		ID:      fixture.Feature,
 		Version: fixture.Version,
-		Options: []string{"stateDir", "version"},
-		Hosts:   []registry.Host{{Name: fixture.Host, Ports: []int{fixture.Port}, Secret: fixture.Secret, Inject: []string{"header"}}},
-		Env:     []registry.Env{{Name: "EXAMPLE_HOME", Value: "${stateDir}"}},
+		Options: []registry.Option{
+			{Name: "channel", Type: "string", Default: "stable", Enum: []string{"stable", "beta"}},
+			{Name: "debug", Type: "boolean", Default: "false", Description: "Log every step"},
+			{Name: "stateDir", Type: "string"},
+			{Name: "version", Type: "string", Default: fixture.FloatingTag, Proposals: []string{fixture.FloatingTag, "lts"}, Description: "Which release to install"},
+		},
+		Hosts: []registry.Host{{Name: fixture.Host, Ports: []int{fixture.Port}, Secret: fixture.Secret, Inject: []string{"header"}}},
+		Env:   []registry.Env{{Name: "EXAMPLE_HOME", Value: "${stateDir}"}},
 	}}
 	// Report metadata that differs from the published one
 	if diff := cmp.Diff(want, got); diff != "" {
@@ -77,7 +82,12 @@ func TestCollectionReadsWhatAFeatureNeeds(t *testing.T) {
 var aTool = fmt.Sprintf(`{
   "id": %q,
   "version": %q,
-  "options": {"version": {"type": "string", "default": %q}, "stateDir": {"type": "string", "default": ""}},
+  "options": {
+    "version": {"type": "string", "proposals": [%q, "lts"], "default": %q, "description": "Which release to install"},
+    "channel": {"type": "string", "enum": ["stable", "beta"], "default": "stable"},
+    "debug": {"type": "boolean", "default": false, "description": "Log every step"},
+    "stateDir": {"type": "string", "default": ""}
+  },
   "customizations": {
     "vscode": {"extensions": ["example.tool"]},
     "o3s": {
@@ -85,7 +95,7 @@ var aTool = fmt.Sprintf(`{
       "env": [{"name": "EXAMPLE_HOME", "value": "${stateDir}", "description": "Where the tool keeps its data"}]
     }
   }
-}`, fixture.Feature, fixture.Version, fixture.FloatingTag, fixture.Host, fixture.Port, fixture.Secret)
+}`, fixture.Feature, fixture.Version, fixture.FloatingTag, fixture.FloatingTag, fixture.Host, fixture.Port, fixture.Secret)
 
 // A store the registry lacks is turned away.
 func TestCollectionTurnsAwayAnAbsentStore(t *testing.T) {

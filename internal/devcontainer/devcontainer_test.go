@@ -75,7 +75,7 @@ func edited(t *testing.T, text string, edit func(*devcontainer.Config)) string {
 // A feature joins the features in the config's own layout, its comments kept.
 func TestSetFeatureKeepsTheLayout(t *testing.T) {
 	got := edited(t, aConfig, func(c *devcontainer.Config) {
-		c.SetFeature(tool, toolOnMajor, map[string]string{"stateDir": toolState})
+		c.SetFeature(tool, toolOnMajor, map[string]any{"stateDir": toolState})
 		c.SetFeature(other, otherOnNewer, nil)
 	})
 
@@ -122,6 +122,34 @@ func TestSetFeatureReplacesTheSamePackageInPlace(t *testing.T) {
     }
 }
 `, toolOnNewer, otherOnNewer)
+	// Report a config that differs
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("config (-want +got):\n%s", diff)
+	}
+}
+
+// A feature set again keeps the options it held and takes the new ones over them, booleans as booleans.
+func TestSetFeatureKeepsTheOptionsItHeld(t *testing.T) {
+	text := fmt.Sprintf(`{
+    "features": {
+        %q: {"mode": "loose", "version": %q}
+    }
+}
+`, toolOnMajor, fixture.FloatingTag)
+	got := edited(t, text, func(c *devcontainer.Config) {
+		c.SetFeature(tool, toolOnNewer, map[string]any{"version": "lts", "debug": true})
+	})
+
+	want := fmt.Sprintf(`{
+    "features": {
+        %q: {
+            "debug": true,
+            "mode": "loose",
+            "version": "lts"
+        }
+    }
+}
+`, toolOnNewer)
 	// Report a config that differs
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("config (-want +got):\n%s", diff)
