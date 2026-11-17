@@ -70,7 +70,7 @@ func Run(ctx context.Context, cfg Config) error {
 	if cfg.Exec == nil {
 		cfg.Exec = tea.ExecProcess
 	}
-	_, err := tea.NewProgram(model{cfg: cfg, width: 80, height: 24}, tea.WithContext(ctx)).Run()
+	_, err := tea.NewProgram(model{cfg: cfg}, tea.WithContext(ctx)).Run()
 	return err
 }
 
@@ -271,7 +271,7 @@ func crumb(q menu.Question, values []string) string {
 
 // paneHeight is the room the output has below the header and the trail, above the hint.
 func (m model) paneHeight() int {
-	return m.height - 5
+	return m.height - chromeLines
 }
 
 // View draws the whole screen from the state: header, trail, body, hint.

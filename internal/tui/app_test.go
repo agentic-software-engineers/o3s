@@ -39,7 +39,7 @@ func settle(m model, cmd tea.Cmd) (model, bool) {
 func anApp(t *testing.T, scripts map[string]string) (model, *[]string) {
 	t.Helper()
 	var handed []string
-	m := model{width: 80, height: 24, cfg: Config{
+	m := model{width: usualWidth, height: usualHeight, cfg: Config{
 		Home: func() menu.Home { return menu.Home{Dir: "/home/ubuntu/o3s", Exists: true} },
 		Command: func(args []string) *exec.Cmd {
 			line := strings.Join(args, " ")
@@ -98,8 +98,8 @@ func TestAppStepsBackWithTheAnswer(t *testing.T) {
 	m, _ = drive(m, keys("fir", enter, "add", enter, fixture.Host, enter, esc)...)
 
 	// Require the host question again, holding the host typed
-	if m.q.Key != "host" || !strings.Contains(stripped(m.field.View(80)), "> "+fixture.Host) {
-		t.Errorf("after esc = %q, view:\n%s", m.q.Key, stripped(m.field.View(80)))
+	if m.q.Key != "host" || !strings.Contains(stripped(m.field.View(usualWidth)), "> "+fixture.Host) {
+		t.Errorf("after esc = %q, view:\n%s", m.q.Key, stripped(m.field.View(usualWidth)))
 	}
 	// Require the trail without the host
 	if strings.Join(m.crumbs, " / ") != "firewall / add" {
@@ -178,5 +178,19 @@ func TestAppHandsTheTerminalToTheShell(t *testing.T) {
 	// Require the shell handed the terminal, and the dialog done
 	if len(*handed) != 1 || !strings.HasSuffix((*handed)[0], "cage shell") || m.state != done {
 		t.Errorf("handed %v, state %v, want cage shell and done", *handed, m.state)
+	}
+}
+
+// A menu takes its size from the terminal's first report.
+func TestAppTakesItsSizeFromTheTerminal(t *testing.T) {
+	m, _ := anApp(t, nil)
+	m.width, m.height = 0, 0
+
+	next, _ := m.Update(tea.WindowSizeMsg{Width: narrow, Height: paneLines + chromeLines})
+	m = next.(model)
+
+	// Require the size the terminal reported
+	if m.width != narrow || m.height != paneLines+chromeLines {
+		t.Errorf("size = %dx%d, want %dx%d", m.width, m.height, narrow, paneLines+chromeLines)
 	}
 }
