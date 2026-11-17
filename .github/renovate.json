@@ -17,7 +17,8 @@
     "Age": "{{#if newVersion}}{{{newVersionAgeInDays}}} days{{/if}}"
   },
   "vulnerabilityAlerts": {
-    "addLabels": ["security"]
+    "addLabels": ["security"],
+    "semanticCommitType": "fix"
   },
   "packageRules": [
     {
