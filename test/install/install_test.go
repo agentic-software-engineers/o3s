@@ -13,21 +13,23 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/hansehart/o3s/internal/fixture"
 )
 
 // script is the installer under test.
 const script = "../../install.sh"
 
 // stub stands in for the o3s binary of a release.
-const stub = "#!/bin/sh\necho o3s version 1.0.0\n"
+const stub = "#!/bin/sh\necho o3s version " + fixture.Version + "\n"
 
 // tools are the commands install.sh may use beyond the ones a test fakes.
 var tools = []string{"sh", "curl", "sha256sum", "mktemp", "install", "rm", "mkdir", "grep", "cat", "ln", "head", "sed"}
 
 // feed is a releases feed whose newest entry is a release candidate.
 const feed = `<feed>
-<link href="https://github.com/hansehart/o3s/releases/tag/v1.1.0-rc.1"/>
-<link href="https://github.com/hansehart/o3s/releases/tag/v1.0.0"/>
+<link href="https://github.com/hansehart/o3s/releases/tag/v` + fixture.Candidate + `"/>
+<link href="https://github.com/hansehart/o3s/releases/tag/v` + fixture.Version + `"/>
 </feed>
 `
 
@@ -134,7 +136,7 @@ func TestInstallPutsTheBinaryInPlace(t *testing.T) {
 		t.Errorf("install.sh left o3s-latest %v and o3s linking to %q, want both\n%s", h.installed(), link, out)
 	}
 	// Require every line a user needs next
-	for _, want := range []string{"Installed o3s version 1.0.0", "export PATH=", "gh attestation verify", "--signer-workflow hansehart/o3s/.github/workflows/publish.yaml", "o3s init"} {
+	for _, want := range []string{"Installed o3s version " + fixture.Version, "export PATH=", "gh attestation verify", "--signer-workflow hansehart/o3s/.github/workflows/publish.yaml", "o3s init"} {
 		// Report a line the output lacks
 		if !strings.Contains(out, want) {
 			t.Errorf("install.sh output lacks %q:\n%s", want, out)
@@ -272,8 +274,8 @@ func TestInstallNamesTheChannelsBinary(t *testing.T) {
 		binary     string
 		mentioning string
 	}{
-		{[]string{"--rc"}, "o3s-rc", "1.1.0-rc.1"},
-		{[]string{"--version", "1.0.0"}, "o3s-1.0.0", "o3s-1.0.0 init"},
+		{[]string{"--rc"}, "o3s-rc", fixture.Candidate},
+		{[]string{"--version", fixture.Version}, "o3s-" + fixture.Version, "o3s-" + fixture.Version + " init"},
 	}
 	// Install every channel on a fresh host
 	for _, tt := range tests {

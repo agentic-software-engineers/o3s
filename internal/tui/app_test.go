@@ -10,6 +10,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 
+	"github.com/hansehart/o3s/internal/fixture"
 	"github.com/hansehart/o3s/internal/menu"
 )
 
@@ -94,10 +95,10 @@ func TestAppRunsADialogAndGoesBack(t *testing.T) {
 func TestAppStepsBackWithTheAnswer(t *testing.T) {
 	m, _ := anApp(t, nil)
 
-	m, _ = drive(m, keys("fir", enter, "add", enter, "example.com", enter, esc)...)
+	m, _ = drive(m, keys("fir", enter, "add", enter, fixture.Host, enter, esc)...)
 
 	// Require the host question again, holding the host typed
-	if m.q.Key != "host" || !strings.Contains(stripped(m.field.View(80)), "> example.com") {
+	if m.q.Key != "host" || !strings.Contains(stripped(m.field.View(80)), "> "+fixture.Host) {
 		t.Errorf("after esc = %q, view:\n%s", m.q.Key, stripped(m.field.View(80)))
 	}
 	// Require the trail without the host

@@ -5,6 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/hansehart/o3s/internal/fixture"
 	"github.com/hansehart/o3s/internal/release"
 )
 
@@ -18,8 +19,8 @@ func TestChannelOfReadsTheBinarysName(t *testing.T) {
 		{"/home/ubuntu/.local/bin/o3s-latest", release.Stable, ""},
 		{"/home/ubuntu/.local/bin/o3s", release.Stable, ""},
 		{"/home/ubuntu/.local/bin/o3s-rc", release.Candidates, ""},
-		{"/home/ubuntu/.local/bin/o3s-1.0.0", release.Pinned, "1.0.0"},
-		{"/home/ubuntu/.local/bin/o3s-1.0.0-rc.2", release.Pinned, "1.0.0-rc.2"},
+		{"/home/ubuntu/.local/bin/o3s-" + fixture.Version, release.Pinned, fixture.Version},
+		{"/home/ubuntu/.local/bin/o3s-" + fixture.NextCandidate, release.Pinned, fixture.NextCandidate},
 	}
 	// Read every name
 	for _, tt := range tests {

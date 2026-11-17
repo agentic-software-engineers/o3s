@@ -1,14 +1,16 @@
 package traffic
 
 import (
+	"fmt"
 	"testing"
-	"time"
 
 	"github.com/google/go-cmp/cmp"
+
+	"github.com/hansehart/o3s/internal/fixture"
 )
 
 // now is the moment every test reads the record at.
-var now = time.Unix(1_800_000_000, 0)
+var now = fixture.Now
 
 // day is one day in seconds, the unit the record counts in.
 const day = 24 * 3600
@@ -29,7 +31,7 @@ func TestParseReadsNothingAsEmpty(t *testing.T) {
 
 // A record reads back with every host and every refused name.
 func TestParseReadsTheRecord(t *testing.T) {
-	data := `{"since": 100, "updated": 200, "hosts": {"example.com": {"bytes": 1200, "last_seen": 150, "since": 120}}, "blocked": {"blocked.example": {"attempts": 3, "last_seen": 190}}}`
+	data := fmt.Sprintf(`{"since": 100, "updated": 200, "hosts": {%q: {"bytes": 1200, "last_seen": 150, "since": 120}}, "blocked": {%q: {"attempts": 3, "last_seen": 190}}}`, fixture.Host, fixture.RefusedName)
 
 	got, err := Parse([]byte(data))
 
@@ -40,8 +42,8 @@ func TestParseReadsTheRecord(t *testing.T) {
 	want := Record{
 		Since:   100,
 		Updated: 200,
-		Hosts:   map[string]Host{"example.com": {Bytes: 1200, LastSeen: 150, Since: 120}},
-		Blocked: map[string]Refusal{"blocked.example": {Attempts: 3, LastSeen: 190}},
+		Hosts:   map[string]Host{fixture.Host: {Bytes: 1200, LastSeen: 150, Since: 120}},
+		Blocked: map[string]Refusal{fixture.RefusedName: {Attempts: 3, LastSeen: 190}},
 	}
 	// Report a record read wrong
 	if diff := cmp.Diff(want, got); diff != "" {

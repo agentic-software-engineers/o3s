@@ -8,57 +8,63 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/hansehart/o3s/internal/config"
+	"github.com/hansehart/o3s/internal/fixture"
 )
 
 // now is the moment every expiry test looks at the allowlist.
-var now = time.Date(2026, 11, 16, 18, 0, 0, 0, time.UTC)
+var now = fixture.Now
+
+// at writes the moment a span away from now in the shape the allowlist keeps.
+func at(span time.Duration) string {
+	return now.Add(span).Format(time.RFC3339)
+}
 
 // A new host keeps the end time the change gives it.
 func TestAllowGivesANewHostItsEndTime(t *testing.T) {
 	var c config.Config
 
-	_, err := c.Allow(config.Change{Name: "example.com", Expires: "2026-11-16T19:00:00Z"})
+	_, err := c.Allow(config.Change{Name: fixture.Host, Expires: fixture.InAnHourText})
 
 	// Stop when the host is turned away
 	if err != nil {
-		t.Fatalf("Allow(example.com) = %v, want it allowed", err)
+		t.Fatalf("Allow(%s) = %v, want it allowed", fixture.Host, err)
 	}
 	// Report an end time the host lost
-	if got := c.Hosts[0].Expires; got != "2026-11-16T19:00:00Z" {
-		t.Errorf("Expires = %q, want 2026-11-16T19:00:00Z", got)
+	if got := c.Hosts[0].Expires; got != fixture.InAnHourText {
+		t.Errorf("Expires = %q, want %s", got, fixture.InAnHourText)
 	}
 }
 
 // A new end time takes the place of the old one and reports the change, and a change without one keeps it.
 func TestAllowRenewsTheEndTimeAndKeepsItOtherwise(t *testing.T) {
-	c := aConfigThatAllows(config.Host{Name: "example.com", Ports: []int{443}, By: []string{"user"}, Expires: "2026-11-16T19:00:00Z"})
+	c := aConfigThatAllows(config.Host{Name: fixture.Host, Ports: []int{fixture.Port}, By: []string{"user"}, Expires: fixture.InAnHourText})
 
-	diffs, err := c.Allow(config.Change{Name: "example.com", Expires: "2026-11-16T20:00:00Z"})
+	diffs, err := c.Allow(config.Change{Name: fixture.Host, Expires: fixture.InTwoHoursText})
 
 	// Stop when the renewal is turned away
 	if err != nil {
 		t.Fatalf("Allow(renew) = %v", err)
 	}
-	want := []config.Diff{{Field: "expires", Old: "2026-11-16T19:00:00Z", New: "2026-11-16T20:00:00Z"}}
+	want := []config.Diff{{Field: "expires", Old: fixture.InAnHourText, New: fixture.InTwoHoursText}}
 	// Report a renewal that names another change
 	if diff := cmp.Diff(want, diffs); diff != "" {
 		t.Errorf("Allow(renew) diffs (-want +got):\n%s", diff)
 	}
 	// Stop when a change of the ports alone fails
-	if _, err := c.Allow(config.Change{Name: "example.com", Ports: []int{22, 443}}); err != nil {
+	if _, err := c.Allow(config.Change{Name: fixture.Host, Ports: []int{fixture.OtherPort, fixture.Port}}); err != nil {
 		t.Fatalf("Allow(ports) = %v", err)
 	}
 	// Report an end time a change without one dropped
-	if got := c.Hosts[0].Expires; got != "2026-11-16T20:00:00Z" {
+	if got := c.Hosts[0].Expires; got != fixture.InTwoHoursText {
 		t.Errorf("Expires after a change of ports = %q, want it kept", got)
 	}
 }
 
 // A feature needs its host for good, so it lifts the end time the user gave the host.
 func TestNeedLiftsTheEndTime(t *testing.T) {
-	c := aConfigThatAllows(config.Host{Name: "example.com", Ports: []int{443}, By: []string{"user"}, Expires: "2026-11-16T19:00:00Z"})
+	c := aConfigThatAllows(config.Host{Name: fixture.Host, Ports: []int{fixture.Port}, By: []string{"user"}, Expires: fixture.InAnHourText})
 
-	err := c.Need("registry.example.com/features/tool", config.Change{Name: "example.com", Ports: []int{443}})
+	err := c.Need(fixture.Store+"/"+fixture.Feature, config.Change{Name: fixture.Host, Ports: []int{fixture.Port}})
 
 	// Stop when the feature is turned away
 	if err != nil {
@@ -73,15 +79,15 @@ func TestNeedLiftsTheEndTime(t *testing.T) {
 // The hosts whose end time passed are the expired ones, and prune takes them off.
 func TestPruneTakesOffTheExpiredHosts(t *testing.T) {
 	c := aConfigThatAllows(
-		config.Host{Name: "example.com", Ports: []int{443}, By: []string{"user"}},
-		config.Host{Name: "old.example.com", Ports: []int{443}, By: []string{"user"}, Expires: "2026-11-16T17:00:00Z"},
-		config.Host{Name: "new.example.com", Ports: []int{443}, By: []string{"user"}, Expires: "2026-11-16T19:00:00Z"},
+		config.Host{Name: fixture.Host, Ports: []int{fixture.Port}, By: []string{"user"}},
+		config.Host{Name: "old." + fixture.Host, Ports: []int{fixture.Port}, By: []string{"user"}, Expires: at(-time.Hour)},
+		config.Host{Name: "new." + fixture.Host, Ports: []int{fixture.Port}, By: []string{"user"}, Expires: fixture.InAnHourText},
 	)
 
 	pruned := c.Prune(now)
 
 	// Report hosts pruned wrong
-	if diff := cmp.Diff([]string{"old.example.com"}, pruned); diff != "" {
+	if diff := cmp.Diff([]string{"old." + fixture.Host}, pruned); diff != "" {
 		t.Errorf("Prune() (-want +got):\n%s", diff)
 	}
 	// Report a host that should stay
@@ -97,9 +103,9 @@ func TestExpiredComparesTheEndTime(t *testing.T) {
 		want    bool
 	}{
 		{"", false},
-		{"2026-11-16T17:59:59Z", true},
-		{"2026-11-16T18:00:00Z", true},
-		{"2026-11-16T18:00:01Z", false},
+		{at(-time.Second), true},
+		{fixture.NowText, true},
+		{at(time.Second), false},
 	}
 	// Judge every end time
 	for _, tt := range tests {
@@ -116,7 +122,7 @@ func TestExpiredComparesTheEndTime(t *testing.T) {
 func TestAllowTurnsAwayAMalformedEndTime(t *testing.T) {
 	var c config.Config
 
-	_, err := c.Allow(config.Change{Name: "example.com", Expires: "2026-11-16 19:00"})
+	_, err := c.Allow(config.Change{Name: fixture.Host, Expires: "2026-11-16 19:00"})
 
 	// Report a malformed end time taken as valid
 	if !errors.Is(err, config.ErrInvalid) {
