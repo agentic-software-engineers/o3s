@@ -117,6 +117,7 @@ func TestSelfUpdateFollowsTheChannel(t *testing.T) {
 func TestSelfUpdateMovesAPlainBinaryToLatest(t *testing.T) {
 	aReleasePage(t, fixture.NewerVersion)
 	path, restarted := aRunningBinary(t, fixture.Version, "o3s")
+	ghLog := aLoggedInGh(t)
 	latestPath := filepath.Join(filepath.Dir(path), "o3s-latest")
 	var out strings.Builder
 
@@ -142,6 +143,24 @@ func TestSelfUpdateMovesAPlainBinaryToLatest(t *testing.T) {
 			t.Errorf("selfUpdate() output lacks %q:\n%s", want, out.String())
 		}
 	}
+	// Require gh left alone, since the checksum decides the update and the attestation stays the user's to check
+	if calls, err := os.ReadFile(ghLog); err == nil {
+		t.Errorf("selfUpdate() ran gh: %s", calls)
+	}
+}
+
+// aLoggedInGh puts a gh on PATH that would answer as logged in and notes every call, so a test sees whether o3s runs it.
+func aLoggedInGh(t *testing.T) string {
+	t.Helper()
+	bin := t.TempDir()
+	log := filepath.Join(bin, "gh.log")
+	gh := "#!/bin/sh\necho \"$*\" >> " + log + "\nexit 0\n"
+	// Stop when the fake stays unwritten
+	if err := os.WriteFile(filepath.Join(bin, "gh"), []byte(gh), 0o755); err != nil { //nolint:gosec // the test runs its fake
+		t.Fatalf("Setup: %v", err)
+	}
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+	return log
 }
 
 // A binary that has nothing to update to goes on to the home, with a note where the case gives one.
