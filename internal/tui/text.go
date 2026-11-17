@@ -55,7 +55,7 @@ func (t text) Update(msg tea.Msg) (field, result, tea.Cmd) {
 
 // View draws the title and the line.
 func (t text) View(width int) string {
-	t.input.SetWidth(max(width-4, 10))
+	t.input.SetWidth(max(width-fieldMargin, minFieldWidth))
 	return title.Render(t.q.Title) + "\n" + t.input.View()
 }
 

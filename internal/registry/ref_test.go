@@ -2,8 +2,10 @@ package registry_test
 
 import (
 	"errors"
+	"path"
 	"testing"
 
+	"github.com/hansehart/o3s/internal/fixture"
 	"github.com/hansehart/o3s/internal/registry"
 )
 
@@ -13,9 +15,9 @@ func TestParseRefSplitsAFeatureID(t *testing.T) {
 		in   string
 		want registry.Ref
 	}{
-		{"registry.example.com/features/tool", registry.Ref{Store: "registry.example.com/features", ID: "tool"}},
-		{"registry.example.com/features/tool:1", registry.Ref{Store: "registry.example.com/features", ID: "tool", Tag: "1"}},
-		{"127.0.0.1:5000/team/features/tool:1.2", registry.Ref{Store: "127.0.0.1:5000/team/features", ID: "tool", Tag: "1.2"}},
+		{fixture.Store + "/" + fixture.Feature, registry.Ref{Store: fixture.Store, ID: fixture.Feature}},
+		{fixture.Store + "/" + fixture.Feature + ":" + fixture.Major, registry.Ref{Store: fixture.Store, ID: fixture.Feature, Tag: fixture.Major}},
+		{"127.0.0.1:5000/team/features/" + fixture.Feature + ":" + fixture.MinorTag, registry.Ref{Store: "127.0.0.1:5000/team/features", ID: fixture.Feature, Tag: fixture.MinorTag}},
 	}
 	// Check every id
 	for _, tt := range tests {
@@ -30,10 +32,10 @@ func TestParseRefSplitsAFeatureID(t *testing.T) {
 
 // A feature's package is its id without the tag.
 func TestRefPackageLeavesTheTagOut(t *testing.T) {
-	r := registry.Ref{Store: "registry.example.com/features", ID: "tool", Tag: "1"}
+	r := registry.Ref{Store: fixture.Store, ID: fixture.Feature, Tag: fixture.Major}
 
 	// Report a package that differs
-	if got, want := r.Package(), "registry.example.com/features/tool"; got != want {
+	if got, want := r.Package(), fixture.Store+"/"+fixture.Feature; got != want {
 		t.Errorf("Package() = %q, want %q", got, want)
 	}
 }
@@ -41,7 +43,7 @@ func TestRefPackageLeavesTheTagOut(t *testing.T) {
 // An id that names no feature in a store is turned away.
 func TestParseRefTurnsAwayAMalformedID(t *testing.T) {
 	// Check every malformed id
-	for _, in := range []string{"", "tool", "registry.example.com/tool", "registry.example.com/features/Tool", "registry.example.com/features/tool:", "registry.example.com/features/tool@sha256:0"} {
+	for _, in := range []string{"", fixture.Feature, path.Dir(fixture.Store) + "/" + fixture.Feature, fixture.Store + "/Tool", fixture.Store + "/" + fixture.Feature + ":", fixture.Store + "/" + fixture.Feature + "@sha256:0"} {
 		_, err := registry.ParseRef(in)
 
 		// Require the error that marks a malformed id

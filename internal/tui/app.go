@@ -70,7 +70,7 @@ func Run(ctx context.Context, cfg Config) error {
 	if cfg.Exec == nil {
 		cfg.Exec = tea.ExecProcess
 	}
-	_, err := tea.NewProgram(model{cfg: cfg, width: 80, height: 24}, tea.WithContext(ctx)).Run()
+	_, err := tea.NewProgram(model{cfg: cfg}, tea.WithContext(ctx)).Run()
 	return err
 }
 
@@ -128,7 +128,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.out.add(string(msg))
 		return m, m.stream.next()
 	case endMsg:
-		return m.ended(msg.err)
+		return m.ended(msg)
 	case tea.KeyPressMsg:
 		return m.key(msg)
 	}
@@ -232,7 +232,7 @@ func (m model) runNext() (tea.Model, tea.Cmd) {
 	cmd := m.cfg.Command(c.Args)
 	// Hand the terminal to a command that needs it, and come back when it ends
 	if c.Terminal {
-		return m, m.cfg.Exec(inTerminal(cmd), func(err error) tea.Msg { return endMsg{err: err} })
+		return m, inTerminalLeaving(cmd, m.cfg.Exec)
 	}
 	stdin := ""
 	// Hand the value the dialog collected over stdin
@@ -244,14 +244,20 @@ func (m model) runNext() (tea.Model, tea.Cmd) {
 }
 
 // ended takes the end of a command: the next one runs, or the dialog stops at a failure.
-func (m model) ended(err error) (tea.Model, tea.Cmd) {
-	// Stop at a command that fails, naming how
-	if err != nil {
-		m.out.add("error: " + err.Error())
-		m.queue, m.failed, m.state = nil, true, done
-		return m, nil
+func (m model) ended(end endMsg) (tea.Model, tea.Cmd) {
+	// Run the next command after one that succeeds
+	if end.err == nil {
+		return m.runNext()
 	}
-	return m.runNext()
+	// Name each failure once, in the command's own words where it left any
+	switch {
+	case end.reason != "":
+		m.out.add(end.reason)
+	case !end.told:
+		m.out.add("error: " + end.err.Error())
+	}
+	m.queue, m.failed, m.state = nil, true, done
+	return m, nil
 }
 
 // crumb is how an answer shows in the trail of the dialog.
@@ -265,7 +271,21 @@ func crumb(q menu.Question, values []string) string {
 
 // paneHeight is the room the output has below the header and the trail, above the hint.
 func (m model) paneHeight() int {
-	return m.height - 5
+	return m.height - chromeLines
+}
+
+// explanation draws what a question explains or changes, broken to the width, with a gap before the question.
+func explanation(lines []string, width int) string {
+	var out []string
+	// Draw every line of the explanation
+	for _, line := range lines {
+		out = append(out, wrapped(colored(line), width)...)
+	}
+	// Leave a gap between the explanation and the question
+	if len(out) > 0 {
+		out = append(out, "", "")
+	}
+	return strings.Join(out, "\n")
 }
 
 // View draws the whole screen from the state: header, trail, body, hint.
@@ -275,7 +295,7 @@ func (m model) View() tea.View {
 	// Draw the body and the hint of the state
 	switch m.state {
 	case asking:
-		body, hint = m.field.View(m.width), dim.Render(m.field.Hint())
+		body, hint = explanation(m.q.Preview, m.width)+m.field.View(m.width), dim.Render(m.field.Hint())
 	case loading:
 		body = dim.Render("...")
 	case running:

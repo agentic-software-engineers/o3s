@@ -75,7 +75,15 @@ func (l menuLookup) Add(id string) (menu.Preview, error) {
 		return menu.Preview{}, err
 	}
 	lines, waiting := addLines(s, store)
-	return menu.Preview{Lines: lines, Waiting: waiting}, nil
+	pv := menu.Preview{Lines: lines, Waiting: waiting}
+	// Offer every option the user may set, the folder o3s gives the feature left out
+	for _, o := range s.Offered {
+		// Take an option that is the user's to set
+		if o.Name != registry.StateDir {
+			pv.Options = append(pv.Options, menu.FeatureOption{Name: o.Name, Type: o.Type, Default: o.Default, Enum: o.Enum, Proposals: o.Proposals, Description: o.Description})
+		}
+	}
+	return pv, nil
 }
 
 // Remove shows what leaves with a feature, as feature rm prints it.
@@ -127,7 +135,8 @@ func menuHome(ctx context.Context) menu.Home {
 			}
 		}
 	}
-	record, _, err := traffic.Read(ctx, dir)
+	record, running, err := traffic.Read(ctx, dir)
+	h.Running = running
 	// Offer every name the gateway refused, noting how often and when
 	if err == nil {
 		now := time.Now()

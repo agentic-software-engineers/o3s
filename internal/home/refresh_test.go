@@ -1,6 +1,7 @@
 package home_test
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -8,6 +9,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
+	"github.com/hansehart/o3s/internal/fixture"
 	"github.com/hansehart/o3s/internal/home"
 )
 
@@ -81,7 +83,7 @@ func TestRefreshKeepsTheHomesFeaturesAndEnv(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Setup: %v", err)
 	}
-	features := "{\n        // The tool\n        \"registry.example.com/features/tool:1\": {}\n    }"
+	features := fmt.Sprintf("{\n        // The tool\n        %q: {}\n    }", fixture.Store+"/"+fixture.Feature+":"+fixture.Major)
 	edited := strings.Replace(string(data), `"features": {}`, `"features": `+features, 1)
 	edited = strings.Replace(edited, `"name": "o3s"`, `"name": "edited"`, 1)
 	edited = strings.Replace(edited, "\n}", ",\n    // The env\n    \"containerEnv\": {\"EXAMPLE_MODE\": \"strict\"}\n}", 1)
@@ -117,7 +119,7 @@ func TestRefreshKeepsTheHomesFeaturesAndEnv(t *testing.T) {
 
 // A binary of a newer release names each o3s image whose tag it moves, and one of the same release names none.
 func TestImagesNamesTheTagsAReleaseMoves(t *testing.T) {
-	home.Version = "1.0.0"
+	home.Version = fixture.Version
 	t.Cleanup(func() { home.Version = "dev" })
 	dir := anInitializedHome(t)
 
@@ -126,7 +128,7 @@ func TestImagesNamesTheTagsAReleaseMoves(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Images() = %v", err)
 	}
-	home.Version = "1.1.0"
+	home.Version = fixture.NewerVersion
 	moved, err := home.Images(dir)
 
 	// Stop when the images fail to read
@@ -137,7 +139,7 @@ func TestImagesNamesTheTagsAReleaseMoves(t *testing.T) {
 	if len(same) != 0 {
 		t.Errorf("Images() at the same release = %v, want none", same)
 	}
-	want := []home.ImageChange{{Name: "o3s-cage", Old: "1.0.0", New: "1.1.0"}, {Name: "o3s-gateway", Old: "1.0.0", New: "1.1.0"}}
+	want := []home.ImageChange{{Name: "o3s-cage", Old: fixture.Version, New: fixture.NewerVersion}, {Name: "o3s-gateway", Old: fixture.Version, New: fixture.NewerVersion}}
 	// Require both images moved to the new release
 	if diff := cmp.Diff(want, moved); diff != "" {
 		t.Errorf("Images() (-want +got):\n%s", diff)

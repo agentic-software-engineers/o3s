@@ -2,12 +2,14 @@ package registry_test
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-containerregistry/pkg/v1/static"
 	"github.com/google/go-containerregistry/pkg/v1/types"
 
+	"github.com/hansehart/o3s/internal/fixture"
 	"github.com/hansehart/o3s/internal/registry"
 	"github.com/hansehart/o3s/internal/registry/registrytest"
 )
@@ -28,7 +30,7 @@ func aRegistry(t *testing.T) *registrytest.Registry {
 func TestCollectionReadsTheFeaturesInOrder(t *testing.T) {
 	r := aRegistry(t)
 	// Stop when the store fails to publish
-	if err := r.Push("features", "beta", "alpha"); err != nil {
+	if err := r.Push("features", fixture.Feature, fixture.OtherFeature); err != nil {
 		t.Fatalf("Setup: Push(features) = %v", err)
 	}
 
@@ -39,7 +41,7 @@ func TestCollectionReadsTheFeaturesInOrder(t *testing.T) {
 		t.Fatalf("Collection(features) = %v", err)
 	}
 	// Report features that differ from the published ones
-	if diff := cmp.Diff([]registry.Feature{{ID: "alpha"}, {ID: "beta"}}, got); diff != "" {
+	if diff := cmp.Diff([]registry.Feature{{ID: fixture.OtherFeature}, {ID: fixture.Feature}}, got); diff != "" {
 		t.Errorf("Collection(features) mismatch (-want +got):\n%s", diff)
 	}
 }
@@ -59,11 +61,16 @@ func TestCollectionReadsWhatAFeatureNeeds(t *testing.T) {
 		t.Fatalf("Collection(features) = %v", err)
 	}
 	want := []registry.Feature{{
-		ID:      "tool",
-		Version: "1.2.3",
-		Options: []string{"stateDir", "version"},
-		Hosts:   []registry.Host{{Name: "example.com", Ports: []int{443}, Secret: "EXAMPLE_TOKEN", Inject: []string{"header"}}},
-		Env:     []registry.Env{{Name: "EXAMPLE_HOME", Value: "${stateDir}"}},
+		ID:      fixture.Feature,
+		Version: fixture.Version,
+		Options: []registry.Option{
+			{Name: "channel", Type: "string", Default: "stable", Enum: []string{"stable", "beta"}},
+			{Name: "debug", Type: "boolean", Default: "false", Description: "Log every step"},
+			{Name: "stateDir", Type: "string"},
+			{Name: "version", Type: "string", Default: fixture.FloatingTag, Proposals: []string{fixture.FloatingTag, "lts"}, Description: "Which release to install"},
+		},
+		Hosts: []registry.Host{{Name: fixture.Host, Ports: []int{fixture.Port}, Secret: fixture.Secret, Inject: []string{"header"}}},
+		Env:   []registry.Env{{Name: "EXAMPLE_HOME", Value: "${stateDir}"}},
 	}}
 	// Report metadata that differs from the published one
 	if diff := cmp.Diff(want, got); diff != "" {
@@ -72,18 +79,23 @@ func TestCollectionReadsWhatAFeatureNeeds(t *testing.T) {
 }
 
 // aTool is the metadata of a feature that needs a host with a secret and sets env from its state dir.
-const aTool = `{
-  "id": "tool",
-  "version": "1.2.3",
-  "options": {"version": {"type": "string", "default": "latest"}, "stateDir": {"type": "string", "default": ""}},
+var aTool = fmt.Sprintf(`{
+  "id": %q,
+  "version": %q,
+  "options": {
+    "version": {"type": "string", "proposals": [%q, "lts"], "default": %q, "description": "Which release to install"},
+    "channel": {"type": "string", "enum": ["stable", "beta"], "default": "stable"},
+    "debug": {"type": "boolean", "default": false, "description": "Log every step"},
+    "stateDir": {"type": "string", "default": ""}
+  },
   "customizations": {
     "vscode": {"extensions": ["example.tool"]},
     "o3s": {
-      "hosts": [{"name": "example.com", "ports": [443], "secret": "EXAMPLE_TOKEN", "inject": ["header"], "description": "API"}],
+      "hosts": [{"name": %q, "ports": [%d], "secret": %q, "inject": ["header"], "description": "API"}],
       "env": [{"name": "EXAMPLE_HOME", "value": "${stateDir}", "description": "Where the tool keeps its data"}]
     }
   }
-}`
+}`, fixture.Feature, fixture.Version, fixture.FloatingTag, fixture.FloatingTag, fixture.Host, fixture.Port, fixture.Secret)
 
 // A store the registry lacks is turned away.
 func TestCollectionTurnsAwayAnAbsentStore(t *testing.T) {

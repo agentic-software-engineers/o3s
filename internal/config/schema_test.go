@@ -3,6 +3,7 @@ package config_test
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -10,6 +11,7 @@ import (
 	"github.com/santhosh-tekuri/jsonschema/v6"
 
 	"github.com/hansehart/o3s/internal/config"
+	"github.com/hansehart/o3s/internal/fixture"
 )
 
 // theShippedSchema compiles the schema every home receives.
@@ -77,10 +79,10 @@ func TestTheSchemaAcceptsWhatO3sWrites(t *testing.T) {
 func TestTheSchemaAgreesWithO3s(t *testing.T) {
 	schema := theShippedSchema(t)
 	changes := map[string]config.Change{
-		"domain":                {Name: "example.com"},
-		"wildcard":              {Name: "*.example.org"},
-		"address":               {Name: "192.0.2.1"},
-		"range":                 {Name: "198.51.100.0/24"},
+		"domain":                {Name: fixture.Host},
+		"wildcard":              {Name: fixture.OtherWildcard},
+		"address":               {Name: fixture.Address},
+		"range":                 {Name: fixture.Range},
 		"uppercase host":        {Name: "Example.com"},
 		"wildcard in a label":   {Name: "api.*.example.com"},
 		"IPv6 address":          {Name: "::1"},
@@ -88,19 +90,19 @@ func TestTheSchemaAgreesWithO3s(t *testing.T) {
 		"octet past 255":        {Name: "256.0.0.1"},
 		"digits as top level":   {Name: "example.123"},
 		"digits leading a name": {Name: "1example.com"},
-		"port zero":             {Name: "example.com", Ports: []int{0}},
-		"port past the range":   {Name: "example.com", Ports: []int{65536}},
-		"lowercase secret":      {Name: "api.example.com", Secret: "example_token"},
-		"unknown inject site":   {Name: "api.example.com", Secret: "EXAMPLE_TOKEN", Inject: []string{"cookie"}},
-		"inject with a secret":  {Name: "api.example.com", Secret: "EXAMPLE_TOKEN", Inject: []string{"header", "body"}},
-		"inject alone":          {Name: "api.example.com", Inject: []string{"header"}},
+		"port zero":             {Name: fixture.Host, Ports: []int{0}},
+		"port past the range":   {Name: fixture.Host, Ports: []int{65536}},
+		"lowercase secret":      {Name: fixture.Subdomain, Secret: "example_token"},
+		"unknown inject site":   {Name: fixture.Subdomain, Secret: fixture.Secret, Inject: []string{"cookie"}},
+		"inject with a secret":  {Name: fixture.Subdomain, Secret: fixture.Secret, Inject: []string{"header", "body"}},
+		"inject alone":          {Name: fixture.Subdomain, Inject: []string{"header"}},
 	}
 	// Hand every change to o3s and to the schema
 	for name, ch := range changes {
 		t.Run(name, func(t *testing.T) {
 			var c config.Config
 			_, o3sErr := c.Allow(ch)
-			host := map[string]any{"name": ch.Name, "ports": []int{443}, "by": []string{"user"}}
+			host := map[string]any{"name": ch.Name, "ports": []int{fixture.Port}, "by": []string{"user"}}
 			// Carry the ports the change names
 			if len(ch.Ports) > 0 {
 				host["ports"] = ch.Ports
@@ -130,8 +132,8 @@ func TestTheSchemaTurnsAwayUnknownKeys(t *testing.T) {
 	schema := theShippedSchema(t)
 	files := map[string]string{
 		"top level": `{"stores": [], "hosts": [], "extra": true}`,
-		"host":      `{"stores": [], "hosts": [{"name": "example.com", "ports": [443], "by": ["user"], "extra": true}]}`,
-		"store":     `{"stores": [{"id": "registry.example.com/features", "extra": true}], "hosts": []}`,
+		"host":      fmt.Sprintf(`{"stores": [], "hosts": [{"name": %[1]q, "ports": [%[2]d], "by": ["user"], "extra": true}]}`, fixture.Host, fixture.Port),
+		"store":     fmt.Sprintf(`{"stores": [{"id": %[1]q, "extra": true}], "hosts": []}`, fixture.Store),
 	}
 	// Check every place an unknown key can hide
 	for name, data := range files {

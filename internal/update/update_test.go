@@ -1,6 +1,7 @@
 package update_test
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -8,6 +9,7 @@ import (
 
 	"github.com/hansehart/o3s/internal/config"
 	"github.com/hansehart/o3s/internal/devcontainer"
+	"github.com/hansehart/o3s/internal/fixture"
 	"github.com/hansehart/o3s/internal/home"
 	"github.com/hansehart/o3s/internal/registry"
 	"github.com/hansehart/o3s/internal/registry/registrytest"
@@ -15,18 +17,18 @@ import (
 )
 
 // toolV2 is the tool's metadata as its store now ships it, needing a new host and new env.
-const toolV2 = `{
-  "id": "tool",
-  "version": "2.0.0",
+var toolV2 = fmt.Sprintf(`{
+  "id": %q,
+  "version": %q,
   "options": {"stateDir": {"type": "string", "default": ""}},
   "customizations": {"o3s": {
-    "hosts": [{"name": "example.com", "ports": [443], "secret": "EXAMPLE_TOKEN"}],
+    "hosts": [{"name": %q, "ports": [%d], "secret": %q}],
     "env": [
       {"name": "EXAMPLE_MODE", "value": "strict"},
       {"name": "EXAMPLE_HOME", "value": "${stateDir}"}
     ]
   }}
-}`
+}`, fixture.Feature, fixture.NewerVersion, fixture.Host, fixture.Port, fixture.Secret)
 
 // aHomeWithTheTool hands a test a home holding the tool at a tag, as an older store set it up,
 // beside a registry whose store now ships toolV2, and the tool's package.
@@ -42,7 +44,7 @@ func aHomeWithTheTool(t *testing.T, tag string, userHosts ...string) (string, st
 	if err := r.PushFeatures("features", toolV2); err != nil {
 		t.Fatalf("Setup: PushFeatures() = %v", err)
 	}
-	pkg := r.Host + "/features/tool"
+	pkg := r.Host + "/features/" + fixture.Feature
 	dir := t.TempDir()
 	// Stop when the home stays unwritten
 	if _, err := home.Init(dir); err != nil {
@@ -54,7 +56,7 @@ func aHomeWithTheTool(t *testing.T, tag string, userHosts ...string) (string, st
 		t.Fatalf("Setup: %v", err)
 	}
 	// Stop when the old host stays out of the allowlist
-	if err := c.Need(pkg, config.Change{Name: "example.org"}); err != nil {
+	if err := c.Need(pkg, config.Change{Name: fixture.OtherHost}); err != nil {
 		t.Fatalf("Setup: %v", err)
 	}
 	// Allow every host the user needs
@@ -89,7 +91,7 @@ func aHomeWithTheTool(t *testing.T, tag string, userHosts ...string) (string, st
 
 // A feature on a major tag moves to the store's major, with the hosts and env it now needs.
 func TestCheckFollowsTheStoresMajorVersion(t *testing.T) {
-	dir, pkg := aHomeWithTheTool(t, "1")
+	dir, pkg := aHomeWithTheTool(t, fixture.Major)
 
 	got, err := update.Check(t.Context(), dir)
 
@@ -99,10 +101,10 @@ func TestCheckFollowsTheStoresMajorVersion(t *testing.T) {
 	}
 	want := []update.FeatureChange{{
 		Package:      pkg,
-		OldTag:       "1",
-		NewTag:       "2",
-		HostsAdded:   []registry.Host{{Name: "example.com", Ports: []int{443}, Secret: "EXAMPLE_TOKEN"}},
-		HostsDropped: []string{"example.org"},
+		OldTag:       fixture.Major,
+		NewTag:       fixture.NewerMajor,
+		HostsAdded:   []registry.Host{{Name: fixture.Host, Ports: []int{fixture.Port}, Secret: fixture.Secret}},
+		HostsDropped: []string{fixture.OtherHost},
 		EnvAdded:     []registry.Env{{Name: "EXAMPLE_HOME", Value: registry.FeaturesRoot + pkg}},
 		EnvChanged:   []update.EnvChange{{Name: "EXAMPLE_MODE", Old: "lax", New: "strict"}},
 	}}
@@ -114,7 +116,7 @@ func TestCheckFollowsTheStoresMajorVersion(t *testing.T) {
 
 // A host the user needs as well stays, so the feature's update drops none.
 func TestCheckKeepsAHostTheUserNeeds(t *testing.T) {
-	dir, _ := aHomeWithTheTool(t, "1", "example.org")
+	dir, _ := aHomeWithTheTool(t, fixture.Major, fixture.OtherHost)
 
 	got, err := update.Check(t.Context(), dir)
 
@@ -127,7 +129,7 @@ func TestCheckKeepsAHostTheUserNeeds(t *testing.T) {
 // A tag that pins more than a major version, or follows the newest release, stays as it is.
 func TestCheckKeepsAPinnedTag(t *testing.T) {
 	// Check every tag beyond a major version
-	for _, tag := range []string{"1.2", "latest", ""} {
+	for _, tag := range []string{fixture.MinorTag, fixture.FloatingTag, ""} {
 		dir, _ := aHomeWithTheTool(t, tag)
 
 		got, err := update.Check(t.Context(), dir)
@@ -151,7 +153,7 @@ func TestCheckNamesAStoreOutOfReach(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Setup: %v", err)
 	}
-	dc.SetFeature("127.0.0.1:1/features/tool", "127.0.0.1:1/features/tool:1", nil)
+	dc.SetFeature("127.0.0.1:1/features/"+fixture.Feature, "127.0.0.1:1/features/"+fixture.Feature+":"+fixture.Major, nil)
 	// Stop when the config fails to save
 	if err := dc.Save(dir); err != nil {
 		t.Fatalf("Setup: %v", err)
@@ -167,7 +169,7 @@ func TestCheckNamesAStoreOutOfReach(t *testing.T) {
 
 // Applying an update brings the home to what the binary and the stores ship, so a second check finds nothing.
 func TestApplyLeavesNothingToUpdate(t *testing.T) {
-	dir, pkg := aHomeWithTheTool(t, "1")
+	dir, pkg := aHomeWithTheTool(t, fixture.Major)
 	plan, err := update.Check(t.Context(), dir)
 	// Stop when the check fails
 	if err != nil {
@@ -191,21 +193,21 @@ func TestApplyLeavesNothingToUpdate(t *testing.T) {
 		t.Fatalf("Load() = %v", err)
 	}
 	// Require the feature on its new tag
-	if diff := cmp.Diff([]string{pkg + ":2"}, dc.Features()); diff != "" {
+	if diff := cmp.Diff([]string{pkg + ":" + fixture.NewerMajor}, dc.Features()); diff != "" {
 		t.Errorf("features (-want +got):\n%s", diff)
 	}
 }
 
 // A home a binary of an older release wrote names both o3s images the update moves.
 func TestCheckNamesTheImagesAReleaseMoves(t *testing.T) {
-	home.Version = "1.0.0"
+	home.Version = fixture.Version
 	t.Cleanup(func() { home.Version = "dev" })
 	dir := t.TempDir()
 	// Stop when the home stays unwritten
 	if _, err := home.Init(dir); err != nil {
 		t.Fatalf("Setup: Init() = %v", err)
 	}
-	home.Version = "1.1.0"
+	home.Version = fixture.NewerVersion
 
 	got, err := update.Check(t.Context(), dir)
 
@@ -213,7 +215,7 @@ func TestCheckNamesTheImagesAReleaseMoves(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Check() = %v", err)
 	}
-	want := []home.ImageChange{{Name: "o3s-cage", Old: "1.0.0", New: "1.1.0"}, {Name: "o3s-gateway", Old: "1.0.0", New: "1.1.0"}}
+	want := []home.ImageChange{{Name: "o3s-cage", Old: fixture.Version, New: fixture.NewerVersion}, {Name: "o3s-gateway", Old: fixture.Version, New: fixture.NewerVersion}}
 	// Require both images named
 	if diff := cmp.Diff(want, got.Images); diff != "" {
 		t.Errorf("Check() images (-want +got):\n%s", diff)

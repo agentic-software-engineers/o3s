@@ -2,6 +2,7 @@
 package menu
 
 import (
+	"path"
 	"slices"
 	"strconv"
 	"strings"
@@ -20,6 +21,8 @@ type Home struct {
 	Features []string
 	// Blocked are the names the gateway refused, each noting how often and when.
 	Blocked []Option
+	// Running marks a stack whose gateway answers, which alone knows what it blocked.
+	Running bool
 	// Projects are the projects the workspace lists, as host/owner/name.
 	Projects []string
 	Lookup   Lookup
@@ -39,7 +42,28 @@ type Lookup interface {
 type Preview struct {
 	Lines   []string
 	Waiting []string
+	// Options are the settings the feature offers for the user to set.
+	Options []FeatureOption
 }
+
+// FeatureOption is a setting a feature offers, with the values it takes and the one it falls back to.
+type FeatureOption struct {
+	Name, Type, Default string
+	Enum, Proposals     []string
+	Description         string
+}
+
+// offer is a setting one chosen feature offers.
+type offer struct {
+	pkg string
+	FeatureOption
+}
+
+// Answers on how to set a feature's options.
+const (
+	keepDefaults = "keep defaults"
+	configure    = "configure"
+)
 
 // Secret is a secret the home knows, and whether it holds a value.
 type Secret struct {
@@ -363,7 +387,7 @@ func plan(h Home, a Answers) []Command {
 	case do == "firewall" && action == "prune":
 		return []Command{{Args: []string{"firewall", "prune"}, Terminal: true}}
 	case do == "firewall" && action == "blocked":
-		return blockedPlan(a)
+		return blockedPlan(h, a)
 	case do == "feature":
 		return featurePlan(h, a, action)
 	case do == "project":
@@ -447,6 +471,18 @@ func feature(h Home, a Answers, action string) (Question, bool) {
 	if a.get("apply") != yes {
 		return Question{}, true
 	}
+	offers := offered(h, a)
+	// Ask whether to set the chosen features' options or keep their defaults
+	if len(offers) > 0 && !a.has("options") {
+		return Question{Key: "options", Kind: Select, Title: "Options", Options: []Option{{Value: keepDefaults}, {Value: configure}}, Default: []string{keepDefaults}}, false
+	}
+	// Ask for every option in turn where the user sets them
+	for _, o := range offers {
+		// Ask an option not yet answered
+		if a.get("options") == configure && !a.has(optionKey(o)) {
+			return optionQuestion(o), false
+		}
+	}
 	// Ask for the value of every secret the feature waits for
 	for _, name := range pv.Waiting {
 		// Ask for a value not yet given
@@ -505,7 +541,65 @@ func featurePlan(h Home, a Answers, action string) []Command {
 			cmds = append(cmds, Command{Args: []string{"secret", "add", name, "--no-bind-hint"}, Stdin: &value})
 		}
 	}
-	return append(cmds, Command{Args: append(append([]string{"feature", "add"}, chosenIDs(a)...), "--no-preview")})
+	args := append([]string{"feature", "add"}, chosenIDs(a)...)
+	// Hand every option the user set on to the feature it belongs to
+	for _, o := range offered(h, a) {
+		// Take an option the user answered
+		if a.has(optionKey(o)) {
+			args = append(args, "--option", o.pkg+":"+o.Name+"="+a.get(optionKey(o)))
+		}
+	}
+	return append(cmds, Command{Args: append(args, "--no-preview")})
+}
+
+// offered lists the options every chosen feature offers, feature by feature.
+func offered(h Home, a Answers) []offer {
+	var out []offer
+	// Ask every chosen feature what it offers
+	for _, id := range chosenIDs(a) {
+		pv, err := h.Lookup.Add(id)
+		// Leave out a feature whose options stay unknown
+		if err != nil {
+			continue
+		}
+		// Take every option the feature offers
+		for _, o := range pv.Options {
+			out = append(out, offer{pkg: id, FeatureOption: o})
+		}
+	}
+	return out
+}
+
+// optionKey names the answer to one option of one feature.
+func optionKey(o offer) string {
+	return "option:" + o.pkg + ":" + o.Name
+}
+
+// optionQuestion asks for an option the way it takes its value, starting from its default.
+func optionQuestion(o offer) Question {
+	q := Question{Key: optionKey(o), Title: path.Base(o.pkg) + " " + o.Name, Default: []string{o.Default}}
+	// Say what the option does
+	if o.Description != "" {
+		q.Preview = append(q.Preview, o.Description)
+	}
+	// Ask by the kind of value the option takes
+	switch {
+	case o.Type == "boolean":
+		q.Kind, q.Options = Select, []Option{{Value: "true"}, {Value: "false"}}
+	case len(o.Enum) > 0:
+		q.Kind = Select
+		// Offer every value the option takes
+		for _, v := range o.Enum {
+			q.Options = append(q.Options, Option{Value: v})
+		}
+	default:
+		q.Kind = Input
+		// Name the values the option suggests
+		if len(o.Proposals) > 0 {
+			q.Preview = append(q.Preview, "suggested: "+strings.Join(o.Proposals, ", "))
+		}
+	}
+	return q
 }
 
 // chosenIDs hands back the full id of every feature chosen, in the order the answer holds them.
@@ -557,7 +651,11 @@ func remove(a Answers, do string) Command {
 }
 
 // blockedPlan allows every blocked host the user chose on the ports given, or notes that none was there to choose.
-func blockedPlan(a Answers) []Command {
+func blockedPlan(h Home, a Answers) []Command {
+	// Point a stopped stack at starting it, since its gateway holds what it blocked
+	if len(a.all("blocked")) == 0 && !h.Running {
+		return []Command{{Note: "Start the stack to see the blocked hosts"}}
+	}
 	// Name that nothing was blocked or chosen
 	if len(a.all("blocked")) == 0 {
 		return []Command{{Note: "No blocked host"}}

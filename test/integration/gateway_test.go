@@ -4,10 +4,13 @@
 package integration_test
 
 import (
+	"fmt"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/hansehart/o3s/internal/fixture"
 	"github.com/hansehart/o3s/test/stacktest"
 )
 
@@ -53,7 +56,7 @@ func TestTheGatewayRejectsEveryNewConnectionOnAnEmptyPolicy(t *testing.T) {
 
 // The gateway opens every port the home's policy names for a host.
 func TestTheGatewayOpensThePortsTheHomesPolicyNames(t *testing.T) {
-	stacktest.AHomePolicy(t, `{"hosts": [{"name": "example.com", "ports": [443, 80], "by": ["user"]}]}`)
+	stacktest.AHomePolicy(t, fmt.Sprintf(`{"hosts": [{"name": %q, "ports": [%d, %d], "by": ["user"]}]}`, fixture.Host, fixture.Port, fixture.OtherPort))
 	// Stop when the gateway fails to come up
 	if err := stacktest.Up(t, "gateway"); err != nil {
 		t.Fatalf("Setup: Up(gateway): %v", err)
@@ -66,7 +69,7 @@ func TestTheGatewayOpensThePortsTheHomesPolicyNames(t *testing.T) {
 		t.Fatalf("Exec(gateway, iptables -S FORWARD) = %v", err)
 	}
 	// Require an accepting rule for every port the policy names
-	for _, port := range []string{"443", "80"} {
+	for _, port := range []string{strconv.Itoa(fixture.Port), strconv.Itoa(fixture.OtherPort)} {
 		// Flag a named port the chain leaves closed
 		if !acceptsPort(out, port) {
 			t.Errorf("FORWARD accepts nothing on port %s from its set, rules:\n%s", port, out)
@@ -90,7 +93,7 @@ func acceptsPort(rules, port string) bool {
 
 // The gateway counts every host of the policy on its own, in both directions.
 func TestTheGatewayCountsEveryHostOnItsOwn(t *testing.T) {
-	stacktest.AHomePolicy(t, `{"hosts": [{"name": "example.com", "ports": [443], "by": ["user"]}, {"name": "192.0.2.0/24", "ports": [22], "by": ["user"]}]}`)
+	stacktest.AHomePolicy(t, fmt.Sprintf(`{"hosts": [{"name": %q, "ports": [%d], "by": ["user"]}, {"name": %q, "ports": [%d], "by": ["user"]}]}`, fixture.Host, fixture.Port, fixture.Range, fixture.OtherPort))
 	// Stop when the gateway fails to come up
 	if err := stacktest.Up(t, "gateway"); err != nil {
 		t.Fatalf("Setup: Up(gateway): %v", err)
@@ -103,7 +106,7 @@ func TestTheGatewayCountsEveryHostOnItsOwn(t *testing.T) {
 		t.Fatalf("Exec(gateway, iptables -S O3S_ACCT) = %v", err)
 	}
 	// Require a rule each way for every host
-	for _, host := range []string{"example.com", "192.0.2.0/24"} {
+	for _, host := range []string{fixture.Host, fixture.Range} {
 		// Check both directions of the host's traffic
 		for _, way := range []string{"dst", "src"} {
 			// Flag a direction the chain leaves uncounted
@@ -117,7 +120,7 @@ func TestTheGatewayCountsEveryHostOnItsOwn(t *testing.T) {
 // The gateway records the bytes a host moved and when it last moved any.
 func TestTheGatewayRecordsTheTrafficOfAHost(t *testing.T) {
 	t.Setenv("O3S_TRAFFIC_INTERVAL", "1")
-	stacktest.AHomePolicy(t, `{"hosts": [{"name": "example.com", "ports": [443], "by": ["user"]}, {"name": "127.0.0.1", "ports": [9000], "by": ["user"]}]}`)
+	stacktest.AHomePolicy(t, fmt.Sprintf(`{"hosts": [{"name": %q, "ports": [%d], "by": ["user"]}, {"name": "127.0.0.1", "ports": [9000], "by": ["user"]}]}`, fixture.Host, fixture.Port))
 	// Stop when the gateway fails to come up
 	if err := stacktest.Up(t, "gateway"); err != nil {
 		t.Fatalf("Setup: Up(gateway): %v", err)
@@ -139,19 +142,19 @@ func TestTheGatewayRecordsTheTrafficOfAHost(t *testing.T) {
 // A name the gateway refuses to resolve lands among the blocked hosts.
 func TestTheGatewayRecordsARefusedName(t *testing.T) {
 	t.Setenv("O3S_TRAFFIC_INTERVAL", "1")
-	stacktest.AHomePolicy(t, `{"hosts": [{"name": "example.com", "ports": [443], "by": ["user"]}]}`)
+	stacktest.AHomePolicy(t, fmt.Sprintf(`{"hosts": [{"name": %q, "ports": [%d], "by": ["user"]}]}`, fixture.Host, fixture.Port))
 	// Stop when the gateway fails to come up
 	if err := stacktest.Up(t, "gateway"); err != nil {
 		t.Fatalf("Setup: Up(gateway): %v", err)
 	}
 
 	// Ask for a name the policy leaves out, which the resolver refuses
-	_, _ = stacktest.Exec(t, "gateway", "nslookup", "blocked.example", "127.0.0.1")
-	got := waitFor(t, `.blocked["blocked.example"].attempts >= 1`)
+	_, _ = stacktest.Exec(t, "gateway", "nslookup", fixture.RefusedName, "127.0.0.1")
+	got := waitFor(t, fmt.Sprintf(`.blocked[%q].attempts >= 1`, fixture.RefusedName))
 
 	// Report a refusal the record misses
 	if got != "true" {
-		t.Errorf("traffic.json records blocked.example as %q, want at least one attempt", got)
+		t.Errorf("traffic.json records %s as %q, want at least one attempt", fixture.RefusedName, got)
 	}
 }
 
@@ -186,7 +189,8 @@ func countsHost(rules, host, way string) bool {
 
 // A host with an end time gets rules of its own that stop at that time, and stays out of the sets every port shares.
 func TestTheGatewayAdmitsATimedHostUntilItsEnd(t *testing.T) {
-	stacktest.AHomePolicy(t, `{"hosts": [{"name": "example.com", "ports": [443], "by": ["user"]}, {"name": "example.org", "ports": [443, 22], "by": ["user"], "expires": "2030-01-01T00:00:00Z"}]}`)
+	stacktest.AHomePolicy(t, fmt.Sprintf(`{"hosts": [{"name": %q, "ports": [%d], "by": ["user"]}, {"name": %q, "ports": [%d, %d], "by": ["user"], "expires": %q}]}`, fixture.Host, fixture.Port, fixture.OtherHost, fixture.Port, fixture.OtherPort, fixture.FarAheadText))
+	stop := strings.TrimSuffix(fixture.FarAheadText, "Z")
 	// Stop when the gateway fails to come up
 	if err := stacktest.Up(t, "gateway"); err != nil {
 		t.Fatalf("Setup: Up(gateway): %v", err)
@@ -199,10 +203,10 @@ func TestTheGatewayAdmitsATimedHostUntilItsEnd(t *testing.T) {
 		t.Fatalf("Exec(gateway, iptables -S FORWARD) = %v", err)
 	}
 	// Require a rule per port that stops at the host's end time
-	for _, port := range []string{"443", "22"} {
+	for _, port := range []string{strconv.Itoa(fixture.Port), strconv.Itoa(fixture.OtherPort)} {
 		// Flag a port of the timed host the chain leaves without its own stop
-		if !strings.Contains(forward, "--dport "+port+" -m time --datestop 2030-01-01T00:00:00 -j ACCEPT") {
-			t.Errorf("FORWARD admits example.org on %s without its end time, rules:\n%s", port, forward)
+		if !strings.Contains(forward, "--dport "+port+" -m time --datestop "+stop+" -j ACCEPT") {
+			t.Errorf("FORWARD admits %s on %s without its end time, rules:\n%s", fixture.OtherHost, port, forward)
 		}
 	}
 	nat, err := stacktest.Exec(t, "gateway", "iptables", "-t", "nat", "-S", "PREROUTING")
@@ -211,19 +215,19 @@ func TestTheGatewayAdmitsATimedHostUntilItsEnd(t *testing.T) {
 		t.Fatalf("Exec(gateway, iptables -t nat -S PREROUTING) = %v", err)
 	}
 	// Require the timed host's HTTPS to reach the proxy until its end time
-	if !strings.Contains(nat, "-m time --datestop 2030-01-01T00:00:00 -j REDIRECT") {
+	if !strings.Contains(nat, "-m time --datestop "+stop+" -j REDIRECT") {
 		t.Errorf("PREROUTING diverts no HTTPS of the timed host, rules:\n%s", nat)
 	}
-	conf, err := stacktest.Exec(t, "gateway", "grep", "ipset=/example.org/", "/etc/dnsmasq.conf")
+	conf, err := stacktest.Exec(t, "gateway", "grep", "ipset=/"+fixture.OtherHost+"/", "/etc/dnsmasq.conf")
 	// Require the timed host to fill its own set alone
 	if err != nil || strings.Contains(conf, "allowed-p") {
-		t.Errorf("resolver fills %q for example.org, want its counting set alone (%v)", conf, err)
+		t.Errorf("resolver fills %q for %s, want its counting set alone (%v)", conf, fixture.OtherHost, err)
 	}
 }
 
 // A host whose end time passed before the gateway started gets no rule and no resolution.
 func TestTheGatewayLeavesOutAnExpiredHost(t *testing.T) {
-	stacktest.AHomePolicy(t, `{"hosts": [{"name": "example.com", "ports": [443], "by": ["user"]}, {"name": "example.org", "ports": [443], "by": ["user"], "expires": "2020-01-01T00:00:00Z"}]}`)
+	stacktest.AHomePolicy(t, fmt.Sprintf(`{"hosts": [{"name": %q, "ports": [%d], "by": ["user"]}, {"name": %q, "ports": [%d], "by": ["user"], "expires": %q}]}`, fixture.Host, fixture.Port, fixture.OtherHost, fixture.Port, fixture.LongAgoText))
 	// Stop when the gateway fails to come up
 	if err := stacktest.Up(t, "gateway"); err != nil {
 		t.Fatalf("Setup: Up(gateway): %v", err)
@@ -236,7 +240,7 @@ func TestTheGatewayLeavesOutAnExpiredHost(t *testing.T) {
 		t.Fatalf("Exec(gateway, cat /etc/dnsmasq.conf) = %v", err)
 	}
 	// Report an expired host the resolver still answers for
-	if strings.Contains(conf, "example.org") {
-		t.Errorf("resolver still names example.org after its end time:\n%s", conf)
+	if strings.Contains(conf, fixture.OtherHost) {
+		t.Errorf("resolver still names %s after its end time:\n%s", fixture.OtherHost, conf)
 	}
 }

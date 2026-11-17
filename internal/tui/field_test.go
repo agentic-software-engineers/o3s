@@ -2,12 +2,14 @@ package tui
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/google/go-cmp/cmp"
 
+	"github.com/hansehart/o3s/internal/fixture"
 	"github.com/hansehart/o3s/internal/menu"
 )
 
@@ -35,7 +37,7 @@ func TestListNamesTheOptionsBelow(t *testing.T) {
 		q.Options = append(q.Options, menu.Option{Value: fmt.Sprintf("feature-%02d", i)})
 	}
 
-	view := stripped(newMulti(q).View(80))
+	view := stripped(newMulti(q).View(usualWidth))
 
 	// Require the count of the options below
 	if !strings.Contains(view, "(3 more)") {
@@ -104,18 +106,18 @@ func TestMultiTakesTheHighlightedOptionOrTheDefaults(t *testing.T) {
 
 // A shown text starts from its default, and a hidden one starts empty and shows dots.
 func TestTextStartsFromItsDefault(t *testing.T) {
-	ports := menu.Question{Key: "ports", Kind: menu.Input, Title: "Ports", Default: []string{"443"}}
-	value := menu.Question{Key: "value", Kind: menu.Hidden, Title: "Value", Default: []string{"s3cr3t"}}
+	ports := menu.Question{Key: "ports", Kind: menu.Input, Title: "Ports", Default: []string{strconv.Itoa(fixture.Port)}}
+	value := menu.Question{Key: "value", Kind: menu.Hidden, Title: "Value", Default: []string{fixture.SecretValue}}
 
 	_, kept := press(newText(ports), enter)
 	f, typedValue := press(newText(value), keys("abc", enter)...)
 
 	// Require the default kept, and the hidden value typed alone
-	if diff := cmp.Diff([][]string{{"443"}, {"abc"}}, [][]string{kept.values, typedValue.values}); diff != "" {
+	if diff := cmp.Diff([][]string{{strconv.Itoa(fixture.Port)}, {"abc"}}, [][]string{kept.values, typedValue.values}); diff != "" {
 		t.Errorf("answers (-want +got):\n%s", diff)
 	}
 	// Require the hidden value shown as dots
-	if view := stripped(f.View(40)); !containsFold(view, "***") {
+	if view := stripped(f.View(narrow)); !containsFold(view, "***") {
 		t.Errorf("hidden view = %q, want dots", view)
 	}
 }

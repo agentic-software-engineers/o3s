@@ -24,6 +24,7 @@ func newFeature() *cobra.Command {
 // newFeatureAdd builds the command that adds features with the hosts and env they need, saved together.
 func newFeatureAdd() *cobra.Command {
 	var noPreview bool
+	var options []string
 	cmd := &cobra.Command{
 		Use:   "add <id>...",
 		Short: "Add features with the hosts and env they need",
@@ -32,6 +33,10 @@ func newFeatureAdd() *cobra.Command {
 			setups, err := resolveAll(cmd, args)
 			// Hand back a feature its store fails to offer
 			if err != nil {
+				return err
+			}
+			// Hand back an option no feature here takes as given
+			if err := applyOptions(setups, options); err != nil {
 				return err
 			}
 			dir, c, dc, err := loadHome()
@@ -108,6 +113,7 @@ func newFeatureAdd() *cobra.Command {
 		},
 	}
 	previewFlag(cmd, &noPreview)
+	cmd.Flags().StringArrayVar(&options, "option", nil, "set an option the feature offers, as name=value or id:name=value, repeatable")
 	return cmd
 }
 
