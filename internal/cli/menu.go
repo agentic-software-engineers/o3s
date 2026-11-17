@@ -75,7 +75,7 @@ func (l menuLookup) Add(id string) (menu.Preview, error) {
 		return menu.Preview{}, err
 	}
 	lines, waiting := addLines(s, store)
-	pv := menu.Preview{Lines: lines, Waiting: waiting}
+	pv := menu.Preview{Lines: lines, Waiting: waiting, Features: 1, Hosts: len(s.Hosts), Env: len(s.Env)}
 	// Offer every option the user may set, the folder o3s gives the feature left out
 	for _, o := range s.Offered {
 		// Take an option that is the user's to set
@@ -103,7 +103,8 @@ func (l menuLookup) Remove(pkg string) (menu.Preview, error) {
 	if err != nil {
 		return menu.Preview{}, err
 	}
-	return menu.Preview{Lines: rmLines(pkg, removal(c, dc, s))}, nil
+	r := removal(c, dc, s)
+	return menu.Preview{Lines: rmLines(pkg, r), Features: 1, Hosts: len(r.hosts), Env: len(r.env)}, nil
 }
 
 // menuHome reads what the menu offers from the home it runs in, and as much as there is outside one.

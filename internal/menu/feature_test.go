@@ -33,7 +33,7 @@ func (fakeLookup) Features(store string) ([]string, error) {
 
 // Add shows what a feature brings, the tool with the options it offers.
 func (fakeLookup) Add(id string) (Preview, error) {
-	pv := Preview{Lines: []string{id + ":" + fixture.Major, hostLine, otherHostLine}, Waiting: []string{fixture.Secret, fixture.OtherSecret}}
+	pv := Preview{Lines: []string{id + ":" + fixture.Major, hostLine, otherHostLine}, Waiting: []string{fixture.Secret, fixture.OtherSecret}, Features: 1, Hosts: 2}
 	// Offer the tool's options alone
 	if id == toolPkg {
 		pv.Options = []FeatureOption{
@@ -47,7 +47,7 @@ func (fakeLookup) Add(id string) (Preview, error) {
 
 // Remove shows what leaves with the tool.
 func (fakeLookup) Remove(pkg string) (Preview, error) {
-	return Preview{Lines: []string{pkg, goneLine}}, nil
+	return Preview{Lines: []string{pkg, goneLine}, Features: 1, Hosts: 1}, nil
 }
 
 // aHomeWithTheTool is aHome holding the tool and reading its store through the fake.
@@ -171,6 +171,49 @@ func TestFeatureApplyShowsThePreview(t *testing.T) {
 	// Report previews that differ
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("previews (-want +got):\n%s", diff)
+	}
+}
+
+// Apply? names what the change comes to in one line, which stays beside the question however long the list above it grows.
+func TestFeatureApplySummarizesTheChange(t *testing.T) {
+	h := aHomeWithTheTool()
+	one, _ := walk(t, h, []string{"feature"}, []string{"add"}, []string{fixture.Store}, []string{fixture.Feature}, []string{"no"})
+	two, _ := walk(t, h, []string{"feature"}, []string{"add"}, []string{fixture.Store}, []string{fixture.OtherFeature, fixture.Feature}, []string{"no"})
+	removed, _ := walk(t, h, []string{"feature"}, []string{"rm"}, []string{toolPkg}, []string{"no"})
+
+	got := []string{one[4].Summary, two[4].Summary, removed[3].Summary}
+
+	want := []string{
+		"Adds " + fixture.Feature + " with 2 hosts, 2 secrets wait for a value",
+		"Adds 2 features with 4 hosts, 2 secrets wait for a value",
+		"Removes " + fixture.Feature + " with 1 host",
+	}
+	// Report summaries that differ
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("summaries (-want +got):\n%s", diff)
+	}
+}
+
+// A summary counts in the singular and the plural, and leaves out what the change holds none of.
+func TestSummaryCountsEveryPart(t *testing.T) {
+	tests := []struct {
+		verb, name string
+		pv         Preview
+		want       string
+	}{
+		{"Adds", fixture.Feature, Preview{Features: 1, Hosts: 1, Env: 1, Waiting: []string{fixture.Secret}}, "Adds " + fixture.Feature + " with 1 host and 1 env value, 1 secret waits for a value"},
+		{"Adds", fixture.Feature, Preview{Features: 3, Hosts: 5, Env: 2}, "Adds 3 features with 5 hosts and 2 env values"},
+		{"Removes", fixture.Feature, Preview{Features: 1, Env: 3}, "Removes " + fixture.Feature + " with 3 env values"},
+		{"Removes", fixture.Feature, Preview{Features: 1}, "Removes " + fixture.Feature},
+	}
+	// Write every change
+	for _, tt := range tests {
+		got := summary(tt.verb, tt.name, tt.pv)
+
+		// Report a summary that differs
+		if got != tt.want {
+			t.Errorf("summary(%+v) = %q, want %q", tt.pv, got, tt.want)
+		}
 	}
 }
 

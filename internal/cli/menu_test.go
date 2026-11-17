@@ -125,10 +125,11 @@ func TestMenuLookupShowsWhatAFeatureBrings(t *testing.T) {
 		t.Errorf("Features() (-want +got):\n%s", diff)
 	}
 	want := menu.Preview{
-		Lines:   []string{store + "/" + fixture.Feature + ":" + fixture.Major, fmt.Sprintf("  + %s:%d  %s !", fixture.Host, fixture.Port, fixture.Secret), "  + EXAMPLE_MODE=strict"},
-		Waiting: []string{fixture.Secret},
+		Lines:    []string{store + "/" + fixture.Feature + ":" + fixture.Major, fmt.Sprintf("  + %s:%d  %s !", fixture.Host, fixture.Port, fixture.Secret), "  + EXAMPLE_MODE=strict"},
+		Waiting:  []string{fixture.Secret},
+		Features: 1, Hosts: 1, Env: 1,
 	}
-	// Require the lines feature add prints
+	// Require the lines feature add prints, and what they count
 	if diff := cmp.Diff(want, pv); diff != "" {
 		t.Errorf("Add() (-want +got):\n%s", diff)
 	}
@@ -168,7 +169,7 @@ func TestMenuLookupShowsWhatLeavesWithAFeature(t *testing.T) {
 		t.Fatalf("Remove() = %v", err)
 	}
 	// Require the lines feature rm prints
-	if diff := cmp.Diff(menu.Preview{Lines: []string{pkg, fmt.Sprintf("  - %s:%d", fixture.Host, fixture.Port), "  - EXAMPLE_MODE=strict"}}, pv); diff != "" {
+	if diff := cmp.Diff(menu.Preview{Lines: []string{pkg, fmt.Sprintf("  - %s:%d", fixture.Host, fixture.Port), "  - EXAMPLE_MODE=strict"}, Features: 1, Hosts: 1, Env: 1}, pv); diff != "" {
 		t.Errorf("Remove() (-want +got):\n%s", diff)
 	}
 	// Require the installed feature on offer

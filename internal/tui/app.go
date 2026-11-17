@@ -55,13 +55,15 @@ type model struct {
 	state   state
 	q       menu.Question
 	field   field
-	queue   []menu.Command
-	out     pane
-	stream  stream
-	ran     int
-	failed  bool
-	width   int
-	height  int
+	// previewTop is the first line of a long preview in view.
+	previewTop int
+	queue      []menu.Command
+	out        pane
+	stream     stream
+	ran        int
+	failed     bool
+	width      int
+	height     int
 }
 
 // Run shows the menu until the user leaves.
@@ -152,7 +154,7 @@ func (m model) asked(msg askedMsg) (tea.Model, tea.Cmd) {
 	if m.carry != nil {
 		q.Default, m.carry = m.carry, nil
 	}
-	m.q, m.field, m.state = q, newField(q), asking
+	m.q, m.field, m.state, m.previewTop = q, newField(q), asking, 0
 	return m, nil
 }
 
@@ -165,6 +167,16 @@ func (m model) key(k tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	// Follow the key in the state the app is in
 	switch m.state {
 	case asking:
+		// Page through a preview longer than its room, the question staying in view
+		if (k.String() == "pgup" || k.String() == "pgdown") && m.previewOverflows() {
+			step := m.previewRoom()
+			// Page back where the key asks it
+			if k.String() == "pgup" {
+				step = -step
+			}
+			m.previewTop = min(max(m.previewTop+step, 0), len(m.previewLines())-m.previewRoom())
+			return m, nil
+		}
 		var r result
 		var cmd tea.Cmd
 		m.field, r, cmd = m.field.Update(k)
@@ -274,18 +286,52 @@ func (m model) paneHeight() int {
 	return m.height - chromeLines
 }
 
-// explanation draws what a question explains or changes, broken to the width, with a gap before the question.
-func explanation(lines []string, width int) string {
+// previewLines are the lines a question shows above it, broken to the width.
+func (m model) previewLines() []string {
 	var out []string
-	// Draw every line of the explanation
-	for _, line := range lines {
-		out = append(out, wrapped(colored(line), width)...)
+	// Break every line of the preview
+	for _, line := range m.q.Preview {
+		out = append(out, wrapped(colored(line), m.width)...)
 	}
-	// Leave a gap between the explanation and the question
-	if len(out) > 0 {
-		out = append(out, "", "")
+	return out
+}
+
+// summaryLines are the summary of a question, broken to the width.
+func (m model) summaryLines() []string {
+	// Show a summary only where the question holds one
+	if m.q.Summary == "" {
+		return nil
 	}
-	return strings.Join(out, "\n")
+	return wrapped(m.q.Summary, m.width)
+}
+
+// previewRoom is how many lines the preview gets beside the summary, the question and its answers.
+func (m model) previewRoom() int {
+	field := strings.Count(m.field.View(m.width), "\n") + 1
+	return max(m.height-chromeLines-field-len(m.summaryLines())-1, minPaneLines)
+}
+
+// previewOverflows reports whether a question's preview runs longer than its room.
+func (m model) previewOverflows() bool {
+	return len(m.previewLines()) > m.previewRoom()
+}
+
+// question draws the preview in the room it has, then the summary, the question and its answers, which stay in view.
+func (m model) question() string {
+	lines := m.previewLines()
+	// Show the part of a long preview the user paged to
+	if m.previewOverflows() {
+		top := min(m.previewTop, len(lines)-m.previewRoom())
+		lines = lines[top : top+m.previewRoom()]
+	}
+	var out []string
+	// Leave a gap between the preview and what stays in view
+	if len(lines) > 0 {
+		out = append(out, lines...)
+		out = append(out, "")
+	}
+	out = append(out, m.summaryLines()...)
+	return strings.Join(append(out, m.field.View(m.width)), "\n")
 }
 
 // View draws the whole screen from the state: header, trail, body, hint.
@@ -295,7 +341,12 @@ func (m model) View() tea.View {
 	// Draw the body and the hint of the state
 	switch m.state {
 	case asking:
-		body, hint = explanation(m.q.Preview, m.width)+m.field.View(m.width), dim.Render(m.field.Hint())
+		body, hint = m.question(), m.field.Hint()
+		// Name the keys that page a long preview
+		if m.previewOverflows() {
+			hint += " | pgup/pgdn scroll"
+		}
+		hint = dim.Render(hint)
 	case loading:
 		body = dim.Render("...")
 	case running:

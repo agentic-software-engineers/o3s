@@ -2,6 +2,7 @@
 package menu
 
 import (
+	"fmt"
 	"path"
 	"slices"
 	"strconv"
@@ -44,6 +45,8 @@ type Preview struct {
 	Waiting []string
 	// Options are the settings the feature offers for the user to set.
 	Options []FeatureOption
+	// Features, Hosts and Env count what the change adds or takes away.
+	Features, Hosts, Env int
 }
 
 // FeatureOption is a setting a feature offers, with the values it takes and the one it falls back to.
@@ -95,6 +98,8 @@ type Question struct {
 	Options []Option
 	Default []string
 	Preview []string
+	// Summary sums up the preview in one line, which stays in view beside the question.
+	Summary string
 }
 
 // Option is one choice of a question, with a note shown beside it.
@@ -433,7 +438,7 @@ func feature(h Home, a Answers, action string) (Question, bool) {
 		if err != nil {
 			return Question{}, true
 		}
-		return ask(a, apply(pv))
+		return ask(a, apply(pv, "Removes", path.Base(a.get("feature"))))
 	}
 	// End the dialog where no store is there to choose
 	if len(h.Stores) == 0 {
@@ -465,7 +470,7 @@ func feature(h Home, a Answers, action string) (Question, bool) {
 	}
 	// Confirm what the feature brings
 	if !a.has("apply") {
-		return apply(pv), false
+		return apply(pv, "Adds", path.Base(chosenIDs(a)[0])), false
 	}
 	// End the dialog where the user declines
 	if a.get("apply") != yes {
@@ -623,6 +628,7 @@ func previewAll(h Home, a Answers) (Preview, error) {
 			return Preview{}, err
 		}
 		all.Lines = append(all.Lines, pv.Lines...)
+		all.Features, all.Hosts, all.Env = all.Features+pv.Features, all.Hosts+pv.Hosts, all.Env+pv.Env
 		// Take each waiting secret once
 		for _, name := range pv.Waiting {
 			// Keep a secret taken already out of the list
@@ -634,9 +640,45 @@ func previewAll(h Home, a Answers) (Preview, error) {
 	return all, nil
 }
 
-// apply asks to apply a change, showing it above the question.
-func apply(pv Preview) Question {
-	return Question{Key: "apply", Kind: Confirm, Title: "Apply?", Preview: pv.Lines}
+// apply asks to apply a change, showing it above the question and summing it up beside it.
+func apply(pv Preview, verb, name string) Question {
+	return Question{Key: "apply", Kind: Confirm, Title: "Apply?", Preview: pv.Lines, Summary: summary(verb, name, pv)}
+}
+
+// summary writes in one line what a change comes to, the feature or how many with the hosts and env they carry, and the secrets that wait.
+func summary(verb, name string, pv Preview) string {
+	line := verb + " " + name
+	// Count the features where several change at once
+	if pv.Features > 1 {
+		line = fmt.Sprintf("%s %s", verb, count(pv.Features, "feature", "features"))
+	}
+	var parts []string
+	// Name the hosts the change carries
+	if pv.Hosts > 0 {
+		parts = append(parts, count(pv.Hosts, "host", "hosts"))
+	}
+	// Name the env values the change carries
+	if pv.Env > 0 {
+		parts = append(parts, count(pv.Env, "env value", "env values"))
+	}
+	// Join what the change carries to the feature
+	if len(parts) > 0 {
+		line += " with " + strings.Join(parts, " and ")
+	}
+	// Name the secrets still waiting for a value
+	if n := len(pv.Waiting); n > 0 {
+		line += ", " + count(n, "secret waits", "secrets wait") + " for a value"
+	}
+	return line
+}
+
+// count writes a number with the word that fits it.
+func count(n int, one, many string) string {
+	// Take the singular for a single one
+	if n == 1 {
+		return "1 " + one
+	}
+	return fmt.Sprintf("%d %s", n, many)
 }
 
 // remove builds the removal a dialog chose, or the note that nothing was there to remove.
