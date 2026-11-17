@@ -8,6 +8,7 @@ import (
 
 	"github.com/rogpeppe/go-internal/testscript"
 
+	"github.com/hansehart/o3s/internal/fixture"
 	"github.com/hansehart/o3s/internal/registry/registrytest"
 )
 
@@ -117,6 +118,10 @@ func TestScripts(t *testing.T) {
 		Setup: func(env *testscript.Env) error {
 			env.Setenv("HOME", env.WorkDir)
 			env.Setenv("REGISTRY", reg.Host)
+			// Hand the scripts every value of the fixture set by its name
+			for name, value := range fixture.Env() {
+				env.Setenv(name, value)
+			}
 			bin := filepath.Join(env.WorkDir, ".bin")
 			// Hand back a fake engine that stays unwritten
 			if err := os.MkdirAll(bin, 0o750); err != nil {

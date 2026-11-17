@@ -12,11 +12,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hansehart/o3s/internal/fixture"
 	"github.com/hansehart/o3s/internal/release"
 )
 
 // latest is the release the releases page offers as the newest.
-const latest = "1.1.0"
+const latest = fixture.NewerVersion
 
 // binary stands in for the o3s binary of the latest release.
 const binary = "#!/bin/sh\necho o3s version " + latest + "\n"
@@ -205,10 +206,10 @@ func TestIsReleaseKnowsReleaseCandidates(t *testing.T) {
 		version string
 		want    bool
 	}{
-		{"1.0.0", true},
-		{"1.0.0-rc.1", true},
+		{fixture.Version, true},
+		{fixture.Candidate, true},
 		{"dev", false},
-		{"1.0.0-SNAPSHOT-abc1234", false},
+		{fixture.DevBuild, false},
 		{"1.0", false},
 	}
 	// Check every version

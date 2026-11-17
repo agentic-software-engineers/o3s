@@ -14,6 +14,7 @@ import (
 	"github.com/tailscale/hujson"
 
 	"github.com/hansehart/o3s/internal/config"
+	"github.com/hansehart/o3s/internal/fixture"
 	"github.com/hansehart/o3s/internal/home"
 )
 
@@ -139,9 +140,9 @@ func TestInitPinsTheImagesToTheRelease(t *testing.T) {
 		version string
 		tag     string
 	}{
-		{"1.0.0", "1.0.0"},
-		{"dev", "latest"},
-		{"1.0.0-SNAPSHOT-abc1234", "latest"},
+		{fixture.Version, fixture.Version},
+		{"dev", fixture.FloatingTag},
+		{fixture.DevBuild, fixture.FloatingTag},
 	}
 	// Check every kind of build
 	for _, tt := range tests {

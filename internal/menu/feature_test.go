@@ -2,9 +2,21 @@ package menu
 
 import (
 	"errors"
+	"fmt"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+
+	"github.com/hansehart/o3s/internal/fixture"
+)
+
+// The fake store's features by their packages, and the lines its previews show for the hosts they bring or take.
+var (
+	toolPkg       = fixture.Store + "/" + fixture.Feature
+	otherPkg      = fixture.Store + "/" + fixture.OtherFeature
+	hostLine      = fmt.Sprintf("  + %s:%d  %s !", fixture.Host, fixture.Port, fixture.Secret)
+	otherHostLine = fmt.Sprintf("  + %s:%d  %s !", fixture.OtherHost, fixture.Port, fixture.OtherSecret)
+	goneLine      = fmt.Sprintf("  - %s:%d", fixture.Host, fixture.Port)
 )
 
 // fakeLookup is a store that offers the tool, whose feature needs two secrets still waiting for values.
@@ -13,33 +25,33 @@ type fakeLookup struct{}
 // Features lists the ids the store offers, and fails for any other store.
 func (fakeLookup) Features(store string) ([]string, error) {
 	// Turn away a store out of reach
-	if store != "registry.example.com/features" {
+	if store != fixture.Store {
 		return nil, errors.New("read the features of " + store + ": unreachable")
 	}
-	return []string{"other", "tool"}, nil
+	return []string{fixture.OtherFeature, fixture.Feature}, nil
 }
 
 // Add shows what the tool brings.
 func (fakeLookup) Add(id string) (Preview, error) {
-	return Preview{Lines: []string{id + ":1", "  + example.com:443  EXAMPLE_TOKEN !", "  + example.org:443  OTHER_TOKEN !"}, Waiting: []string{"EXAMPLE_TOKEN", "OTHER_TOKEN"}}, nil
+	return Preview{Lines: []string{id + ":" + fixture.Major, hostLine, otherHostLine}, Waiting: []string{fixture.Secret, fixture.OtherSecret}}, nil
 }
 
 // Remove shows what leaves with the tool.
 func (fakeLookup) Remove(pkg string) (Preview, error) {
-	return Preview{Lines: []string{pkg, "  - example.com:443"}}, nil
+	return Preview{Lines: []string{pkg, goneLine}}, nil
 }
 
 // aHomeWithTheTool is aHome holding the tool and reading its store through the fake.
 func aHomeWithTheTool() Home {
 	h := aHome
-	h.Features = []string{"registry.example.com/features/tool"}
+	h.Features = []string{toolPkg}
 	h.Lookup = fakeLookup{}
 	return h
 }
 
 // The feature dialogs preview their change, ask for waiting values, and run the commands they lead to.
 func TestFeatureDialogsEndInTheirCommands(t *testing.T) {
-	value := "s3cr3t"
+	value := fixture.SecretValue
 	tests := []struct {
 		name    string
 		answers [][]string
@@ -48,45 +60,45 @@ func TestFeatureDialogsEndInTheirCommands(t *testing.T) {
 	}{
 		{
 			"adding a feature with one value given and one skipped",
-			[][]string{{"feature"}, {"add"}, {"registry.example.com/features"}, {"tool"}, {"yes"}, {value}, {""}},
-			[]string{"What do you want to do?", "Action", "Store", "Features", "Apply?", "Value for EXAMPLE_TOKEN (empty to skip)", "Value for OTHER_TOKEN (empty to skip)"},
+			[][]string{{"feature"}, {"add"}, {fixture.Store}, {fixture.Feature}, {"yes"}, {value}, {""}},
+			[]string{"What do you want to do?", "Action", "Store", "Features", "Apply?", "Value for " + fixture.Secret + " (empty to skip)", "Value for " + fixture.OtherSecret + " (empty to skip)"},
 			[]Command{
-				{Args: []string{"secret", "add", "EXAMPLE_TOKEN", "--no-bind-hint"}, Stdin: &value},
-				{Args: []string{"feature", "add", "registry.example.com/features/tool", "--no-preview"}},
+				{Args: []string{"secret", "add", fixture.Secret, "--no-bind-hint"}, Stdin: &value},
+				{Args: []string{"feature", "add", toolPkg, "--no-preview"}},
 			},
 		},
 		{
 			"declining a feature",
-			[][]string{{"feature"}, {"add"}, {"registry.example.com/features"}, {"tool"}, {"no"}},
+			[][]string{{"feature"}, {"add"}, {fixture.Store}, {fixture.Feature}, {"no"}},
 			[]string{"What do you want to do?", "Action", "Store", "Features", "Apply?"},
 			nil,
 		},
 		{
 			"adding two features that wait for the same secrets",
-			[][]string{{"feature"}, {"add"}, {"registry.example.com/features"}, {"other", "tool"}, {"yes"}, {value}, {""}},
-			[]string{"What do you want to do?", "Action", "Store", "Features", "Apply?", "Value for EXAMPLE_TOKEN (empty to skip)", "Value for OTHER_TOKEN (empty to skip)"},
+			[][]string{{"feature"}, {"add"}, {fixture.Store}, {fixture.OtherFeature, fixture.Feature}, {"yes"}, {value}, {""}},
+			[]string{"What do you want to do?", "Action", "Store", "Features", "Apply?", "Value for " + fixture.Secret + " (empty to skip)", "Value for " + fixture.OtherSecret + " (empty to skip)"},
 			[]Command{
-				{Args: []string{"secret", "add", "EXAMPLE_TOKEN", "--no-bind-hint"}, Stdin: &value},
-				{Args: []string{"feature", "add", "registry.example.com/features/other", "registry.example.com/features/tool", "--no-preview"}},
+				{Args: []string{"secret", "add", fixture.Secret, "--no-bind-hint"}, Stdin: &value},
+				{Args: []string{"feature", "add", otherPkg, toolPkg, "--no-preview"}},
 			},
 		},
 		{
 			"choosing no feature",
-			[][]string{{"feature"}, {"add"}, {"registry.example.com/features"}, {}},
+			[][]string{{"feature"}, {"add"}, {fixture.Store}, {}},
 			[]string{"What do you want to do?", "Action", "Store", "Features"},
 			[]Command{{Note: "No feature chosen"}},
 		},
 		{
 			"a store out of reach",
-			[][]string{{"feature"}, {"add"}, {"registry.example.org/features"}},
+			[][]string{{"feature"}, {"add"}, {fixture.AbsentStore}},
 			[]string{"What do you want to do?", "Action", "Store"},
-			[]Command{{Note: "error: read the features of registry.example.org/features: unreachable"}},
+			[]Command{{Note: "error: read the features of " + fixture.AbsentStore + ": unreachable"}},
 		},
 		{
 			"removing a feature",
-			[][]string{{"feature"}, {"rm"}, {"registry.example.com/features/tool"}, {"yes"}},
+			[][]string{{"feature"}, {"rm"}, {toolPkg}, {"yes"}},
 			[]string{"What do you want to do?", "Action", "Feature", "Apply?"},
-			[]Command{{Args: []string{"feature", "rm", "registry.example.com/features/tool", "--no-preview"}}},
+			[]Command{{Args: []string{"feature", "rm", toolPkg, "--no-preview"}}},
 		},
 		{
 			"listing the features",
@@ -96,7 +108,7 @@ func TestFeatureDialogsEndInTheirCommands(t *testing.T) {
 		},
 	}
 	h := aHomeWithTheTool()
-	h.Stores = append(h.Stores, "registry.example.org/features")
+	h.Stores = append(h.Stores, fixture.AbsentStore)
 	// Walk every dialog
 	for _, tt := range tests {
 		asked, got := walk(t, h, tt.answers...)
@@ -115,14 +127,14 @@ func TestFeatureDialogsEndInTheirCommands(t *testing.T) {
 // Apply? shows what the feature brings or takes, as the CLI prints it.
 func TestFeatureApplyShowsThePreview(t *testing.T) {
 	h := aHomeWithTheTool()
-	added, _ := walk(t, h, []string{"feature"}, []string{"add"}, []string{"registry.example.com/features"}, []string{"tool"}, []string{"no"})
-	removed, _ := walk(t, h, []string{"feature"}, []string{"rm"}, []string{"registry.example.com/features/tool"}, []string{"no"})
+	added, _ := walk(t, h, []string{"feature"}, []string{"add"}, []string{fixture.Store}, []string{fixture.Feature}, []string{"no"})
+	removed, _ := walk(t, h, []string{"feature"}, []string{"rm"}, []string{toolPkg}, []string{"no"})
 
 	got := [][]string{added[4].Preview, removed[3].Preview}
 
 	want := [][]string{
-		{"registry.example.com/features/tool:1", "  + example.com:443  EXAMPLE_TOKEN !", "  + example.org:443  OTHER_TOKEN !"},
-		{"registry.example.com/features/tool", "  - example.com:443"},
+		{toolPkg + ":" + fixture.Major, hostLine, otherHostLine},
+		{toolPkg, goneLine},
 	}
 	// Report previews that differ
 	if diff := cmp.Diff(want, got); diff != "" {
@@ -147,13 +159,13 @@ func TestFeatureDialogsWithNothingToChooseEndWithANote(t *testing.T) {
 
 // The features of a store come as a multi-select, and Apply? shows each chosen one's change in turn.
 func TestFeatureAddChoosesSeveral(t *testing.T) {
-	asked, _ := walk(t, aHomeWithTheTool(), []string{"feature"}, []string{"add"}, []string{"registry.example.com/features"}, []string{"other", "tool"}, []string{"no"})
+	asked, _ := walk(t, aHomeWithTheTool(), []string{"feature"}, []string{"add"}, []string{fixture.Store}, []string{fixture.OtherFeature, fixture.Feature}, []string{"no"})
 
 	got := []any{asked[3].Kind, asked[4].Preview}
 
 	want := []any{Multi, []string{
-		"registry.example.com/features/other:1", "  + example.com:443  EXAMPLE_TOKEN !", "  + example.org:443  OTHER_TOKEN !",
-		"registry.example.com/features/tool:1", "  + example.com:443  EXAMPLE_TOKEN !", "  + example.org:443  OTHER_TOKEN !",
+		otherPkg + ":" + fixture.Major, hostLine, otherHostLine,
+		toolPkg + ":" + fixture.Major, hostLine, otherHostLine,
 	}}
 	// Report a question or a preview that differs
 	if diff := cmp.Diff(want, got); diff != "" {
