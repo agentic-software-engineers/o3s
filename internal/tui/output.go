@@ -28,7 +28,7 @@ func (p *pane) add(line string) {
 func (p *pane) size(width, height int) {
 	p.width = width
 	p.view.SetWidth(width)
-	p.view.SetHeight(max(height, 3))
+	p.view.SetHeight(max(height, minPaneLines))
 	p.fill()
 }
 

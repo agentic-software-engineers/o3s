@@ -1,17 +1,23 @@
 package tui
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 
 	"github.com/charmbracelet/x/ansi"
+
+	"github.com/hansehart/o3s/internal/fixture"
 )
+
+// blockedHint is an error wider than a usual screen, which ends in the command a user copies.
+var blockedHint = fmt.Sprintf("error: the firewall blocks %s:%d, allow it with: o3s firewall add %s --port %d", fixture.Host, fixture.OtherPort, fixture.Host, fixture.OtherPort)
 
 // A line wider than the pane breaks at its words onto further lines, so all of it stays in view.
 func TestPaneWrapsALongLineAtItsWords(t *testing.T) {
 	var p pane
-	p.size(40, 10)
-	line := "error: the firewall blocks github.com:22, allow it with: o3s firewall add github.com --port 22"
+	p.size(narrow, paneLines)
+	line := blockedHint
 
 	p.add(line)
 
@@ -19,8 +25,8 @@ func TestPaneWrapsALongLineAtItsWords(t *testing.T) {
 	// Require every line to fit the pane
 	for l := range strings.SplitSeq(shown, "\n") {
 		// Report a line wider than the pane
-		if ansi.StringWidth(l) > 40 {
-			t.Errorf("line %q is %d wide, want at most 40", l, ansi.StringWidth(l))
+		if ansi.StringWidth(l) > narrow {
+			t.Errorf("line %q is %d wide, want at most %d", l, ansi.StringWidth(l), narrow)
 		}
 	}
 	// Require every word of the line to stay whole
@@ -35,21 +41,21 @@ func TestPaneWrapsALongLineAtItsWords(t *testing.T) {
 // A pane that narrows breaks its lines anew for the new width.
 func TestPaneRewrapsWhenItNarrows(t *testing.T) {
 	var p pane
-	p.size(80, 10)
-	p.add("error: the firewall blocks github.com:22, allow it with: o3s firewall add github.com --port 22")
+	p.size(usualWidth, paneLines)
+	p.add(blockedHint)
 
-	p.size(30, 10)
+	p.size(narrower, paneLines)
 
 	shown := ansi.Strip(p.View())
 	// Require every line to fit the narrower pane
 	for l := range strings.SplitSeq(shown, "\n") {
 		// Report a line wider than the pane
-		if ansi.StringWidth(l) > 30 {
-			t.Errorf("line %q is %d wide, want at most 30", l, ansi.StringWidth(l))
+		if ansi.StringWidth(l) > narrower {
+			t.Errorf("line %q is %d wide, want at most %d", l, ansi.StringWidth(l), narrower)
 		}
 	}
 	// Require the end of the command to stay in view
-	if !strings.Contains(shown, "--port 22") {
+	if !strings.Contains(shown, fmt.Sprintf("--port %d", fixture.OtherPort)) {
 		t.Errorf("pane lost the end of the line:\n%s", shown)
 	}
 }

@@ -37,7 +37,7 @@ func TestListNamesTheOptionsBelow(t *testing.T) {
 		q.Options = append(q.Options, menu.Option{Value: fmt.Sprintf("feature-%02d", i)})
 	}
 
-	view := stripped(newMulti(q).View(80))
+	view := stripped(newMulti(q).View(usualWidth))
 
 	// Require the count of the options below
 	if !strings.Contains(view, "(3 more)") {
@@ -117,7 +117,7 @@ func TestTextStartsFromItsDefault(t *testing.T) {
 		t.Errorf("answers (-want +got):\n%s", diff)
 	}
 	// Require the hidden value shown as dots
-	if view := stripped(f.View(40)); !containsFold(view, "***") {
+	if view := stripped(f.View(narrow)); !containsFold(view, "***") {
 		t.Errorf("hidden view = %q, want dots", view)
 	}
 }
