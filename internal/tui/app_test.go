@@ -2,6 +2,7 @@ package tui
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"strings"
@@ -216,5 +217,61 @@ func TestAppTakesItsSizeFromTheTerminal(t *testing.T) {
 	// Require the size the terminal reported
 	if m.width != narrow || m.height != paneLines+chromeLines {
 		t.Errorf("size = %dx%d, want %dx%d", m.width, m.height, narrow, paneLines+chromeLines)
+	}
+}
+
+// aLongConfirmation is a confirmation whose preview runs longer than a usual screen, summed up beside the question.
+func aLongConfirmation() model {
+	var preview []string
+	// Fill the preview past a usual screen
+	for i := range 30 {
+		preview = append(preview, fmt.Sprintf("  + line %02d", i))
+	}
+	q := menu.Question{Key: "apply", Kind: menu.Confirm, Title: "Apply?", Preview: preview, Summary: "Adds 4 features with 9 hosts"}
+	return model{width: usualWidth, height: usualHeight, state: asking, q: q, field: newField(q)}
+}
+
+// A confirmation keeps its summary, its question and its answers in view however long its preview runs.
+func TestAppKeepsALongConfirmationInView(t *testing.T) {
+	m := aLongConfirmation()
+
+	view := stripped(m.View().Content)
+
+	// Require the summary, the question, the answers and the way to see the rest
+	for _, want := range []string{"Adds 4 features with 9 hosts", "Apply?", "Yes", "No", "pgup/pgdn scroll", "line 00"} {
+		// Report a part out of view
+		if !strings.Contains(view, want) {
+			t.Errorf("view lacks %q:\n%s", want, view)
+		}
+	}
+	// Require the screen's height to hold it all
+	if n := strings.Count(view, "\n") + 1; n > usualHeight {
+		t.Errorf("view holds %d lines, want at most %d:\n%s", n, usualHeight, view)
+	}
+}
+
+// Paging down shows the later lines of a long preview, with the question still in view.
+func TestAppPagesThroughALongPreview(t *testing.T) {
+	m := aLongConfirmation()
+
+	paged, _ := drive(m, tea.KeyPressMsg{Code: tea.KeyPgDown})
+
+	view := stripped(paged.View().Content)
+	// Require the last lines and the question in view
+	if !strings.Contains(view, "line 29") || !strings.Contains(view, "Apply?") {
+		t.Errorf("after pgdn, view:\n%s", view)
+	}
+}
+
+// A preview that fits shows whole, without the way to scroll it.
+func TestAppShowsAShortPreviewWhole(t *testing.T) {
+	q := menu.Question{Key: "apply", Kind: menu.Confirm, Title: "Apply?", Preview: []string{"  + line 00", "  + line 01"}, Summary: "Adds 1 feature"}
+	m := model{width: usualWidth, height: usualHeight, state: asking, q: q, field: newField(q)}
+
+	view := stripped(m.View().Content)
+
+	// Require every line and the summary, the whole preview in view
+	if !strings.Contains(view, "line 01") || !strings.Contains(view, "Adds 1 feature") || strings.Contains(view, "pgup/pgdn") {
+		t.Errorf("view:\n%s", view)
 	}
 }
