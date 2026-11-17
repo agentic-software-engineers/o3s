@@ -88,6 +88,9 @@ o3s update
    o3s cage shell
    ```
 
+> [!TIP]
+> Over SSH, `o3s cage ide` opens the cage from a VS Code Remote-SSH terminal. Set `O3S_SSH_HOST` there to the host VS Code connected with, the name after `SSH:` in its status bar.
+
 > [!WARNING]
 > Only `~/features`, `~/o3s`, and `~/projects` survive a rebuild in the cage. Keep your work in `~/projects`, where `o3s project add` puts it.
 
