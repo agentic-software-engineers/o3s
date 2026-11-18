@@ -48,6 +48,7 @@ stderr 'no o3s home with a VM here, run o3s init'
 
 # The preview flag turns the preview on for the command alone, as O3S_PREVIEW=1 turns on every preview
 env O3S_PREVIEW=
+env O3S_RELEASE_URL=file://$WORK/release
 mkdir $WORK/flagged
 cd $WORK/flagged
 exec o3s init --preview
