@@ -1,7 +1,7 @@
 # A repository behind a closed port is turned away before the cage comes up, with the command that opens it
 mkdir home
 cd home
-exec o3s init
+exec o3s init --guest
 ! exec o3s project add torvalds/linux
 stderr 'the firewall blocks github.com:22, allow it with: o3s firewall add github.com --port 22'
 ! exists $WORK/devcontainer.log

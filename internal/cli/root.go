@@ -5,6 +5,8 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
+
+	"github.com/hansehart/o3s/internal/preview"
 )
 
 // newRoot builds the o3s command tree, wired to the given streams.
@@ -19,6 +21,14 @@ func newRoot(s Streams) *cobra.Command {
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return cmd.Help()
 		},
+	}
+	var previews bool
+	root.PersistentFlags().BoolVar(&previews, "preview", false, "turn on the features o3s ships as previews, as O3S_PREVIEW=1 does")
+	root.PersistentPreRun = func(*cobra.Command, []string) {
+		// Turn every preview on for this run, where the flag asks
+		if previews {
+			preview.EnableAll()
+		}
 	}
 	root.SetIn(s.In)
 	root.SetOut(s.Out)

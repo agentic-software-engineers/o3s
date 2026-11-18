@@ -1,7 +1,7 @@
 # The workspace opens in VS Code straight in the cage
 mkdir home
 cd home
-exec o3s init
+exec o3s init --guest
 exec o3s cage ide
 stdout '^Opening .*/home in the cage$'
 grep '^--file-uri vscode-remote://dev-container\+[0-9a-f]+/home/ubuntu/o3s/home\.code-workspace$' $WORK/code.log

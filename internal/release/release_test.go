@@ -175,3 +175,73 @@ func TestIsReleaseKnowsReleaseCandidates(t *testing.T) {
 		}
 	}
 }
+
+// A dev build takes its release files from the folder O3S_RELEASE_URL names, and asks for one where it names none.
+func TestFolderOfADevBuild(t *testing.T) {
+	t.Setenv("O3S_RELEASE_URL", "")
+	// Require a dev build without a folder turned away
+	if _, err := release.Folder("dev"); !errors.Is(err, release.ErrNoFolder) {
+		t.Errorf("Folder(dev) = %v, want ErrNoFolder", err)
+	}
+	t.Setenv("O3S_RELEASE_URL", "file:///tmp/release/")
+	// Require the named folder taken as it is
+	if got, err := release.Folder("dev"); err != nil || got != "file:///tmp/release" {
+		t.Errorf("Folder(dev) = %q, %v, want file:///tmp/release", got, err)
+	}
+}
+
+// A release build takes its files from the release's own downloads.
+func TestFolderOfARelease(t *testing.T) {
+	t.Setenv("O3S_RELEASE_URL", "")
+	t.Setenv("O3S_RELEASES_URL", "https://example.test/releases")
+
+	got, err := release.Folder(latest)
+
+	// Require the release's download folder
+	if err != nil || got != "https://example.test/releases/download/v"+latest {
+		t.Errorf("Folder(%s) = %q, %v, want its download folder", latest, got, err)
+	}
+}
+
+// A bundle copies the binary and install.sh from a local folder, and turns away a file that differs from the checksums.
+func TestBundleChecksEveryFile(t *testing.T) {
+	src := t.TempDir()
+	files := map[string]string{asset: binary, "install.sh": "#!/bin/sh\n"}
+	var sums strings.Builder
+	// Lay out every release file with its checksum
+	for name, data := range files {
+		// Stop when a file stays unwritten
+		if err := os.WriteFile(filepath.Join(src, name), []byte(data), 0o600); err != nil {
+			t.Fatalf("Setup: %v", err)
+		}
+		sum := sha256.Sum256([]byte(data))
+		sums.WriteString(hex.EncodeToString(sum[:]) + "  " + name + "\n")
+	}
+	// Stop when the checksums stay unwritten
+	if err := os.WriteFile(filepath.Join(src, "checksums.txt"), []byte(sums.String()), 0o600); err != nil {
+		t.Fatalf("Setup: %v", err)
+	}
+	dst := t.TempDir()
+
+	err := release.Bundle(t.Context(), "file://"+filepath.ToSlash(src), dst)
+
+	// Stop when the bundle fails
+	if err != nil {
+		t.Fatalf("Bundle() = %v", err)
+	}
+	// Require every file in place
+	for _, name := range []string{asset, "install.sh", "checksums.txt"} {
+		// Name a file the bundle left out
+		if _, err := os.Stat(filepath.Join(dst, name)); err != nil {
+			t.Errorf("bundle lacks %s: %v", name, err)
+		}
+	}
+	// Stop when the tampered installer stays unwritten
+	if err := os.WriteFile(filepath.Join(src, "install.sh"), []byte("#!/bin/sh\necho tampered\n"), 0o600); err != nil {
+		t.Fatalf("Setup: %v", err)
+	}
+	// Require a tampered file turned away
+	if err := release.Bundle(t.Context(), "file://"+filepath.ToSlash(src), t.TempDir()); !errors.Is(err, release.ErrChecksum) {
+		t.Errorf("Bundle() with a tampered install.sh = %v, want ErrChecksum", err)
+	}
+}

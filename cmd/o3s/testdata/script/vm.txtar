@@ -1,15 +1,14 @@
-# vm start creates the home's VM from the template in o3s's own VM folder, and leaves this folder as it was
-mkdir home
+# vm start creates the home's VM, named by the folder's ID, from the template in o3s's own VM folder
 cd home
 exec o3s vm start
-stdout '^The VM o3s-[0-9a-f]{12} runs$'
-grep 'LIMA_HOME=\S+/\.local/share/o3s/lima --tty=false start --name=o3s-[0-9a-f]{12} --vm-type=qemu -$' $WORK/limactl.log
+stdout '^The VM o3s-0123456789ab runs$'
+grep 'LIMA_HOME=\S+/\.local/share/o3s/lima --tty=false start --name=o3s-0123456789ab --vm-type=qemu --timeout=30m0s -$' $WORK/limactl.log
 grep 'plain: true' $WORK/template.yaml
 ! exists o3s.json
 
 # Starting again starts the VM the home has
 exec o3s vm start
-grep 'tty=false start o3s-[0-9a-f]{12}$' $WORK/limactl.log
+grep 'tty=false start o3s-0123456789ab$' $WORK/limactl.log
 
 # A command in the VM runs with its exit code passed on
 exec o3s vm shell -- echo inside
@@ -19,19 +18,19 @@ stdout '^inside$'
 
 # stop stops the VM
 exec o3s vm stop
-stdout '^Stopped the VM o3s-[0-9a-f]{12}$'
-grep 'tty=false stop o3s-[0-9a-f]{12}$' $WORK/limactl.log
+stdout '^Stopped the VM o3s-0123456789ab$'
+grep 'tty=false stop o3s-0123456789ab$' $WORK/limactl.log
 
 # rm deletes the VM, after which nothing runs in it
 exec o3s vm rm
-stdout '^Deleted the VM o3s-[0-9a-f]{12}$'
+stdout '^Deleted the VM o3s-0123456789ab$'
 ! exec o3s vm shell -- true
 stderr 'does not exist'
 
 # The engine that needs a DNS server gets one
 env O3S_ENGINE=hcs
 exec o3s vm start
-grep 'vm-type=hcs --dns=8.8.8.8 -$' $WORK/limactl.log
+grep 'vm-type=hcs --timeout=30m0s --dns=8.8.8.8 -$' $WORK/limactl.log
 
 # An unknown engine is turned away
 env O3S_ENGINE=firecracker
@@ -43,3 +42,6 @@ env O3S_ENGINE=
 env PATH=$O3S_DIR
 ! exec o3s vm start
 stderr 'put limactl on PATH'
+
+-- home/.o3s/id --
+0123456789ab

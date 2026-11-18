@@ -51,7 +51,9 @@ case "$2" in
   stop) ;;
   start) for a in "$@"; do case "$a" in --name=*) echo "${a#--name=}" >> "$WORK/vms" ;; -) cat > "$WORK/template.yaml" ;; esac; done ;;
   delete) grep -v "$4" "$WORK/vms" > "$WORK/vms.left"; mv "$WORK/vms.left" "$WORK/vms" ;;
-  shell) grep -qx "$3" "$WORK/vms" 2>/dev/null || { echo "instance $3 does not exist" >&2; exit 1; }; shift 3; "$@" ;;
+  shell) grep -qx "$3" "$WORK/vms" 2>/dev/null || { echo "instance $3 does not exist" >&2; exit 1; }; shift 3; echo "$*" >> "$WORK/vm.log"
+    # Leave the installer and the home's setup to the log, and run any other command here
+    case "$*" in *install.sh*|*"init --guest"*) ;; *) "$@" ;; esac ;;
 esac
 `
 

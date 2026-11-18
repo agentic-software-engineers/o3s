@@ -35,7 +35,7 @@ func aHome(tb testing.TB) string {
 	if err := os.Mkdir(dir, 0o755); err != nil { //nolint:gosec // the cage's user reads the home through its mount
 		tb.Fatalf("Setup: %v", err)
 	}
-	cmd := exec.CommandContext(tb.Context(), bin, "init")
+	cmd := exec.CommandContext(tb.Context(), bin, "init", "--dangerously-skip-vm")
 	cmd.Dir = dir
 	out, err := cmd.CombinedOutput()
 	// Stop when the home stays unmade
