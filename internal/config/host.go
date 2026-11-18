@@ -48,6 +48,11 @@ func validate(ch Change) error {
 	return nil
 }
 
+// CheckHost holds a host's name to the forms the gateway resolves, naming the rule it breaks.
+func CheckHost(name string) error {
+	return validate(Change{Name: name})
+}
+
 // validateHost holds a host, as a change leaves it, to the rules that span its fields.
 func validateHost(h Host) error {
 	// Require a secret wherever inject sites are named

@@ -27,9 +27,11 @@ var ErrNoCollection = errors.New("holds no feature collection")
 type Feature struct {
 	ID      string
 	Version string
-	Options []Option
-	Hosts   []Host
-	Env     []Env
+	// Name and Description are how the store names the feature and says what it does.
+	Name, Description string
+	Options           []Option
+	Hosts             []Host
+	Env               []Env
 	// After are the features this one installs after, as store/id: the ones it depends on and the ones it
 	// names to follow.
 	After []string
@@ -116,6 +118,8 @@ func features(l v1.Layer) ([]Feature, error) {
 		Features []struct {
 			ID             string                `json:"id"`
 			Version        string                `json:"version"`
+			Name           string                `json:"name"`
+			Description    string                `json:"description"`
 			Options        map[string]optionSpec `json:"options"`
 			InstallsAfter  []string              `json:"installsAfter"`
 			DependsOn      map[string]any        `json:"dependsOn"`
@@ -135,7 +139,7 @@ func features(l v1.Layer) ([]Feature, error) {
 	// Take what every feature tells
 	for i, f := range c.Features {
 		o := f.Customizations.O3S
-		fs[i] = Feature{ID: f.ID, Version: f.Version, Hosts: o.Hosts, Env: o.Env}
+		fs[i] = Feature{ID: f.ID, Version: f.Version, Name: f.Name, Description: f.Description, Hosts: o.Hosts, Env: o.Env}
 		// Take every feature this one names to follow, without its tag
 		for _, id := range append(slices.Collect(maps.Keys(f.DependsOn)), f.InstallsAfter...) {
 			// Take each feature once

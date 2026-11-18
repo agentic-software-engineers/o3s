@@ -8,8 +8,11 @@ import (
 	"github.com/charmbracelet/x/ansi"
 )
 
-// nonBreakingHyphen holds a hyphenated word together while its line breaks.
-const nonBreakingHyphen = "\u2011"
+// nonBreakingHyphen holds a hyphenated word together while its line breaks, and nonBreakingSpace two words.
+const (
+	nonBreakingHyphen = "\u2011"
+	nonBreakingSpace  = "\u00a0"
+)
 
 // pane holds the output of a dialog's commands, broken at words to its width and scrolled to its end as it grows.
 type pane struct {
@@ -48,6 +51,11 @@ func (p *pane) scroll(msg tea.Msg) {
 	p.view, _ = p.view.Update(msg)
 }
 
+// overflows reports whether the output runs longer than the room the pane has.
+func (p pane) overflows() bool {
+	return p.view.TotalLineCount() > p.view.Height()
+}
+
 // View draws the lines in reach.
 func (p pane) View() string {
 	return p.view.View()
@@ -68,7 +76,7 @@ func wrapped(line string, width int) []string {
 	if longestWord(ansi.Strip(line)) > room {
 		broken = ansi.Hardwrap(held, room, true)
 	}
-	lines := strings.Split(strings.ReplaceAll(broken, nonBreakingHyphen, "-"), "\n")
+	lines := strings.Split(strings.NewReplacer(nonBreakingHyphen, "-", nonBreakingSpace, " ").Replace(broken), "\n")
 	// Set every further line under the item it belongs to
 	for i := 1; i < len(lines); i++ {
 		lines[i] = strings.Repeat(" ", hang) + strings.TrimLeft(lines[i], " ")

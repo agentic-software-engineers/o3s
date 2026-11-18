@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/spf13/cobra"
 )
@@ -51,7 +52,7 @@ func group(use, short string, show func(cmd *cobra.Command) error) *cobra.Comman
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			// Open the group's view for a user at a terminal who asks for no other form
 			if cmd.Flags().NFlag() == 0 && isInteractive(cmd.InOrStdin(), cmd.OutOrStdout()) {
-				return openMenu(cmd.Context(), use)
+				return openMenu(cmd.Context(), strings.Fields(cmd.CommandPath())[1:]...)
 			}
 			return show(cmd)
 		},

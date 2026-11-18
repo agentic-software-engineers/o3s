@@ -105,6 +105,28 @@ func selfUpdate(ctx context.Context, in io.Reader, out, errOut io.Writer, yes bo
 	return true, restartAs(dest, args)
 }
 
+// newerRelease reads the release the binary's channel would update to and the binary's own, and whether that release
+// is newer.
+func newerRelease(ctx context.Context) (string, string, bool) {
+	current := version()
+	path, err := executable()
+	// Report nothing newer for a dev build or a binary whose file stays unknown
+	if !release.IsRelease(current) || err != nil {
+		return "", current, false
+	}
+	channel, _ := release.ChannelOf(path)
+	// Report nothing newer for a binary pinned to its version
+	if channel == release.Pinned {
+		return "", current, false
+	}
+	target, err := newestOf(ctx, channel)
+	// Report nothing newer where the releases stay out of reach
+	if err != nil {
+		return "", current, false
+	}
+	return target, current, release.Newer(target, current)
+}
+
 // newestOf reads the release a channel updates to: the latest stable release, or the newest release candidates included.
 func newestOf(ctx context.Context, channel release.Channel) (string, error) {
 	// Read the release candidates' feed for o3s-rc

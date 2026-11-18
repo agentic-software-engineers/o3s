@@ -19,16 +19,17 @@ var (
 	goneLine      = fmt.Sprintf("  - %s:%d", fixture.Host, fixture.Port)
 )
 
-// fakeLookup is a store that offers the tool, whose feature needs two secrets still waiting for values.
+// fakeLookup is a store that offers the tool and another feature, the tool needing two secrets still waiting for
+// values, and newer versions of o3s, the stack and the tool.
 type fakeLookup struct{}
 
-// Features lists the ids the store offers, and fails for any other store.
-func (fakeLookup) Features(store string) ([]string, error) {
+// Catalog lists the features the store offers, and fails for any other store.
+func (fakeLookup) Catalog(store string) ([]Offer, error) {
 	// Turn away a store out of reach
 	if store != fixture.Store {
 		return nil, errors.New("read the features of " + store + ": unreachable")
 	}
-	return []string{fixture.OtherFeature, fixture.Feature}, nil
+	return []Offer{{ID: fixture.OtherFeature, Description: "Another tool"}, {ID: fixture.Feature, Name: "Tool"}}, nil
 }
 
 // Add shows what a feature brings, the tool with the options it offers.
@@ -45,205 +46,152 @@ func (fakeLookup) Add(id string) (Preview, error) {
 	return pv, nil
 }
 
-// Remove shows what leaves with the tool.
+// Remove shows what leaves with a feature.
 func (fakeLookup) Remove(pkg string) (Preview, error) {
 	return Preview{Lines: []string{pkg, goneLine}, Features: 1, Hosts: 1}, nil
 }
 
-// aHomeWithTheTool is aHome holding the tool and reading its store through the fake.
+// Updates lists newer versions of o3s, the stack and the tool.
+func (fakeLookup) Updates() ([]Update, error) {
+	return []Update{{Target: "o3s", Name: "o3s", Change: fixture.Version + " -> " + fixture.NewerVersion}, {Target: "stack", Name: "stack", Change: "1 file, 2 images"}, {Target: toolPkg, Name: fixture.Feature, Change: fixture.Major + " -> " + fixture.NewerMajor}}, nil
+}
+
+// aHomeWithTheTool is aHome holding the tool with its mode set.
 func aHomeWithTheTool() Home {
 	h := aHome
-	h.Features = []string{toolPkg}
-	h.Lookup = fakeLookup{}
+	h.Installed = []Installed{{Package: toolPkg, Tag: fixture.Major, Options: map[string]string{"mode": "loose"}}}
 	return h
 }
 
-// The feature dialogs preview their change, ask for waiting values, and run the commands they lead to.
-func TestFeatureDialogsEndInTheirCommands(t *testing.T) {
+// The feature view shows the installed features in order to move, every offered feature to mark with the installed
+// ones marked, and the stores.
+func TestTheFeatureViewShowsInstalledDiscoverAndStores(t *testing.T) {
+	q, _ := Next(aHomeWithTheTool(), Answers{}.With("do", []string{"feature"}))
+
+	installed, discover, stores := q.Tabs[0], q.Tabs[1], q.Tabs[2]
+	// Require the installed tool, movable
+	if !installed.Reorder || len(installed.Options) != 1 || installed.Options[0].Value != toolPkg {
+		t.Errorf("Installed = %+v", installed)
+	}
+	// Require both features offered, the tool marked, each saying what it is
+	if !discover.Multi || len(discover.Options) != 2 || !cmp.Equal([]string{toolPkg}, discover.Marked) || discover.Options[0].Detail != "Another tool" || discover.Options[1].Detail != "Tool" {
+		t.Errorf("Discover = %+v", discover)
+	}
+	// Require the add row first, then the store
+	if stores.Options[0].Value != add || stores.Options[1].Value != fixture.Store {
+		t.Errorf("Stores = %+v", stores)
+	}
+}
+
+// Every feature dialog ends in the command lines the CLI runs for it, its confirmation last.
+func TestEveryFeatureDialogEndsInItsCommand(t *testing.T) {
 	value := fixture.SecretValue
-	tests := []struct {
-		name    string
-		answers [][]string
-		titles  []string
-		want    []Command
-	}{
+	dialogs{
 		{
-			"adding a feature with one value given and one skipped, its options kept",
-			[][]string{{"feature"}, {"add"}, {fixture.Store}, {fixture.Feature}, {"yes"}, {"keep defaults"}, {value}, {""}},
-			[]string{"What do you want to do?", "Action", "Store", "Features", "Apply?", "Options", "Value for " + fixture.Secret + " (empty to skip)", "Value for " + fixture.OtherSecret + " (empty to skip)"},
-			[]Command{
-				{Args: []string{"secret", "add", fixture.Secret, "--no-bind-hint"}, Stdin: &value},
-				{Args: []string{"feature", "add", toolPkg, "--no-preview"}},
-			},
+			"configuring the tool, its mode back to strict",
+			[][]string{{"feature"}, {installedTab, toolPkg}, {configure}, {"true"}, {"strict"}, {fixture.FloatingTag}, {yes}},
+			[]string{"do", "view", "action", "option:debug", "option:mode", "option:version", "apply"},
+			[]Command{{Args: []string{"feature", "configure", toolPkg, "--option", "debug=true", "--option", "mode=strict"}}},
 		},
 		{
-			"configuring every option a feature offers, each written as answered",
-			[][]string{{"feature"}, {"add"}, {fixture.Store}, {fixture.Feature}, {"yes"}, {"configure"}, {"true"}, {"loose"}, {"lts"}, {""}, {""}},
-			[]string{"What do you want to do?", "Action", "Store", "Features", "Apply?", "Options", fixture.Feature + " debug", fixture.Feature + " mode", fixture.Feature + " version", "Value for " + fixture.Secret + " (empty to skip)", "Value for " + fixture.OtherSecret + " (empty to skip)"},
-			[]Command{{Args: []string{"feature", "add", toolPkg, "--option", toolPkg + ":debug=true", "--option", toolPkg + ":mode=loose", "--option", toolPkg + ":version=lts", "--no-preview"}}},
+			"configuring the tool without a change",
+			[][]string{{"feature"}, {installedTab, toolPkg}, {configure}, {"false"}, {"loose"}, {fixture.FloatingTag}, {yes}},
+			[]string{"do", "view", "action", "option:debug", "option:mode", "option:version", "apply"},
+			[]Command{{Note: nothingChanged}},
 		},
 		{
-			"declining a feature",
-			[][]string{{"feature"}, {"add"}, {fixture.Store}, {fixture.Feature}, {"no"}},
-			[]string{"What do you want to do?", "Action", "Store", "Features", "Apply?"},
+			"removing the tool",
+			[][]string{{"feature"}, {installedTab, toolPkg}, {remove}, {yes}},
+			[]string{"do", "view", "action", "apply"},
+			[]Command{{Args: []string{"feature", "rm", toolPkg, "--no-preview", "--yes"}}},
+		},
+		{
+			"moving the tool up, quietly",
+			[][]string{{"feature"}, {installedTab, move, toolPkg, "up"}},
+			[]string{"do", "view"},
 			nil,
 		},
 		{
-			"adding two features that wait for the same secrets",
-			[][]string{{"feature"}, {"add"}, {fixture.Store}, {fixture.OtherFeature, fixture.Feature}, {"yes"}, {"keep defaults"}, {value}, {""}},
-			[]string{"What do you want to do?", "Action", "Store", "Features", "Apply?", "Options", "Value for " + fixture.Secret + " (empty to skip)", "Value for " + fixture.OtherSecret + " (empty to skip)"},
+			"marking the other feature and unmarking the tool, a waiting secret given and one skipped",
+			[][]string{{"feature"}, {discoverTab, otherPkg}, {value}, {""}, {yes}},
+			[]string{"do", "view", "value:" + fixture.Secret, "value:" + fixture.OtherSecret, "apply"},
 			[]Command{
 				{Args: []string{"secret", "add", fixture.Secret, "--no-bind-hint"}, Stdin: &value},
-				{Args: []string{"feature", "add", otherPkg, toolPkg, "--no-preview"}},
+				{Args: []string{"feature", "add", otherPkg, "--no-preview"}},
+				{Args: []string{"feature", "rm", toolPkg, "--no-preview", "--yes"}},
 			},
 		},
 		{
-			"choosing no feature",
-			[][]string{{"feature"}, {"add"}, {fixture.Store}, {}},
-			[]string{"What do you want to do?", "Action", "Store", "Features"},
-			[]Command{{Note: "No feature chosen"}},
+			"marks that change nothing",
+			[][]string{{"feature"}, {discoverTab, toolPkg}},
+			[]string{"do", "view"},
+			[]Command{{Note: nothingChanged}},
 		},
 		{
-			"a store out of reach",
-			[][]string{{"feature"}, {"add"}, {fixture.AbsentStore}},
-			[]string{"What do you want to do?", "Action", "Store"},
-			[]Command{{Note: "error: read the features of " + fixture.AbsentStore + ": unreachable"}},
+			"adding a store",
+			[][]string{{"feature"}, {storesTab, add}, {fixture.AbsentStore}},
+			[]string{"do", "view", "store"},
+			[]Command{{Args: []string{"feature", "store", "add", fixture.AbsentStore}}},
 		},
 		{
-			"removing a feature",
-			[][]string{{"feature"}, {"rm"}, {toolPkg}, {"yes"}},
-			[]string{"What do you want to do?", "Action", "Feature", "Apply?"},
-			[]Command{{Args: []string{"feature", "rm", toolPkg, "--no-preview"}}},
+			"removing a store",
+			[][]string{{"feature"}, {storesTab, fixture.Store}, {remove}, {yes}},
+			[]string{"do", "view", "action", "apply"},
+			[]Command{{Args: []string{"feature", "store", "rm", fixture.Store, "--yes"}}},
 		},
-		{
-			"listing the features",
-			[][]string{{"feature"}, {"ls"}},
-			[]string{"What do you want to do?", "Action"},
-			[]Command{{Args: []string{"feature", "ls"}}},
-		},
-	}
+	}.check(t, aHomeWithTheTool())
+}
+
+// Moving an installed feature orders the features again with it one place further, quietly, and leaves one at either
+// end where it is.
+func TestMovingAFeatureOrdersThemQuietly(t *testing.T) {
 	h := aHomeWithTheTool()
-	h.Stores = append(h.Stores, fixture.AbsentStore)
-	// Walk every dialog
-	for _, tt := range tests {
-		asked, got := walk(t, h, tt.answers...)
+	h.Installed = append(h.Installed, Installed{Package: otherPkg, Tag: fixture.Major})
 
-		// Report questions that differ
-		if diff := cmp.Diff(tt.titles, titles(asked)); diff != "" {
-			t.Errorf("%s: questions (-want +got):\n%s", tt.name, diff)
-		}
-		// Report commands that differ
-		if diff := cmp.Diff(tt.want, got); diff != "" {
-			t.Errorf("%s: commands (-want +got):\n%s", tt.name, diff)
-		}
+	down := Plan(h, Answers{}.With("do", []string{"feature"}).With("view", []string{installedTab, move, toolPkg, "down"}))
+	up := Plan(h, Answers{}.With("do", []string{"feature"}).With("view", []string{installedTab, move, toolPkg, "up"}))
+
+	// Require the order with the tool second, quietly
+	if diff := cmp.Diff([]Command{{Args: []string{"feature", "order", otherPkg, toolPkg}, Quiet: true}}, down); diff != "" {
+		t.Errorf("down (-want +got):\n%s", diff)
+	}
+	// Require nothing for the first feature moving up
+	if up != nil {
+		t.Errorf("up = %v, want nothing", up)
 	}
 }
 
-// Each option asks in the shape of the value it takes, starting from its default.
-func TestFeatureOptionsAskByTheirKind(t *testing.T) {
-	asked, _ := walk(t, aHomeWithTheTool(), []string{"feature"}, []string{"add"}, []string{fixture.Store}, []string{fixture.Feature}, []string{"yes"}, []string{"configure"}, []string{"false"}, []string{"strict"}, []string{fixture.FloatingTag}, []string{""}, []string{""})
+// The confirmation of marks shows what the new features bring and what leaves with the unmarked ones, summed up, and
+// starts on no where something leaves.
+func TestMarkingFeaturesConfirmsTheWholeChange(t *testing.T) {
+	asked, _ := walk(t, aHomeWithTheTool(), []string{"feature"}, []string{discoverTab, otherPkg}, []string{""}, []string{""}, []string{"no"})
 
-	got := asked[6:9]
-
-	want := []Question{
-		{Key: "option:" + toolPkg + ":debug", Kind: Select, Title: fixture.Feature + " debug", Options: []Option{{Value: "true"}, {Value: "false"}}, Default: []string{"false"}, Preview: []string{"Log every step"}},
-		{Key: "option:" + toolPkg + ":mode", Kind: Select, Title: fixture.Feature + " mode", Options: []Option{{Value: "strict"}, {Value: "loose"}}, Default: []string{"strict"}},
-		{Key: "option:" + toolPkg + ":version", Kind: Input, Title: fixture.Feature + " version", Default: []string{fixture.FloatingTag}, Preview: []string{"suggested: " + fixture.FloatingTag + ", lts"}},
+	got := asked[4]
+	// Require the lines of both changes
+	if diff := cmp.Diff([]string{otherPkg + ":" + fixture.Major, hostLine, otherHostLine, toolPkg, goneLine}, got.Preview); diff != "" {
+		t.Errorf("preview (-want +got):\n%s", diff)
 	}
-	// Report questions that differ
-	if diff := cmp.Diff(want, got); diff != "" {
-		t.Errorf("option questions (-want +got):\n%s", diff)
-	}
-}
-
-// Apply? shows what the feature brings or takes, as the CLI prints it.
-func TestFeatureApplyShowsThePreview(t *testing.T) {
-	h := aHomeWithTheTool()
-	added, _ := walk(t, h, []string{"feature"}, []string{"add"}, []string{fixture.Store}, []string{fixture.Feature}, []string{"no"})
-	removed, _ := walk(t, h, []string{"feature"}, []string{"rm"}, []string{toolPkg}, []string{"no"})
-
-	got := [][]string{added[4].Preview, removed[3].Preview}
-
-	want := [][]string{
-		{toolPkg + ":" + fixture.Major, hostLine, otherHostLine},
-		{toolPkg, goneLine},
-	}
-	// Report previews that differ
-	if diff := cmp.Diff(want, got); diff != "" {
-		t.Errorf("previews (-want +got):\n%s", diff)
+	// Require the summary of both, and no as the start
+	if want := "Adds " + fixture.OtherFeature + " with 2 hosts, 2 secrets wait for a value, removes 1 feature"; got.Summary != want || got.Default[0] != "no" {
+		t.Errorf("summary = %q, default %v, want %q and no", got.Summary, got.Default, want)
 	}
 }
 
-// Apply? names what the change comes to in one line, which stays beside the question however long the list above it grows.
-func TestFeatureApplySummarizesTheChange(t *testing.T) {
-	h := aHomeWithTheTool()
-	one, _ := walk(t, h, []string{"feature"}, []string{"add"}, []string{fixture.Store}, []string{fixture.Feature}, []string{"no"})
-	two, _ := walk(t, h, []string{"feature"}, []string{"add"}, []string{fixture.Store}, []string{fixture.OtherFeature, fixture.Feature}, []string{"no"})
-	removed, _ := walk(t, h, []string{"feature"}, []string{"rm"}, []string{toolPkg}, []string{"no"})
+// An option asks the way it takes its value, starting from the value the feature holds and marking it.
+func TestOptionsAskFromTheValueTheyHold(t *testing.T) {
+	asked, _ := walk(t, aHomeWithTheTool(), []string{"feature"}, []string{installedTab, toolPkg}, []string{configure}, []string{"false"}, []string{"loose"}, []string{fixture.FloatingTag}, []string{"no"})
 
-	got := []string{one[4].Summary, two[4].Summary, removed[3].Summary}
-
-	want := []string{
-		"Adds " + fixture.Feature + " with 2 hosts, 2 secrets wait for a value",
-		"Adds 2 features with 4 hosts, 2 secrets wait for a value",
-		"Removes " + fixture.Feature + " with 1 host",
+	debug, mode, version := asked[3], asked[4], asked[5]
+	// Require a boolean as a choice of true and false, from its fallback
+	if debug.Kind != Select || debug.Default[0] != "false" || debug.About != "Log every step" {
+		t.Errorf("debug = %+v", debug)
 	}
-	// Report summaries that differ
-	if diff := cmp.Diff(want, got); diff != "" {
-		t.Errorf("summaries (-want +got):\n%s", diff)
+	// Require a choice from the value the feature holds, marked current
+	if mode.Kind != Select || mode.Default[0] != "loose" || mode.Options[1].Note != "current" {
+		t.Errorf("mode = %+v", mode)
 	}
-}
-
-// A summary counts in the singular and the plural, and leaves out what the change holds none of.
-func TestSummaryCountsEveryPart(t *testing.T) {
-	tests := []struct {
-		verb, name string
-		pv         Preview
-		want       string
-	}{
-		{"Adds", fixture.Feature, Preview{Features: 1, Hosts: 1, Env: 1, Waiting: []string{fixture.Secret}}, "Adds " + fixture.Feature + " with 1 host and 1 env value, 1 secret waits for a value"},
-		{"Adds", fixture.Feature, Preview{Features: 3, Hosts: 5, Env: 2}, "Adds 3 features with 5 hosts and 2 env values"},
-		{"Removes", fixture.Feature, Preview{Features: 1, Env: 3}, "Removes " + fixture.Feature + " with 3 env values"},
-		{"Removes", fixture.Feature, Preview{Features: 1}, "Removes " + fixture.Feature},
-	}
-	// Write every change
-	for _, tt := range tests {
-		got := summary(tt.verb, tt.name, tt.pv)
-
-		// Report a summary that differs
-		if got != tt.want {
-			t.Errorf("summary(%+v) = %q, want %q", tt.pv, got, tt.want)
-		}
-	}
-}
-
-// A feature dialog with nothing to choose from ends with a note.
-func TestFeatureDialogsWithNothingToChooseEndWithANote(t *testing.T) {
-	h := Home{Dir: "/home/ubuntu/o3s", Lookup: fakeLookup{}}
-	_, add := walk(t, h, []string{"feature"}, []string{"add"})
-	_, rm := walk(t, h, []string{"feature"}, []string{"rm"})
-
-	got := [][]Command{add, rm}
-
-	want := [][]Command{{{Note: "No store to choose from"}}, {{Note: "No feature to remove"}}}
-	// Report notes that differ
-	if diff := cmp.Diff(want, got); diff != "" {
-		t.Errorf("notes (-want +got):\n%s", diff)
-	}
-}
-
-// The features of a store come as a multi-select, and Apply? shows each chosen one's change in turn.
-func TestFeatureAddChoosesSeveral(t *testing.T) {
-	asked, _ := walk(t, aHomeWithTheTool(), []string{"feature"}, []string{"add"}, []string{fixture.Store}, []string{fixture.OtherFeature, fixture.Feature}, []string{"no"})
-
-	got := []any{asked[3].Kind, asked[4].Preview}
-
-	want := []any{Multi, []string{
-		otherPkg + ":" + fixture.Major, hostLine, otherHostLine,
-		toolPkg + ":" + fixture.Major, hostLine, otherHostLine,
-	}}
-	// Report a question or a preview that differs
-	if diff := cmp.Diff(want, got); diff != "" {
-		t.Errorf("features question (-want +got):\n%s", diff)
+	// Require a line of text with its proposals as the example
+	if version.Kind != Input || version.Example != fixture.FloatingTag+"  lts" {
+		t.Errorf("version = %+v", version)
 	}
 }

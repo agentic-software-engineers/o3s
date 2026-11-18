@@ -15,6 +15,7 @@ var (
 	added     = lipgloss.NewStyle().Foreground(lipgloss.Color("2"))
 	removed   = lipgloss.NewStyle().Foreground(lipgloss.Color("1"))
 	separator = dim.Render(" / ")
+	tabOn     = lipgloss.NewStyle().Foreground(lipgloss.Color("0")).Background(accent).Bold(true)
 )
 
 // Sizes the screen holds to, whatever the terminal reports.
