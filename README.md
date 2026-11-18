@@ -29,7 +29,7 @@
   <img src="https://cdn.simpleicons.org/gitea" alt="tea (Gitea CLI)" title="tea (Gitea CLI)" height="48">
 </p>
 
-If you are not willing to trade security for productivity, o3s is a match. Let an agent generate every line of code, and review every line by hand or none at all. Either way, which hosts your agents reach and which secrets they can read stays yours to decide.
+If you are not willing to trade security for productivity, o3s is a match. Let an agent generate every line of code, and review every line by hand or none at all. Either way, which features shape your agents' environment, which hosts they reach and which secrets they can read stays yours to decide.
 
 [Anthropic][ref] and [OpenAI][cdx] both ship a reference devcontainer, deliberately minimal: Anthropic's applies a short hardcoded allowlist from inside the container, and OpenAI's tells you to add your own DNS filtering. o3s starts where they stop: productivity on steroids, and deterministic enforcement (harness) to get there.
 
