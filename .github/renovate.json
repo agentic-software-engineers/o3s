@@ -34,7 +34,7 @@
     },
     {
       "description": "Bumps of the binary, the images and the stack ship to users, so they release.",
-      "matchManagers": ["gomod", "dockerfile", "docker-compose"],
+      "matchManagers": ["docker-compose", "dockerfile", "gomod"],
       "semanticCommitType": "fix"
     },
     {
