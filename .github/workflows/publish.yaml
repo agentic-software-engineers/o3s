@@ -115,17 +115,19 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      attestations: read # read the release's attestation, which install.sh verifies
+      attestations: read # read the release's attestation, which the smoke verifies with the command install.sh names
     env:
       GH_TOKEN: ${{ github.token }}
       TAG: ${{ github.ref_name }}
     steps:
-      # install the release just published the way a user does, with gh logged in so its attestation gets verified
+      # install the release just published the way a user does, then run the attestation check install.sh names
       - name: Install the release
         run: |
           curl -fsSL --proto '=https' --tlsv1.2 "https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/install.sh" \
             | sh -s -- --version "${TAG#v}" --no-devcontainer | tee install.log
-          grep -q '^Verified its build attestation$' install.log
+          grep -q '^Verify its build attestation with: gh attestation verify ' install.log
+          gh attestation verify "${HOME}/.local/bin/o3s-${TAG#v}" --repo "${GITHUB_REPOSITORY}" \
+            --signer-workflow "${GITHUB_REPOSITORY}/.github/workflows/publish.yaml"
 
       # require the installed binary to name the release it came from
       - name: Check the version

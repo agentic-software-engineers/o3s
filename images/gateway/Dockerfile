@@ -10,7 +10,8 @@ RUN apk add --no-cache \
 
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 COPY healthcheck.sh /usr/local/bin/healthcheck.sh
+COPY traffic.sh /usr/local/bin/traffic.sh
 COPY dnsmasq.conf.template /etc/dnsmasq.conf.template
-RUN chmod +x /usr/local/bin/entrypoint.sh /usr/local/bin/healthcheck.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh /usr/local/bin/healthcheck.sh /usr/local/bin/traffic.sh
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

@@ -6,12 +6,14 @@ import (
 	"io"
 	"os/exec"
 	"slices"
+	"time"
 
 	"github.com/hansehart/o3s/internal/config"
 	"github.com/hansehart/o3s/internal/devcontainer"
 	"github.com/hansehart/o3s/internal/home"
 	"github.com/hansehart/o3s/internal/menu"
 	"github.com/hansehart/o3s/internal/registry"
+	"github.com/hansehart/o3s/internal/traffic"
 	"github.com/hansehart/o3s/internal/tui"
 	"github.com/hansehart/o3s/internal/workspace"
 )
@@ -73,7 +75,15 @@ func (l menuLookup) Add(id string) (menu.Preview, error) {
 		return menu.Preview{}, err
 	}
 	lines, waiting := addLines(s, store)
-	return menu.Preview{Lines: lines, Waiting: waiting}, nil
+	pv := menu.Preview{Lines: lines, Waiting: waiting, Features: 1, Hosts: len(s.Hosts), Env: len(s.Env)}
+	// Offer every option the user may set, the folder o3s gives the feature left out
+	for _, o := range s.Offered {
+		// Take an option that is the user's to set
+		if o.Name != registry.StateDir {
+			pv.Options = append(pv.Options, menu.FeatureOption{Name: o.Name, Type: o.Type, Default: o.Default, Enum: o.Enum, Proposals: o.Proposals, Description: o.Description})
+		}
+	}
+	return pv, nil
 }
 
 // Remove shows what leaves with a feature, as feature rm prints it.
@@ -93,7 +103,8 @@ func (l menuLookup) Remove(pkg string) (menu.Preview, error) {
 	if err != nil {
 		return menu.Preview{}, err
 	}
-	return menu.Preview{Lines: rmLines(pkg, removal(c, dc, s))}, nil
+	r := removal(c, dc, s)
+	return menu.Preview{Lines: rmLines(pkg, r), Features: 1, Hosts: len(r.hosts), Env: len(r.env)}, nil
 }
 
 // menuHome reads what the menu offers from the home it runs in, and as much as there is outside one.
@@ -125,6 +136,16 @@ func menuHome(ctx context.Context) menu.Home {
 			}
 		}
 	}
+	record, running, err := traffic.Read(ctx, dir)
+	h.Running = running
+	// Offer every name the gateway refused, noting how often and when
+	if err == nil {
+		now := time.Now()
+		// Offer each refused name, the most recent first
+		for _, b := range record.Refused() {
+			h.Blocked = append(h.Blocked, menu.Option{Value: b.Name, Note: attempts(b.Attempts) + ", " + traffic.Ago(b.LastSeen, now)})
+		}
+	}
 	ws, err := workspace.Load(home.Workspace(dir))
 	// Offer every project the workspace lists
 	if err == nil {
@@ -153,6 +174,15 @@ func menuHome(ctx context.Context) menu.Home {
 		h.Secrets = append(h.Secrets, menu.Secret{Name: name, Set: set})
 	}
 	return h
+}
+
+// attempts writes a number of refused lookups.
+func attempts(n int64) string {
+	// Write a single attempt in the singular
+	if n == 1 {
+		return "1 attempt"
+	}
+	return fmt.Sprintf("%d attempts", n)
 }
 
 // isInteractive reports whether both ends of a stream reach a terminal, as a menu needs.

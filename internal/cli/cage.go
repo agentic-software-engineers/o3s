@@ -37,22 +37,22 @@ func newCageIDE() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			code, err := exec.LookPath("code")
-			// Point at the VS Code CLI the command runs
-			if err != nil {
-				return errors.New("o3s cage ide runs the VS Code CLI code, put it on PATH (VS Code: Shell Command: Install 'code' command in PATH)")
-			}
 			env := ide.Detect()
 			// Hand back what VS Code needs before it opens the cage
 			if err := env.Check(cmd.Context()); err != nil {
 				return err
+			}
+			code, err := exec.LookPath("code")
+			// Point at the VS Code CLI the command runs
+			if err != nil {
+				return errors.New("o3s cage ide runs the VS Code CLI code, put it on PATH (VS Code: Shell Command: Install 'code' command in PATH)")
 			}
 			host, err := env.HostPath(cmd.Context(), dir)
 			// Hand back a folder the environment fails to name
 			if err != nil {
 				return err
 			}
-			uri := ide.URI(host, filepath.Base(home.Workspace(dir)))
+			uri := ide.URI(host, env.SSHHost(), filepath.Base(home.Workspace(dir)))
 			// Hand back a VS Code that fails to start
 			if err := exec.CommandContext(cmd.Context(), code, "--file-uri", uri).Run(); err != nil {
 				return err
@@ -112,7 +112,7 @@ func raise(cmd *cobra.Command, dir string) (cage, error) {
 	cli, ok := rebuild.CLI()
 	// Point at the installer where the devcontainer CLI is missing
 	if !ok {
-		return cage{}, fmt.Errorf("%s runs the devcontainer CLI, install it with o3s init", cmd.CommandPath())
+		return cage{}, fmt.Errorf("%s runs the devcontainer CLI, which install.sh installs unless run with --no-devcontainer", cmd.CommandPath())
 	}
 	up := exec.CommandContext(cmd.Context(), cli, "up", "--workspace-folder", dir)
 	var out bytes.Buffer

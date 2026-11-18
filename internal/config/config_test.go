@@ -2,6 +2,7 @@ package config_test
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -9,16 +10,17 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/hansehart/o3s/internal/config"
+	"github.com/hansehart/o3s/internal/fixture"
 )
 
 // anUnorderedConfig hands a test a config whose hosts and stores sit out of order.
 func anUnorderedConfig() config.Config {
 	return config.Config{
-		Stores: []config.Store{{ID: "registry.example.org/features"}, {ID: "registry.example.com/features"}},
+		Stores: []config.Store{{ID: fixture.AbsentStore}, {ID: fixture.Store}},
 		Hosts: []config.Host{
-			{Name: "198.51.100.0/24", Ports: []int{443}, By: []string{"user"}},
-			{Name: "api.example.com", Ports: []int{443}, Secret: "EXAMPLE_TOKEN", Inject: []string{"header", "body"}, By: []string{"user"}},
-			{Name: "example.com", Ports: []int{22, 443}, By: []string{"user"}},
+			{Name: fixture.Range, Ports: []int{fixture.Port}, By: []string{"user"}},
+			{Name: fixture.Subdomain, Ports: []int{fixture.Port}, Secret: fixture.Secret, Inject: []string{"header", "body"}, By: []string{"user"}},
+			{Name: fixture.Host, Ports: []int{fixture.OtherPort, fixture.Port}, By: []string{"user"}},
 		},
 	}
 }
@@ -109,14 +111,14 @@ func TestNewOffersBothStoresAndNoHost(t *testing.T) {
 // entry that breaks one.
 func TestLoadNamesTheFirstBrokenEntry(t *testing.T) {
 	files := map[string]string{
-		"port past the range": `{"hosts": [{"name": "example.com", "ports": [70000], "by": ["user"]}]}`,
-		"uppercase host":      `{"hosts": [{"name": "Example.com", "ports": [443], "by": ["user"]}]}`,
-		"inject alone":        `{"hosts": [{"name": "example.com", "ports": [443], "inject": ["header"], "by": ["user"]}]}`,
-		"no port":             `{"hosts": [{"name": "example.com", "ports": [], "by": ["user"]}]}`,
-		"nobody needs it":     `{"hosts": [{"name": "example.com", "ports": [443], "by": []}]}`,
-		"host listed twice":   `{"hosts": [{"name": "example.com", "ports": [443], "by": ["user"]}, {"name": "example.com", "ports": [22], "by": ["user"]}]}`,
+		"port past the range": fmt.Sprintf(`{"hosts": [{"name": %[1]q, "ports": [%[2]d], "by": ["user"]}]}`, fixture.Host, fixture.BadPort),
+		"uppercase host":      fmt.Sprintf(`{"hosts": [{"name": "Example.com", "ports": [%[1]d], "by": ["user"]}]}`, fixture.Port),
+		"inject alone":        fmt.Sprintf(`{"hosts": [{"name": %[1]q, "ports": [%[2]d], "inject": ["header"], "by": ["user"]}]}`, fixture.Host, fixture.Port),
+		"no port":             fmt.Sprintf(`{"hosts": [{"name": %[1]q, "ports": [], "by": ["user"]}]}`, fixture.Host),
+		"nobody needs it":     fmt.Sprintf(`{"hosts": [{"name": %[1]q, "ports": [%[2]d], "by": []}]}`, fixture.Host, fixture.Port),
+		"host listed twice":   fmt.Sprintf(`{"hosts": [{"name": %[1]q, "ports": [%[2]d], "by": ["user"]}, {"name": %[1]q, "ports": [%[3]d], "by": ["user"]}]}`, fixture.Host, fixture.Port, fixture.OtherPort),
 		"store without an id": `{"stores": [{"id": ""}], "hosts": []}`,
-		"store listed twice":  `{"stores": [{"id": "registry.example.com/features"}, {"id": "registry.example.com/features"}], "hosts": []}`,
+		"store listed twice":  fmt.Sprintf(`{"stores": [{"id": %[1]q}, {"id": %[1]q}], "hosts": []}`, fixture.Store),
 	}
 	// Check every broken file in its own home
 	for name, content := range files {

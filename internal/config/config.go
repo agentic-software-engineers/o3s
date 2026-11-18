@@ -67,6 +67,8 @@ type Host struct {
 	Secret string   `json:"secret,omitempty"`
 	Inject []string `json:"inject,omitempty"`
 	By     []string `json:"by"`
+	// Expires is when the host closes, in UTC with whole seconds, and empty for a host that stays open.
+	Expires string `json:"expires,omitempty"`
 }
 
 // Change names a host and the fields to set, an empty field keeping its value or default.
@@ -75,6 +77,8 @@ type Change struct {
 	Ports  []int
 	Secret string
 	Inject []string
+	// Expires is the end time to give the host, and empty to keep the one it has.
+	Expires string
 }
 
 // New hands back the settings of a new home, with both feature stores and no host.
@@ -133,7 +137,7 @@ func (c Config) check() error {
 	// Check every host
 	for _, h := range c.Hosts {
 		// Name a host that breaks a rule of a single field
-		if err := validate(Change{Name: h.Name, Ports: h.Ports, Secret: h.Secret, Inject: h.Inject}); err != nil {
+		if err := validate(Change{Name: h.Name, Ports: h.Ports, Secret: h.Secret, Inject: h.Inject, Expires: h.Expires}); err != nil {
 			return err
 		}
 		// Name a host whose fields contradict each other

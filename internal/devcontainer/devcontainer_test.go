@@ -1,6 +1,7 @@
 package devcontainer_test
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -8,6 +9,18 @@ import (
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/hansehart/o3s/internal/devcontainer"
+	"github.com/hansehart/o3s/internal/fixture"
+)
+
+// The features the tests set, by package, with the keys their tags give them and the folder o3s hands the first.
+var (
+	tool         = fixture.Store + "/" + fixture.Feature
+	other        = fixture.Store + "/" + fixture.OtherFeature
+	toolOnMajor  = tool + ":" + fixture.Major
+	toolOnNewer  = tool + ":" + fixture.NewerMajor
+	otherOnNewer = other + ":" + fixture.NewerMajor
+	toolsOnNewer = tool + "s:" + fixture.NewerMajor
+	toolState    = "/home/ubuntu/features/" + tool
 )
 
 // aConfig is a config as the user keeps it, with comments, four-space indent and no features.
@@ -62,25 +75,25 @@ func edited(t *testing.T, text string, edit func(*devcontainer.Config)) string {
 // A feature joins the features in the config's own layout, its comments kept.
 func TestSetFeatureKeepsTheLayout(t *testing.T) {
 	got := edited(t, aConfig, func(c *devcontainer.Config) {
-		c.SetFeature("registry.example.com/features/tool", "registry.example.com/features/tool:1", map[string]string{"stateDir": "/home/ubuntu/features/registry.example.com/features/tool"})
-		c.SetFeature("registry.example.com/features/other", "registry.example.com/features/other:2", nil)
+		c.SetFeature(tool, toolOnMajor, map[string]any{"stateDir": toolState})
+		c.SetFeature(other, otherOnNewer, nil)
 	})
 
-	want := `// The cage
+	want := fmt.Sprintf(`// The cage
 {
     // Name for the dev container
     "name": "o3s",
     // Additional software layered onto the o3s image
     "features": {
-        "registry.example.com/features/tool:1": {
-            "stateDir": "/home/ubuntu/features/registry.example.com/features/tool"
+        %[1]q: {
+            "stateDir": %[2]q
         },
-        "registry.example.com/features/other:2": {}
+        %[3]q: {}
     },
     // Non-root user VS Code connects as
     "remoteUser": "ubuntu"
 }
-`
+`, toolOnMajor, toolState, otherOnNewer)
 	// Report a layout that differs
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("config (-want +got):\n%s", diff)
@@ -89,26 +102,54 @@ func TestSetFeatureKeepsTheLayout(t *testing.T) {
 
 // A feature set again under another tag takes the place of the one it updates.
 func TestSetFeatureReplacesTheSamePackageInPlace(t *testing.T) {
-	text := `{
+	text := fmt.Sprintf(`{
     "features": {
         // The tool
-        "registry.example.com/features/tool:1": {},
-        "registry.example.com/features/other:2": {}
+        %[1]q: {},
+        %[2]q: {}
     }
 }
-`
+`, toolOnMajor, otherOnNewer)
 	got := edited(t, text, func(c *devcontainer.Config) {
-		c.SetFeature("registry.example.com/features/tool", "registry.example.com/features/tool:2", nil)
+		c.SetFeature(tool, toolOnNewer, nil)
 	})
 
-	want := `{
+	want := fmt.Sprintf(`{
     "features": {
         // The tool
-        "registry.example.com/features/tool:2": {},
-        "registry.example.com/features/other:2": {}
+        %[1]q: {},
+        %[2]q: {}
     }
 }
-`
+`, toolOnNewer, otherOnNewer)
+	// Report a config that differs
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("config (-want +got):\n%s", diff)
+	}
+}
+
+// A feature set again keeps the options it held and takes the new ones over them, booleans as booleans.
+func TestSetFeatureKeepsTheOptionsItHeld(t *testing.T) {
+	text := fmt.Sprintf(`{
+    "features": {
+        %q: {"mode": "loose", "version": %q}
+    }
+}
+`, toolOnMajor, fixture.FloatingTag)
+	got := edited(t, text, func(c *devcontainer.Config) {
+		c.SetFeature(tool, toolOnNewer, map[string]any{"version": "lts", "debug": true})
+	})
+
+	want := fmt.Sprintf(`{
+    "features": {
+        %q: {
+            "debug": true,
+            "mode": "loose",
+            "version": "lts"
+        }
+    }
+}
+`, toolOnNewer)
 	// Report a config that differs
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("config (-want +got):\n%s", diff)
@@ -117,25 +158,25 @@ func TestSetFeatureReplacesTheSamePackageInPlace(t *testing.T) {
 
 // Removing a feature drops it whatever tag it carries, and reports whether it was there.
 func TestRemoveFeatureDropsThePackage(t *testing.T) {
-	text := `{
+	text := fmt.Sprintf(`{
     "features": {
-        "registry.example.com/features/tool:1": {},
-        "registry.example.com/features/tools:2": {}
+        %[1]q: {},
+        %[2]q: {}
     }
 }
-`
+`, toolOnMajor, toolsOnNewer)
 	var removed, again bool
 	got := edited(t, text, func(c *devcontainer.Config) {
-		removed = c.RemoveFeature("registry.example.com/features/tool")
-		again = c.RemoveFeature("registry.example.com/features/tool")
+		removed = c.RemoveFeature(tool)
+		again = c.RemoveFeature(tool)
 	})
 
-	want := `{
+	want := fmt.Sprintf(`{
     "features": {
-        "registry.example.com/features/tools:2": {}
+        %[1]q: {}
     }
 }
-`
+`, toolsOnNewer)
 	// Report a config that differs
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("config (-want +got):\n%s", diff)
@@ -199,7 +240,7 @@ func TestRemoveEnvDropsTheVariable(t *testing.T) {
 
 // The features come back as the config names them, in its order.
 func TestFeaturesListsTheConfigsFeatures(t *testing.T) {
-	home := aHomeWith(t, `{"features": {"registry.example.com/features/tool:1": {}, "registry.example.com/features/other:2": {"mode": "strict"}}}`)
+	home := aHomeWith(t, fmt.Sprintf(`{"features": {%[1]q: {}, %[2]q: {"mode": "strict"}}}`, toolOnMajor, otherOnNewer))
 	c, err := devcontainer.Load(home)
 	// Stop when the config fails to load
 	if err != nil {
@@ -209,7 +250,7 @@ func TestFeaturesListsTheConfigsFeatures(t *testing.T) {
 	got := c.Features()
 
 	// Report features that differ
-	if diff := cmp.Diff([]string{"registry.example.com/features/tool:1", "registry.example.com/features/other:2"}, got); diff != "" {
+	if diff := cmp.Diff([]string{toolOnMajor, otherOnNewer}, got); diff != "" {
 		t.Errorf("Features() (-want +got):\n%s", diff)
 	}
 }
@@ -228,27 +269,27 @@ func TestLoadTurnsAwayABrokenConfig(t *testing.T) {
 
 // A feature moved to another tag keeps the options the user gave it.
 func TestRetagFeatureKeepsTheOptions(t *testing.T) {
-	text := `{
+	text := fmt.Sprintf(`{
     "features": {
-        "registry.example.com/features/tool:1": {
+        %[1]q: {
             "mode": "strict"
         }
     }
 }
-`
+`, toolOnMajor)
 	var moved bool
 	got := edited(t, text, func(c *devcontainer.Config) {
-		moved = c.RetagFeature("registry.example.com/features/tool", "registry.example.com/features/tool:2")
+		moved = c.RetagFeature(tool, toolOnNewer)
 	})
 
-	want := `{
+	want := fmt.Sprintf(`{
     "features": {
-        "registry.example.com/features/tool:2": {
+        %[1]q: {
             "mode": "strict"
         }
     }
 }
-`
+`, toolOnNewer)
 	// Report a config that differs
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("config (-want +got):\n%s", diff)
@@ -285,7 +326,7 @@ func TestReadingLeavesTheConfigAsItWas(t *testing.T) {
 		c.Features()
 		c.Env("EXAMPLE_MODE")
 		c.RemoveEnv("EXAMPLE_MODE")
-		c.RetagFeature("registry.example.com/features/tool", "registry.example.com/features/tool:2")
+		c.RetagFeature(tool, toolOnNewer)
 	})
 
 	// Report a config that changed

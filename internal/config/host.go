@@ -41,6 +41,10 @@ func validate(ch Change) error {
 			return fmt.Errorf("%w inject %q, want header, query or body", ErrInvalid, site)
 		}
 	}
+	// Require an end time in the one shape the gateway and the proxy read
+	if ch.Expires != "" && !validEndTime(ch.Expires) {
+		return fmt.Errorf("%w expires %q, want UTC with whole seconds like %s", ErrInvalid, ch.Expires, EndTimeLayout)
+	}
 	return nil
 }
 

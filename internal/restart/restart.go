@@ -1,4 +1,4 @@
-// Package restart makes the containers an o3s home runs read its settings afresh.
+// Package restart finds the containers an o3s home runs and makes them read its settings afresh.
 package restart
 
 import (
@@ -11,16 +11,15 @@ import (
 
 // Stack makes the home's running stack read its settings afresh, and reports whether it runs.
 func Stack(ctx context.Context, home string) (bool, error) {
-	project := "label=com.docker.compose.project.working_dir=" + filepath.Join(home, ".devcontainer")
 	var ids []string
 	// Find the gateway first and the proxy second, the order they restart in
 	for _, service := range []string{"gateway", "proxy"} {
-		out, err := docker(ctx, "ps", "-q", "--filter", project, "--filter", "label=com.docker.compose.service="+service)
+		found, err := Containers(ctx, home, service)
 		// Hand back an engine that fails to answer
 		if err != nil {
 			return false, err
 		}
-		ids = append(ids, strings.Fields(out)...)
+		ids = append(ids, found...)
 	}
 	// Leave a stack that is down to pick the change up when it starts
 	if len(ids) == 0 {
@@ -34,6 +33,13 @@ func Stack(ctx context.Context, home string) (bool, error) {
 		}
 	}
 	return true, nil
+}
+
+// Containers lists the running containers of one service of the home's stack.
+func Containers(ctx context.Context, home, service string) ([]string, error) {
+	project := "label=com.docker.compose.project.working_dir=" + filepath.Join(home, ".devcontainer")
+	out, err := docker(ctx, "ps", "-q", "--filter", project, "--filter", "label=com.docker.compose.service="+service)
+	return strings.Fields(out), err
 }
 
 // docker runs the container engine's CLI and hands back what it printed.

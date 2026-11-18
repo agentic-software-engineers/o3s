@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
+	"github.com/hansehart/o3s/internal/fixture"
 	"github.com/hansehart/o3s/internal/registry"
 	"github.com/hansehart/o3s/internal/registry/registrytest"
 )
@@ -18,7 +19,7 @@ func aStoreWithTheTool(t *testing.T) (*registrytest.Registry, registry.Ref) {
 	if err := r.PushFeatures("features", aTool); err != nil {
 		t.Fatalf("Setup: PushFeatures(features) = %v", err)
 	}
-	return r, registry.Ref{Store: r.Host + "/features", ID: "tool"}
+	return r, registry.Ref{Store: r.Host + "/features", ID: fixture.Feature}
 }
 
 // A feature resolves to the store's major version, its state dir, and its env with the state dir filled in.
@@ -34,11 +35,17 @@ func TestResolveWorksOutWhatAFeatureSetsUp(t *testing.T) {
 	}
 	dir := "/home/ubuntu/features/" + ref.Package()
 	want := registry.Setup{
-		Ref:     registry.Ref{Store: ref.Store, ID: "tool", Tag: "1"},
-		Version: "1.2.3",
-		Options: map[string]string{"stateDir": dir},
-		Hosts:   []registry.Host{{Name: "example.com", Ports: []int{443}, Secret: "EXAMPLE_TOKEN", Inject: []string{"header"}}},
-		Env:     []registry.Env{{Name: "EXAMPLE_HOME", Value: dir}},
+		Ref:     registry.Ref{Store: ref.Store, ID: fixture.Feature, Tag: fixture.Major},
+		Version: fixture.Version,
+		Options: map[string]any{"stateDir": dir},
+		Offered: []registry.Option{
+			{Name: "channel", Type: "string", Default: "stable", Enum: []string{"stable", "beta"}},
+			{Name: "debug", Type: "boolean", Default: "false", Description: "Log every step"},
+			{Name: "stateDir", Type: "string"},
+			{Name: "version", Type: "string", Default: fixture.FloatingTag, Proposals: []string{fixture.FloatingTag, "lts"}, Description: "Which release to install"},
+		},
+		Hosts: []registry.Host{{Name: fixture.Host, Ports: []int{fixture.Port}, Secret: fixture.Secret, Inject: []string{"header"}}},
+		Env:   []registry.Env{{Name: "EXAMPLE_HOME", Value: dir}},
 	}
 	// Report a setup that differs
 	if diff := cmp.Diff(want, got); diff != "" {
@@ -49,14 +56,14 @@ func TestResolveWorksOutWhatAFeatureSetsUp(t *testing.T) {
 // A tag the id names stays as it is.
 func TestResolveKeepsTheTagTheIDNames(t *testing.T) {
 	_, ref := aStoreWithTheTool(t)
-	ref.Tag = "1.2"
+	ref.Tag = fixture.MinorTag
 	var r registry.Resolver
 
 	got, err := r.Resolve(t.Context(), ref)
 
 	// Report a tag that moved
-	if err != nil || got.Ref.Tag != "1.2" {
-		t.Errorf("Resolve(tool:1.2) = %v, %v, want the tag 1.2", got.Ref, err)
+	if err != nil || got.Ref.Tag != fixture.MinorTag {
+		t.Errorf("Resolve(%s) = %v, %v, want the tag %s", ref, got.Ref, err, fixture.MinorTag)
 	}
 }
 
@@ -95,7 +102,7 @@ func TestResolverReadsEachStoreOnce(t *testing.T) {
 // A feature without a version follows the newest release.
 func TestMajorReadsTheMajorPart(t *testing.T) {
 	// Check every version
-	for in, want := range map[string]string{"2.1.0": "2", "3": "3", "": "latest"} {
+	for in, want := range map[string]string{fixture.NewerVersion: fixture.NewerMajor, "3": "3", "": fixture.FloatingTag} {
 		// Report a major part that differs
 		if got := registry.Major(in); got != want {
 			t.Errorf("Major(%q) = %q, want %q", in, got, want)

@@ -6,11 +6,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 
 	"github.com/hansehart/o3s/internal/config"
 	"github.com/hansehart/o3s/internal/home"
 	"github.com/hansehart/o3s/internal/registry"
 	"github.com/hansehart/o3s/internal/secrets"
+	"github.com/hansehart/o3s/internal/tui"
 )
 
 // ErrUsage marks a command line with missing or malformed arguments.
@@ -43,6 +45,10 @@ func Run(ctx context.Context, args []string, s Streams) int {
 		return exit.code
 	}
 	fmt.Fprintf(s.Err, "error: %v\n", err)
+	// Leave the error where the menu asks for it, which outlasts the terminal it printed on
+	if file := os.Getenv(tui.ErrorFileEnv); file != "" {
+		_ = os.WriteFile(file, fmt.Appendf(nil, "error: %v\n", err), 0o600) //nolint:gosec // the menu names a file it made for this run alone
+	}
 	// Point a usage error at the help of the command it hit
 	if isUsage(err) {
 		fmt.Fprintf(s.Err, "Run '%s --help' for usage.\n", cmd.CommandPath())

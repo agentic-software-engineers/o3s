@@ -2,6 +2,8 @@
 package menu
 
 import (
+	"fmt"
+	"path"
 	"slices"
 	"strconv"
 	"strings"
@@ -18,6 +20,10 @@ type Home struct {
 	Secrets  []Secret
 	Stores   []string
 	Features []string
+	// Blocked are the names the gateway refused, each noting how often and when.
+	Blocked []Option
+	// Running marks a stack whose gateway answers, which alone knows what it blocked.
+	Running bool
 	// Projects are the projects the workspace lists, as host/owner/name.
 	Projects []string
 	Lookup   Lookup
@@ -37,7 +43,30 @@ type Lookup interface {
 type Preview struct {
 	Lines   []string
 	Waiting []string
+	// Options are the settings the feature offers for the user to set.
+	Options []FeatureOption
+	// Features, Hosts and Env count what the change adds or takes away.
+	Features, Hosts, Env int
 }
+
+// FeatureOption is a setting a feature offers, with the values it takes and the one it falls back to.
+type FeatureOption struct {
+	Name, Type, Default string
+	Enum, Proposals     []string
+	Description         string
+}
+
+// offer is a setting one chosen feature offers.
+type offer struct {
+	pkg string
+	FeatureOption
+}
+
+// Answers on how to set a feature's options.
+const (
+	keepDefaults = "keep defaults"
+	configure    = "configure"
+)
 
 // Secret is a secret the home knows, and whether it holds a value.
 type Secret struct {
@@ -69,6 +98,8 @@ type Question struct {
 	Options []Option
 	Default []string
 	Preview []string
+	// Summary sums up the preview in one line, which stays in view beside the question.
+	Summary string
 }
 
 // Option is one choice of a question, with a note shown beside it.
@@ -131,6 +162,8 @@ const (
 	fresh = "new"
 	other = "other"
 	yes   = "yes"
+	// always keeps a host open without an end time.
+	always = "always"
 )
 
 // entries are the groups of the main menu, each with what it does.
@@ -187,6 +220,10 @@ func next(h Home, a Answers) (Question, bool) {
 	if do == "cage" {
 		return ask(a, choose("action", "Action", "ide", "shell"))
 	}
+	// Ask which action of the firewall comes next, which may also show its log or its blocked hosts
+	if do == "firewall" && !a.has("action") {
+		return choose("action", "Action", "add", "rm", "ls", "log", "blocked", "prune"), false
+	}
 	// Ask which action of the projects comes next, which may also create one
 	if do == "project" && !a.has("action") {
 		return choose("action", "Action", "add", "create", "rm", "ls"), false
@@ -196,8 +233,8 @@ func next(h Home, a Answers) (Question, bool) {
 		return choose("action", "Action", "add", "rm", "ls"), false
 	}
 	action := a.get("action")
-	// List without a further question
-	if action == "ls" {
+	// List or prune without a further question, since the CLI names what prune removes
+	if action == "ls" || action == "log" || action == "prune" {
 		return Question{}, true
 	}
 	// Follow the dialog of the group
@@ -217,6 +254,22 @@ func next(h Home, a Answers) (Question, bool) {
 
 // firewall asks what adding or removing a host needs.
 func firewall(h Home, a Answers, action string) (Question, bool) {
+	// Ask which blocked hosts to allow, then their ports
+	if action == "blocked" {
+		// End the dialog where nothing is blocked
+		if len(h.Blocked) == 0 {
+			return Question{}, true
+		}
+		// Ask for the hosts first, as many as the user likes
+		if !a.has("blocked") {
+			return Question{Key: "blocked", Kind: Multi, Title: "Blocked", Options: h.Blocked}, false
+		}
+		// End the dialog where the user chose no host
+		if len(a.all("blocked")) == 0 {
+			return Question{}, true
+		}
+		return ask(a, Question{Key: "ports", Kind: Input, Title: "Ports", Default: []string{"443"}})
+	}
 	// Ask which of the user's hosts to remove
 	if action == "rm" {
 		return pick(a, "host", "Host", userHosts(h))
@@ -259,7 +312,7 @@ func firewall(h Home, a Answers, action string) (Question, bool) {
 		}
 		return Question{Key: "inject", Kind: Multi, Title: "Inject", Options: []Option{{Value: "header"}, {Value: "query"}, {Value: "body"}}, Default: sites}, false
 	}
-	return Question{}, true
+	return ask(a, Question{Key: "for", Kind: Input, Title: "For", Default: []string{always}})
 }
 
 // secret asks what storing or removing a secret needs.
@@ -334,8 +387,12 @@ func plan(h Home, a Answers) []Command {
 		return []Command{{Args: []string{"update"}, Terminal: true}}
 	case do == "cage":
 		return []Command{{Args: []string{"cage", action}, Terminal: action == "shell"}}
-	case action == "ls":
-		return []Command{{Args: []string{do, "ls"}}}
+	case action == "ls" || action == "log":
+		return []Command{{Args: []string{do, action}}}
+	case do == "firewall" && action == "prune":
+		return []Command{{Args: []string{"firewall", "prune"}, Terminal: true}}
+	case do == "firewall" && action == "blocked":
+		return blockedPlan(h, a)
 	case do == "feature":
 		return featurePlan(h, a, action)
 	case do == "project":
@@ -347,6 +404,12 @@ func plan(h Home, a Answers) []Command {
 		// Name the secret and where it goes
 		if s := firewallSecret(a); s != "" {
 			args = append(args, "--secret", s, "--inject", strings.Join(a.all("inject"), ","))
+		}
+		limit := a.get("for")
+		// Keep the host open for the time given, letting the CLI ask at the real terminal before a known host closes sooner
+		if limit != "" && limit != always {
+			_, known := (&config.Config{Hosts: h.Hosts}).Find(a.get("host"))
+			return []Command{{Args: append(args, "--for", limit), Terminal: known}}
 		}
 		return []Command{{Args: args}}
 	case do == "secret":
@@ -375,7 +438,7 @@ func feature(h Home, a Answers, action string) (Question, bool) {
 		if err != nil {
 			return Question{}, true
 		}
-		return ask(a, apply(pv))
+		return ask(a, apply(pv, "Removes", path.Base(a.get("feature"))))
 	}
 	// End the dialog where no store is there to choose
 	if len(h.Stores) == 0 {
@@ -407,11 +470,23 @@ func feature(h Home, a Answers, action string) (Question, bool) {
 	}
 	// Confirm what the feature brings
 	if !a.has("apply") {
-		return apply(pv), false
+		return apply(pv, "Adds", path.Base(chosenIDs(a)[0])), false
 	}
 	// End the dialog where the user declines
 	if a.get("apply") != yes {
 		return Question{}, true
+	}
+	offers := offered(h, a)
+	// Ask whether to set the chosen features' options or keep their defaults
+	if len(offers) > 0 && !a.has("options") {
+		return Question{Key: "options", Kind: Select, Title: "Options", Options: []Option{{Value: keepDefaults}, {Value: configure}}, Default: []string{keepDefaults}}, false
+	}
+	// Ask for every option in turn where the user sets them
+	for _, o := range offers {
+		// Ask an option not yet answered
+		if a.get("options") == configure && !a.has(optionKey(o)) {
+			return optionQuestion(o), false
+		}
 	}
 	// Ask for the value of every secret the feature waits for
 	for _, name := range pv.Waiting {
@@ -471,7 +546,65 @@ func featurePlan(h Home, a Answers, action string) []Command {
 			cmds = append(cmds, Command{Args: []string{"secret", "add", name, "--no-bind-hint"}, Stdin: &value})
 		}
 	}
-	return append(cmds, Command{Args: append(append([]string{"feature", "add"}, chosenIDs(a)...), "--no-preview")})
+	args := append([]string{"feature", "add"}, chosenIDs(a)...)
+	// Hand every option the user set on to the feature it belongs to
+	for _, o := range offered(h, a) {
+		// Take an option the user answered
+		if a.has(optionKey(o)) {
+			args = append(args, "--option", o.pkg+":"+o.Name+"="+a.get(optionKey(o)))
+		}
+	}
+	return append(cmds, Command{Args: append(args, "--no-preview")})
+}
+
+// offered lists the options every chosen feature offers, feature by feature.
+func offered(h Home, a Answers) []offer {
+	var out []offer
+	// Ask every chosen feature what it offers
+	for _, id := range chosenIDs(a) {
+		pv, err := h.Lookup.Add(id)
+		// Leave out a feature whose options stay unknown
+		if err != nil {
+			continue
+		}
+		// Take every option the feature offers
+		for _, o := range pv.Options {
+			out = append(out, offer{pkg: id, FeatureOption: o})
+		}
+	}
+	return out
+}
+
+// optionKey names the answer to one option of one feature.
+func optionKey(o offer) string {
+	return "option:" + o.pkg + ":" + o.Name
+}
+
+// optionQuestion asks for an option the way it takes its value, starting from its default.
+func optionQuestion(o offer) Question {
+	q := Question{Key: optionKey(o), Title: path.Base(o.pkg) + " " + o.Name, Default: []string{o.Default}}
+	// Say what the option does
+	if o.Description != "" {
+		q.Preview = append(q.Preview, o.Description)
+	}
+	// Ask by the kind of value the option takes
+	switch {
+	case o.Type == "boolean":
+		q.Kind, q.Options = Select, []Option{{Value: "true"}, {Value: "false"}}
+	case len(o.Enum) > 0:
+		q.Kind = Select
+		// Offer every value the option takes
+		for _, v := range o.Enum {
+			q.Options = append(q.Options, Option{Value: v})
+		}
+	default:
+		q.Kind = Input
+		// Name the values the option suggests
+		if len(o.Proposals) > 0 {
+			q.Preview = append(q.Preview, "suggested: "+strings.Join(o.Proposals, ", "))
+		}
+	}
+	return q
 }
 
 // chosenIDs hands back the full id of every feature chosen, in the order the answer holds them.
@@ -495,6 +628,7 @@ func previewAll(h Home, a Answers) (Preview, error) {
 			return Preview{}, err
 		}
 		all.Lines = append(all.Lines, pv.Lines...)
+		all.Features, all.Hosts, all.Env = all.Features+pv.Features, all.Hosts+pv.Hosts, all.Env+pv.Env
 		// Take each waiting secret once
 		for _, name := range pv.Waiting {
 			// Keep a secret taken already out of the list
@@ -506,9 +640,45 @@ func previewAll(h Home, a Answers) (Preview, error) {
 	return all, nil
 }
 
-// apply asks to apply a change, showing it above the question.
-func apply(pv Preview) Question {
-	return Question{Key: "apply", Kind: Confirm, Title: "Apply?", Preview: pv.Lines}
+// apply asks to apply a change, showing it above the question and summing it up beside it.
+func apply(pv Preview, verb, name string) Question {
+	return Question{Key: "apply", Kind: Confirm, Title: "Apply?", Preview: pv.Lines, Summary: summary(verb, name, pv)}
+}
+
+// summary writes in one line what a change comes to, the feature or how many with the hosts and env they carry, and the secrets that wait.
+func summary(verb, name string, pv Preview) string {
+	line := verb + " " + name
+	// Count the features where several change at once
+	if pv.Features > 1 {
+		line = fmt.Sprintf("%s %s", verb, count(pv.Features, "feature", "features"))
+	}
+	var parts []string
+	// Name the hosts the change carries
+	if pv.Hosts > 0 {
+		parts = append(parts, count(pv.Hosts, "host", "hosts"))
+	}
+	// Name the env values the change carries
+	if pv.Env > 0 {
+		parts = append(parts, count(pv.Env, "env value", "env values"))
+	}
+	// Join what the change carries to the feature
+	if len(parts) > 0 {
+		line += " with " + strings.Join(parts, " and ")
+	}
+	// Name the secrets still waiting for a value
+	if n := len(pv.Waiting); n > 0 {
+		line += ", " + count(n, "secret waits", "secrets wait") + " for a value"
+	}
+	return line
+}
+
+// count writes a number with the word that fits it.
+func count(n int, one, many string) string {
+	// Take the singular for a single one
+	if n == 1 {
+		return "1 " + one
+	}
+	return fmt.Sprintf("%d %s", n, many)
 }
 
 // remove builds the removal a dialog chose, or the note that nothing was there to remove.
@@ -520,6 +690,24 @@ func remove(a Answers, do string) Command {
 		return Command{Note: "No " + nouns[do] + " to remove"}
 	}
 	return Command{Args: []string{do, "rm", a.get(keys[do])}}
+}
+
+// blockedPlan allows every blocked host the user chose on the ports given, or notes that none was there to choose.
+func blockedPlan(h Home, a Answers) []Command {
+	// Point a stopped stack at starting it, since its gateway holds what it blocked
+	if len(a.all("blocked")) == 0 && !h.Running {
+		return []Command{{Note: "Start the stack to see the blocked hosts"}}
+	}
+	// Name that nothing was blocked or chosen
+	if len(a.all("blocked")) == 0 {
+		return []Command{{Note: "No blocked host"}}
+	}
+	var cmds []Command
+	// Allow every chosen host
+	for _, host := range a.all("blocked") {
+		cmds = append(cmds, Command{Args: []string{"firewall", "add", host, "--port", a.get("ports")}})
+	}
+	return cmds
 }
 
 // firewallSecret hands back the secret a host is to carry, and empty for none.

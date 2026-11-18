@@ -65,6 +65,11 @@
             "minItems": 1,
             "uniqueItems": true,
             "items": { "type": "string", "minLength": 1 }
+          },
+          "expires": {
+            "description": "When the host closes, in UTC with whole seconds. The gateway and the proxy stop admitting it at that moment, and o3s firewall prune removes it afterwards.",
+            "type": "string",
+            "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$"
           }
         },
         "dependentRequired": { "inject": ["secret"] }

@@ -1,11 +1,19 @@
 package menu
 
 import (
+	"strconv"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/hansehart/o3s/internal/config"
+	"github.com/hansehart/o3s/internal/fixture"
+)
+
+// Ports as a dialog takes them as text, the one a host opens by default and both a host may open.
+var (
+	port      = strconv.Itoa(fixture.Port)
+	bothPorts = strconv.Itoa(fixture.OtherPort) + "," + port
 )
 
 // aHome is a home that allows a host with a secret, knows two secrets, and offers one store.
@@ -13,13 +21,14 @@ var aHome = Home{
 	Dir:    "/home/ubuntu/o3s",
 	Exists: true,
 	Hosts: []config.Host{
-		{Name: "example.com", Ports: []int{22, 443}, By: []string{"user"}},
-		{Name: "api.example.com", Ports: []int{443}, Secret: "EXAMPLE_TOKEN", Inject: []string{"header", "body"}, By: []string{"user"}},
-		{Name: "example.org", Ports: []int{443}, By: []string{"registry.example.com/features/tool"}},
+		{Name: fixture.Host, Ports: []int{fixture.OtherPort, fixture.Port}, By: []string{"user"}},
+		{Name: fixture.Subdomain, Ports: []int{fixture.Port}, Secret: fixture.Secret, Inject: []string{"header", "body"}, By: []string{"user"}},
+		{Name: fixture.OtherHost, Ports: []int{fixture.Port}, By: []string{fixture.Store + "/" + fixture.Feature}},
 	},
-	Secrets:  []Secret{{Name: "EXAMPLE_TOKEN", Set: false}, {Name: "OTHER_TOKEN", Set: true}},
-	Stores:   []string{"registry.example.com/features"},
-	Projects: []string{"example.com/team/app"},
+	Secrets:  []Secret{{Name: fixture.Secret, Set: false}, {Name: fixture.OtherSecret, Set: true}},
+	Stores:   []string{fixture.Store},
+	Projects: []string{fixture.NestedRepo},
+	Blocked:  []Option{{Value: fixture.RefusedName, Note: "3 attempts, 5m ago"}, {Value: fixture.AbsentName, Note: "1 attempt, 2h ago"}},
 }
 
 // walk answers each question the core asks in turn and hands back what it asked and the command it ends in.
@@ -55,7 +64,7 @@ func titles(qs []Question) []string {
 
 // Every dialog ends in the command line the CLI runs for it.
 func TestEveryDialogEndsInItsCommand(t *testing.T) {
-	value := "s3cr3t"
+	value := fixture.SecretValue
 	tests := []struct {
 		name    string
 		answers [][]string
@@ -64,21 +73,39 @@ func TestEveryDialogEndsInItsCommand(t *testing.T) {
 	}{
 		{
 			"a new host with a new secret and two sites",
-			[][]string{{"firewall"}, {"add"}, {"example.net"}, {"443,8443"}, {"new"}, {"NEW_TOKEN"}, {"header", "body"}},
-			[]string{"What do you want to do?", "Action", "Host", "Ports", "Secret", "Secret name", "Inject"},
-			[]Command{{Args: []string{"firewall", "add", "example.net", "--port", "443,8443", "--secret", "NEW_TOKEN", "--inject", "header,body"}}},
+			[][]string{{"firewall"}, {"add"}, {fixture.ThirdHost}, {bothPorts}, {"new"}, {fixture.NewSecret}, {"header", "body"}, {"always"}},
+			[]string{"What do you want to do?", "Action", "Host", "Ports", "Secret", "Secret name", "Inject", "For"},
+			[]Command{{Args: []string{"firewall", "add", fixture.ThirdHost, "--port", bothPorts, "--secret", fixture.NewSecret, "--inject", "header,body"}}},
 		},
 		{
 			"a host without a secret skips where to inject it",
-			[][]string{{"firewall"}, {"add"}, {"example.net"}, {"443"}, {"none"}},
-			[]string{"What do you want to do?", "Action", "Host", "Ports", "Secret"},
-			[]Command{{Args: []string{"firewall", "add", "example.net", "--port", "443"}}},
+			[][]string{{"firewall"}, {"add"}, {fixture.ThirdHost}, {port}, {"none"}, {"always"}},
+			[]string{"What do you want to do?", "Action", "Host", "Ports", "Secret", "For"},
+			[]Command{{Args: []string{"firewall", "add", fixture.ThirdHost, "--port", port}}},
+		},
+		{
+			"a new host for a set time",
+			[][]string{{"firewall"}, {"add"}, {fixture.ThirdHost}, {port}, {"none"}, {"1h"}},
+			[]string{"What do you want to do?", "Action", "Host", "Ports", "Secret", "For"},
+			[]Command{{Args: []string{"firewall", "add", fixture.ThirdHost, "--port", port, "--for", "1h"}}},
+		},
+		{
+			"a known host for a set time, at the real terminal where the CLI asks before it closes sooner",
+			[][]string{{"firewall"}, {"add"}, {fixture.Host}, {bothPorts}, {"none"}, {"1h"}},
+			[]string{"What do you want to do?", "Action", "Host", "Ports", "Secret", "For"},
+			[]Command{{Args: []string{"firewall", "add", fixture.Host, "--port", bothPorts, "--for", "1h"}, Terminal: true}},
+		},
+		{
+			"pruning the expired hosts, at the real terminal where the CLI asks",
+			[][]string{{"firewall"}, {"prune"}},
+			[]string{"What do you want to do?", "Action"},
+			[]Command{{Args: []string{"firewall", "prune"}, Terminal: true}},
 		},
 		{
 			"removing a host the user needs",
-			[][]string{{"firewall"}, {"rm"}, {"example.com"}},
+			[][]string{{"firewall"}, {"rm"}, {fixture.Host}},
 			[]string{"What do you want to do?", "Action", "Host"},
-			[]Command{{Args: []string{"firewall", "rm", "example.com"}}},
+			[]Command{{Args: []string{"firewall", "rm", fixture.Host}}},
 		},
 		{
 			"listing the allowlist",
@@ -87,34 +114,49 @@ func TestEveryDialogEndsInItsCommand(t *testing.T) {
 			[]Command{{Args: []string{"firewall", "ls"}}},
 		},
 		{
+			"showing the log",
+			[][]string{{"firewall"}, {"log"}},
+			[]string{"What do you want to do?", "Action"},
+			[]Command{{Args: []string{"firewall", "log"}}},
+		},
+		{
+			"allowing two blocked hosts at once",
+			[][]string{{"firewall"}, {"blocked"}, {fixture.RefusedName, fixture.AbsentName}, {port}},
+			[]string{"What do you want to do?", "Action", "Blocked", "Ports"},
+			[]Command{
+				{Args: []string{"firewall", "add", fixture.RefusedName, "--port", port}},
+				{Args: []string{"firewall", "add", fixture.AbsentName, "--port", port}},
+			},
+		},
+		{
 			"a value for a known secret",
-			[][]string{{"secret"}, {"add"}, {"EXAMPLE_TOKEN"}, {value}},
+			[][]string{{"secret"}, {"add"}, {fixture.Secret}, {value}},
 			[]string{"What do you want to do?", "Action", "Name", "Value"},
-			[]Command{{Args: []string{"secret", "add", "EXAMPLE_TOKEN"}, Stdin: &value}},
+			[]Command{{Args: []string{"secret", "add", fixture.Secret}, Stdin: &value}},
 		},
 		{
 			"a value for a secret of another name",
-			[][]string{{"secret"}, {"add"}, {"other"}, {"NEW_TOKEN"}, {value}},
+			[][]string{{"secret"}, {"add"}, {"other"}, {fixture.NewSecret}, {value}},
 			[]string{"What do you want to do?", "Action", "Name", "Secret name", "Value"},
-			[]Command{{Args: []string{"secret", "add", "NEW_TOKEN"}, Stdin: &value}},
+			[]Command{{Args: []string{"secret", "add", fixture.NewSecret}, Stdin: &value}},
 		},
 		{
 			"removing a stored secret",
-			[][]string{{"secret"}, {"rm"}, {"OTHER_TOKEN"}},
+			[][]string{{"secret"}, {"rm"}, {fixture.OtherSecret}},
 			[]string{"What do you want to do?", "Action", "Name"},
-			[]Command{{Args: []string{"secret", "rm", "OTHER_TOKEN"}}},
+			[]Command{{Args: []string{"secret", "rm", fixture.OtherSecret}}},
 		},
 		{
 			"adding a store",
-			[][]string{{"store"}, {"add"}, {"registry.example.org/features"}},
+			[][]string{{"store"}, {"add"}, {fixture.AbsentStore}},
 			[]string{"What do you want to do?", "Action", "Store"},
-			[]Command{{Args: []string{"store", "add", "registry.example.org/features"}}},
+			[]Command{{Args: []string{"store", "add", fixture.AbsentStore}}},
 		},
 		{
 			"removing a store",
-			[][]string{{"store"}, {"rm"}, {"registry.example.com/features"}},
+			[][]string{{"store"}, {"rm"}, {fixture.Store}},
 			[]string{"What do you want to do?", "Action", "Store"},
-			[]Command{{Args: []string{"store", "rm", "registry.example.com/features"}}},
+			[]Command{{Args: []string{"store", "rm", fixture.Store}}},
 		},
 		{
 			"creating a home",
@@ -136,21 +178,21 @@ func TestEveryDialogEndsInItsCommand(t *testing.T) {
 		},
 		{
 			"cloning a project",
-			[][]string{{"project"}, {"add"}, {"torvalds/linux"}},
+			[][]string{{"project"}, {"add"}, {fixture.Repo}},
 			[]string{"What do you want to do?", "Action", "Repository"},
-			[]Command{{Args: []string{"project", "add", "torvalds/linux"}}},
+			[]Command{{Args: []string{"project", "add", fixture.Repo}}},
 		},
 		{
 			"creating a project",
-			[][]string{{"project"}, {"create"}, {"example/scratch"}},
+			[][]string{{"project"}, {"create"}, {fixture.Repo}},
 			[]string{"What do you want to do?", "Action", "Repository"},
-			[]Command{{Args: []string{"project", "create", "example/scratch"}}},
+			[]Command{{Args: []string{"project", "create", fixture.Repo}}},
 		},
 		{
 			"removing a project at the real terminal, where the user types its name",
-			[][]string{{"project"}, {"rm"}, {"example.com/team/app"}},
+			[][]string{{"project"}, {"rm"}, {fixture.NestedRepo}},
 			[]string{"What do you want to do?", "Action", "Project"},
-			[]Command{{Args: []string{"project", "rm", "example.com/team/app"}, Terminal: true}},
+			[]Command{{Args: []string{"project", "rm", fixture.NestedRepo}, Terminal: true}},
 		},
 		{
 			"listing the projects",
@@ -188,11 +230,11 @@ func TestEveryDialogEndsInItsCommand(t *testing.T) {
 
 // A host the allowlist holds offers its ports, its secret and its sites as the defaults.
 func TestFirewallAddOffersTheHostsCurrentValues(t *testing.T) {
-	asked, _ := walk(t, aHome, []string{"firewall"}, []string{"add"}, []string{"api.example.com"}, []string{"443"}, []string{"EXAMPLE_TOKEN"}, []string{"header", "body"})
+	asked, _ := walk(t, aHome, []string{"firewall"}, []string{"add"}, []string{fixture.Subdomain}, []string{port}, []string{fixture.Secret}, []string{"header", "body"}, []string{"always"})
 
 	got := []any{asked[3].Default, asked[4].Default, asked[5].Default}
 
-	want := []any{[]string{"443"}, []string{"EXAMPLE_TOKEN"}, []string{"header", "body"}}
+	want := []any{[]string{port}, []string{fixture.Secret}, []string{"header", "body"}}
 	// Report defaults that differ
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("defaults (-want +got):\n%s", diff)
@@ -201,11 +243,11 @@ func TestFirewallAddOffersTheHostsCurrentValues(t *testing.T) {
 
 // A new host starts on the HTTPS port and puts a secret into the header.
 func TestFirewallAddOffersTheDefaultsOfANewHost(t *testing.T) {
-	asked, _ := walk(t, aHome, []string{"firewall"}, []string{"add"}, []string{"example.net"}, []string{"443"}, []string{"OTHER_TOKEN"}, []string{"header"})
+	asked, _ := walk(t, aHome, []string{"firewall"}, []string{"add"}, []string{fixture.ThirdHost}, []string{port}, []string{fixture.OtherSecret}, []string{"header"}, []string{"always"})
 
 	got := []any{asked[3].Default, asked[4].Default, asked[5].Default}
 
-	want := []any{[]string{"443"}, []string{"none"}, []string{"header"}}
+	want := []any{[]string{port}, []string{"none"}, []string{"header"}}
 	// Report defaults that differ
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("defaults (-want +got):\n%s", diff)
@@ -214,24 +256,51 @@ func TestFirewallAddOffersTheDefaultsOfANewHost(t *testing.T) {
 
 // The secrets on offer show whether each holds a value, and leave room for none or a new one.
 func TestFirewallAddOffersEverySecret(t *testing.T) {
-	asked, _ := walk(t, aHome, []string{"firewall"}, []string{"add"}, []string{"example.net"}, []string{"443"}, []string{"none"})
+	asked, _ := walk(t, aHome, []string{"firewall"}, []string{"add"}, []string{fixture.ThirdHost}, []string{port}, []string{"none"}, []string{"always"})
 
 	got := asked[4].Options
 
-	want := []Option{{Value: "none"}, {Value: "EXAMPLE_TOKEN", Note: "empty"}, {Value: "OTHER_TOKEN", Note: "set"}, {Value: "new"}}
+	want := []Option{{Value: "none"}, {Value: fixture.Secret, Note: "empty"}, {Value: fixture.OtherSecret, Note: "set"}, {Value: "new"}}
 	// Report options that differ
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("options (-want +got):\n%s", diff)
 	}
 }
 
+// The firewall offers its actions, the log and the blocked hosts among them.
+func TestFirewallOffersTheLogAndTheBlockedHosts(t *testing.T) {
+	q, _ := next(aHome, Answers{}.With("do", []string{"firewall"}))
+
+	want := []Option{{Value: "add"}, {Value: "rm"}, {Value: "ls"}, {Value: "log"}, {Value: "blocked"}, {Value: "prune"}}
+	// Report actions that differ
+	if diff := cmp.Diff(want, q.Options); diff != "" {
+		t.Errorf("firewall actions (-want +got):\n%s", diff)
+	}
+}
+
+// The blocked hosts come as a multi-select, each noting how often and when it was refused.
+func TestBlockedOffersEveryRefusedName(t *testing.T) {
+	asked, _ := walk(t, aHome, []string{"firewall"}, []string{"blocked"}, []string{fixture.RefusedName}, []string{port})
+
+	got := asked[2]
+
+	// Report a question that takes one answer alone
+	if got.Kind != Multi {
+		t.Errorf("Blocked kind = %v, want Multi", got.Kind)
+	}
+	// Report options that differ
+	if diff := cmp.Diff(aHome.Blocked, got.Options); diff != "" {
+		t.Errorf("options (-want +got):\n%s", diff)
+	}
+}
+
 // Removing offers the hosts the user needs alone, since features own the rest.
 func TestFirewallRmOffersTheUsersHosts(t *testing.T) {
-	asked, _ := walk(t, aHome, []string{"firewall"}, []string{"rm"}, []string{"example.com"})
+	asked, _ := walk(t, aHome, []string{"firewall"}, []string{"rm"}, []string{fixture.Host})
 
 	got := asked[2].Options
 
-	want := []Option{{Value: "example.com"}, {Value: "api.example.com"}}
+	want := []Option{{Value: fixture.Host}, {Value: fixture.Subdomain}}
 	// Report options that differ
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("options (-want +got):\n%s", diff)
@@ -256,6 +325,26 @@ func TestRmWithNothingToRemoveEndsWithANote(t *testing.T) {
 		// Report a command that differs
 		if diff := cmp.Diff([]Command{{Note: tt.want}}, got); diff != "" {
 			t.Errorf("%s rm (-want +got):\n%s", tt.group, diff)
+		}
+	}
+}
+
+// Without a blocked host the dialog ends with a note, which points a stopped stack at starting it.
+func TestBlockedWithNothingBlockedEndsWithANote(t *testing.T) {
+	tests := []struct {
+		running bool
+		want    string
+	}{
+		{true, "No blocked host"},
+		{false, "Start the stack to see the blocked hosts"},
+	}
+	// Check a running and a stopped stack
+	for _, tt := range tests {
+		_, got := walk(t, Home{Dir: "/home/ubuntu/o3s", Exists: true, Running: tt.running}, []string{"firewall"}, []string{"blocked"})
+
+		// Report a command that differs
+		if diff := cmp.Diff([]Command{{Note: tt.want}}, got); diff != "" {
+			t.Errorf("firewall blocked with running %v (-want +got):\n%s", tt.running, diff)
 		}
 	}
 }

@@ -1,5 +1,40 @@
 # Changelog
 
+## [0.7.6-rc.2](https://github.com/hansehart/o3s/compare/v0.7.6-rc.1...v0.7.6-rc.2) (2026-11-18)
+
+
+### Features
+
+* **cli:** set a feature's options when adding it ([#277](https://github.com/hansehart/o3s/issues/277)) ([69c8cfe](https://github.com/hansehart/o3s/commit/69c8cfef43f8892bee4f1c1b7ec145d1a694a087))
+
+
+### Bug Fixes
+
+* **cli:** keep the confirmation in view beside a summary ([#283](https://github.com/hansehart/o3s/issues/283)) ([f7b8377](https://github.com/hansehart/o3s/commit/f7b83779d9d37428dbb42f0ec1fd0a560a6ab872))
+* **cli:** keep the menu's output whole and its failures named ([#275](https://github.com/hansehart/o3s/issues/275)) ([e26dd31](https://github.com/hansehart/o3s/commit/e26dd31acfa8e47c14ff4525bec385c7dbc060d5))
+* **cli:** open o3s cage ide over SSH ([#285](https://github.com/hansehart/o3s/issues/285)) ([fbfe0eb](https://github.com/hansehart/o3s/commit/fbfe0eb71266f80ea59958c5aeb11e13bbcb9d9b))
+* **repo:** decide installs and updates by the checksum alone ([#267](https://github.com/hansehart/o3s/issues/267)) ([2cf8d0b](https://github.com/hansehart/o3s/commit/2cf8d0bd2dad7e04ecf82a985d87822afe4fb295))
+
+## [0.7.6-rc.1](https://github.com/hansehart/o3s/compare/v0.7.5...v0.7.6-rc.1) (2026-11-16)
+
+
+### Features
+
+* **cli:** add, remove and list projects with o3s project ([#256](https://github.com/hansehart/o3s/issues/256)) ([fa6ea6c](https://github.com/hansehart/o3s/commit/fa6ea6cd8dff7aae3fa30f389856915339314eb7))
+* **cli:** lay out projects by host, owner and name ([#258](https://github.com/hansehart/o3s/issues/258)) ([99ea433](https://github.com/hansehart/o3s/commit/99ea4337851c05559e3c0220132b65f7e2d52263))
+* **cli:** run the home's VM with o3s vm start, shell, stop, rm ([#259](https://github.com/hansehart/o3s/issues/259)) ([05f055e](https://github.com/hansehart/o3s/commit/05f055e71448b726e46d9eab8cbb9f6aa2f4cb0a))
+* **cli:** update each binary within its channel ([#248](https://github.com/hansehart/o3s/issues/248)) ([4c732a3](https://github.com/hansehart/o3s/commit/4c732a3b69415dd9532009a0bbcb97d49eb2302d))
+* **repo:** let allow rules expire after a set time ([#265](https://github.com/hansehart/o3s/issues/265)) ([b1c722a](https://github.com/hansehart/o3s/commit/b1c722a156b0619cae3d4d7d3455dd94c0fd25c4))
+* **repo:** release every merge to main as a release candidate ([#245](https://github.com/hansehart/o3s/issues/245)) ([91e4897](https://github.com/hansehart/o3s/commit/91e48974f7a98a51015b10b2c2aefe2a59654787))
+* **repo:** show each host's traffic and the names the gateway blocked ([#262](https://github.com/hansehart/o3s/issues/262)) ([53114bd](https://github.com/hansehart/o3s/commit/53114bdb5b857a4e674d796c135139819135405f))
+
+
+### Bug Fixes
+
+* **cli:** point the AppArmor warning at the secure default ([#261](https://github.com/hansehart/o3s/issues/261)) ([82e428f](https://github.com/hansehart/o3s/commit/82e428f52fb7869e110830fe370f8fedc615537a))
+* **cli:** refuse a cage without AppArmor unless the home opts out ([#252](https://github.com/hansehart/o3s/issues/252)) ([dc9347a](https://github.com/hansehart/o3s/commit/dc9347a918770aefe95c37ba5b0d9f072e33b2b2))
+* **repo:** publish a release once its files are in place ([#251](https://github.com/hansehart/o3s/issues/251)) ([2a66c9e](https://github.com/hansehart/o3s/commit/2a66c9ef0755aeb7b4362e9e5638232d1cff836f))
+
 ## [0.7.5](https://github.com/hansehart/o3s/compare/v0.7.4...v0.7.5) (2026-11-15)
 
 

@@ -12,11 +12,12 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hansehart/o3s/internal/fixture"
 	"github.com/hansehart/o3s/internal/release"
 )
 
 // latest is the release the releases page offers as the newest.
-const latest = "1.1.0"
+const latest = fixture.NewerVersion
 
 // binary stands in for the o3s binary of the latest release.
 const binary = "#!/bin/sh\necho o3s version " + latest + "\n"
@@ -89,59 +90,14 @@ func TestFetchTurnsAwayATamperedBinary(t *testing.T) {
 	}
 }
 
-// aGh puts a fake gh on PATH that is logged in and answers the attestation check as given.
-func aGh(t *testing.T, verify string) string {
-	t.Helper()
-	bin := t.TempDir()
-	log := filepath.Join(bin, "gh.log")
-	gh := "#!/bin/sh\necho \"$*\" >> " + log + "\ncase \"$1\" in auth) exit 0 ;; attestation) " + verify + " ;; esac\n"
-	// Stop when the fake stays unwritten
-	if err := os.WriteFile(filepath.Join(bin, "gh"), []byte(gh), 0o755); err != nil { //nolint:gosec // the test runs its fake
-		t.Fatalf("Setup: %v", err)
-	}
-	t.Setenv("PATH", bin)
-	return log
-}
+// The hand check names the binary, this repo and the workflow that signs its releases.
+func TestVerifyHintNamesThePublishWorkflow(t *testing.T) {
+	got := release.VerifyHint("/tmp/o3s")
 
-// A logged-in gh checks the binary against this repo's publish workflow.
-func TestVerifyAsksGhAboutThePublishWorkflow(t *testing.T) {
-	log := aGh(t, "exit 0")
-
-	ok, err := release.Verify(t.Context(), "/tmp/o3s")
-
-	// Require a verified binary
-	if err != nil || !ok {
-		t.Fatalf("Verify() = %v, %v, want verified", ok, err)
-	}
-	calls, _ := os.ReadFile(log)
-	want := "attestation verify /tmp/o3s --repo hansehart/o3s --signer-workflow hansehart/o3s/.github/workflows/publish.yaml"
-	// Require gh asked about this repo's publish workflow
-	if !strings.Contains(string(calls), want) {
-		t.Errorf("gh calls lack %q:\n%s", want, calls)
-	}
-}
-
-// A binary gh fails to verify is turned away.
-func TestVerifyTurnsAwayAFailedCheck(t *testing.T) {
-	aGh(t, "exit 1")
-
-	_, err := release.Verify(t.Context(), "/tmp/o3s")
-
-	// Require an error for a failed check
-	if err == nil {
-		t.Errorf("Verify() = nil, want an error")
-	}
-}
-
-// A host without gh leaves the check to the user.
-func TestVerifyLeavesTheCheckWithoutGh(t *testing.T) {
-	t.Setenv("PATH", t.TempDir())
-
-	ok, err := release.Verify(t.Context(), "/tmp/o3s")
-
-	// Require an unverified binary without an error
-	if err != nil || ok {
-		t.Errorf("Verify() = %v, %v, want false, nil", ok, err)
+	want := "gh attestation verify /tmp/o3s --repo hansehart/o3s --signer-workflow hansehart/o3s/.github/workflows/publish.yaml"
+	// Report a command that checks against something else
+	if got != want {
+		t.Errorf("VerifyHint() = %q, want %q", got, want)
 	}
 }
 
@@ -205,10 +161,10 @@ func TestIsReleaseKnowsReleaseCandidates(t *testing.T) {
 		version string
 		want    bool
 	}{
-		{"1.0.0", true},
-		{"1.0.0-rc.1", true},
+		{fixture.Version, true},
+		{fixture.Candidate, true},
 		{"dev", false},
-		{"1.0.0-SNAPSHOT-abc1234", false},
+		{fixture.DevBuild, false},
 		{"1.0", false},
 	}
 	// Check every version
