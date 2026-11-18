@@ -1,7 +1,7 @@
 # The projects are the workspace's folders in the projects volume, the home itself left out
 mkdir home
 cd home
-exec o3s init
+exec o3s init --guest
 exec o3s project create example/scratch
 exec o3s project create gitlab.com/group/app
 exec o3s project ls

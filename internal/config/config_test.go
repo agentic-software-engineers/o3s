@@ -164,3 +164,29 @@ func TestLoadKeepsTheAppArmorOptOut(t *testing.T) {
 		t.Errorf("Load() with another profile = nil, want an error")
 	}
 }
+
+// A home keeps its opt-out from the VM through a save, and turns away any other isolation.
+func TestLoadKeepsTheIsolationOptOut(t *testing.T) {
+	home := t.TempDir()
+	saved := config.New()
+	saved.Isolation = config.Process
+	// Stop when the file stays unwritten
+	if err := saved.Save(home); err != nil {
+		t.Fatalf("Setup: Save() = %v", err)
+	}
+
+	loaded, err := config.Load(home)
+
+	// Require the opt-out kept
+	if err != nil || loaded.Isolation != config.Process {
+		t.Errorf("Load() = %q, %v, want process", loaded.Isolation, err)
+	}
+	// Stop when the other isolation stays unwritten
+	if err := os.WriteFile(filepath.Join(home, config.File), []byte(`{"stores": [], "hosts": [], "isolation": "vm"}`), 0o600); err != nil {
+		t.Fatalf("Setup: %v", err)
+	}
+	// Require any other isolation turned away
+	if _, err := config.Load(home); err == nil {
+		t.Errorf("Load() with another isolation = nil, want an error")
+	}
+}

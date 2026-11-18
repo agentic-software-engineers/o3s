@@ -83,6 +83,11 @@ func homeVM() (vm.Lima, string, error) {
 	if err != nil {
 		return vm.Lima{}, "", err
 	}
-	lima, err := vm.Find()
-	return lima, vm.Name(dir), err
+	name, err := vm.Find(dir)
+	// Point a folder without a VM at the command that makes one
+	if err != nil {
+		return vm.Lima{}, "", err
+	}
+	lima, err := vm.Manager()
+	return lima, name, err
 }

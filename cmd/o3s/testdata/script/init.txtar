@@ -1,6 +1,6 @@
 # The user's own home folder holds the host's secrets and CA, which the cage would see, so it is turned away
 cd $WORK
-! exec o3s init
+! exec o3s init --guest
 stderr 'needs a folder of its own'
 ! exists $WORK/o3s.json
 ! exists $WORK/.devcontainer
@@ -8,7 +8,7 @@ stderr 'needs a folder of its own'
 # An empty folder becomes a home with the settings of a new home, the stack, and a prepared host
 mkdir home
 cd home
-exec o3s init
+exec o3s init --guest
 stdout '^Wrote '$WORK'/home/o3s.json$'
 stdout '^Wrote '$WORK'/home/.devcontainer/ \([0-9]+ files\)$'
 stdout '^Wrote '$WORK'/home/home.code-workspace$'
@@ -43,7 +43,7 @@ stdout '^NAME'
 # Every start prepares the host again and keeps the home and its CA as they are
 cp $WORK/.local/state/o3s/proxy/mitmproxy-ca.pem $WORK/ca.pem
 cp .devcontainer/.env $WORK/env
-exec o3s init
+exec o3s init --guest
 ! stdout 'Wrote|Next steps|differs'
 stdout '^The proxy''s CA is ready in '$WORK'/.local/state/o3s/proxy$'
 cmp o3s.json $WORK/want.json
@@ -52,25 +52,25 @@ cmp .devcontainer/.env $WORK/env
 
 # A home that lost its settings gets those of a new home back
 rm o3s.json
-exec o3s init
+exec o3s init --guest
 stdout '^Wrote '$WORK'/home/o3s.json$'
 cmp o3s.json $WORK/want.json
 
 # A secret a host waits for is named with the command that gives it its value
 exec o3s firewall add example.com --secret EXAMPLE_TOKEN
-exec o3s init
+exec o3s init --guest
 stderr '^warning: EXAMPLE_TOKEN waits for its value: echo "\$TOKEN" \| o3s secret add EXAMPLE_TOKEN$'
 
 # A stack that differs from this o3s is pointed at update, and left as it is
 cp $WORK/edited.yaml .devcontainer/compose.yaml
-exec o3s init
+exec o3s init --guest
 stdout '^The stack differs from this o3s, run o3s update$'
 cmp .devcontainer/compose.yaml $WORK/edited.yaml
 
 # A second home on this machine names the first, since o3s runs one home per machine for now
 mkdir $WORK/other
 cd $WORK/other
-exec o3s init
+exec o3s init --guest
 stderr '^warning: '$WORK'/home is already an o3s home, and o3s runs one home per machine for now$'
 
 -- edited.yaml --

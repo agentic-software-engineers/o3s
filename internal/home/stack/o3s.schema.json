@@ -78,6 +78,10 @@
     "appArmorProfile": {
       "description": "Set to unconfined to run the cage without its own AppArmor profile, where the Docker daemon has no AppArmor. The cage keeps its seccomp filter, capabilities and gateway, and loses AppArmor's file and mount rules. o3s refuses to start a cage without AppArmor unless this is set.",
       "enum": ["unconfined"]
+    },
+    "isolation": {
+      "description": "Set to process to run the stack straight on this machine's kernel, without the home's VM. The cage keeps its AppArmor profile, seccomp filter, capabilities and gateway, and shares the kernel with everything else on the machine. o3s warns on every start while this is set.",
+      "enum": ["process"]
     }
   }
 }
