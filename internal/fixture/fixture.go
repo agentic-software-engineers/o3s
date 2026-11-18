@@ -29,6 +29,12 @@ const (
 	AbsentName = "absent.example"
 )
 
+// Machines a home runs on.
+const (
+	// SSHHost is the name a client reaches the machine by over SSH.
+	SSHHost = "devbox.example"
+)
+
 // Addresses the allowlist names.
 const (
 	// Address is a single address.
@@ -153,6 +159,7 @@ func Env() map[string]string {
 		"THIRD_HOST":        ThirdHost,
 		"REFUSED_NAME":      RefusedName,
 		"ABSENT_NAME":       AbsentName,
+		"SSH_HOST":          SSHHost,
 		"ADDRESS":           Address,
 		"RANGE":             Range,
 		"PORT":              strconv.Itoa(Port),

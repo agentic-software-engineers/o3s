@@ -22,6 +22,25 @@ grep '^--file-uri vscode-remote://dev-container\+[0-9a-f]+/home/ubuntu/o3s/home\
 grep '^-w .*/home$' $WORK/wslpath.log
 env WSL_DISTRO_NAME=
 
+# Over SSH outside a VS Code window, o3s names the Remote-SSH terminal and opens nothing
+rm $WORK/code.log
+env SSH_CONNECTION=$ADDRESS
+! exec o3s cage ide
+stderr 'Remote-SSH'
+! exists $WORK/code.log
+
+# In a Remote-SSH terminal, o3s names the variable that holds the host VS Code connected with
+env VSCODE_IPC_HOOK_CLI=$WORK/vscode-ipc.sock
+! exec o3s cage ide
+stderr 'O3S_SSH_HOST'
+! exists $WORK/code.log
+
+# In a Remote-SSH terminal that names the host, VS Code opens the cage through it
+env O3S_SSH_HOST=$SSH_HOST
+exec o3s cage ide
+grep '^--file-uri vscode-remote://dev-container\+[0-9a-f]+@ssh-remote\+'${SSH_HOST@R}'/home/ubuntu/o3s/home\.code-workspace$' $WORK/code.log
+env SSH_CONNECTION= VSCODE_IPC_HOOK_CLI= O3S_SSH_HOST=
+
 # Without the VS Code CLI on PATH, o3s names it
 rm $WORK/.bin/code
 env PATH=$WORK/.bin${:}$O3S_DIR

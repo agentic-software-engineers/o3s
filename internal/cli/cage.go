@@ -37,22 +37,22 @@ func newCageIDE() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			code, err := exec.LookPath("code")
-			// Point at the VS Code CLI the command runs
-			if err != nil {
-				return errors.New("o3s cage ide runs the VS Code CLI code, put it on PATH (VS Code: Shell Command: Install 'code' command in PATH)")
-			}
 			env := ide.Detect()
 			// Hand back what VS Code needs before it opens the cage
 			if err := env.Check(cmd.Context()); err != nil {
 				return err
+			}
+			code, err := exec.LookPath("code")
+			// Point at the VS Code CLI the command runs
+			if err != nil {
+				return errors.New("o3s cage ide runs the VS Code CLI code, put it on PATH (VS Code: Shell Command: Install 'code' command in PATH)")
 			}
 			host, err := env.HostPath(cmd.Context(), dir)
 			// Hand back a folder the environment fails to name
 			if err != nil {
 				return err
 			}
-			uri := ide.URI(host, filepath.Base(home.Workspace(dir)))
+			uri := ide.URI(host, env.SSHHost(), filepath.Base(home.Workspace(dir)))
 			// Hand back a VS Code that fails to start
 			if err := exec.CommandContext(cmd.Context(), code, "--file-uri", uri).Run(); err != nil {
 				return err
