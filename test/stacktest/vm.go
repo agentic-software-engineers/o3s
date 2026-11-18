@@ -19,6 +19,7 @@ func AVMHost(tb testing.TB) string {
 	tb.Helper()
 	bin := o3sBinary(tb)
 	tb.Setenv("PATH", filepath.Dir(bin)+string(os.PathListSeparator)+os.Getenv("PATH"))
+	tb.Setenv("O3S_PREVIEW", "vm")
 	tb.Setenv("O3S_RELEASE_URL", fileURL(aRelease(tb)))
 	base := ""
 	// Keep the folder short on hosts with Unix sockets
