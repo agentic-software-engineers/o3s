@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -112,8 +113,10 @@ func TestScripts(t *testing.T) {
 		t.Fatalf("Setup: registrytest.New() = %v", err)
 	}
 	t.Cleanup(reg.Close)
+	// go installs after node, as its store tells
+	goAfterNode := fmt.Sprintf(`{"id": "go", "version": "1.0.0", "options": {"version": {"type": "string", "default": "latest"}}, "installsAfter": [%q]}`, reg.Host+"/features/node")
 	// Stop when the store fails to publish
-	if err := reg.PushFeatures("features", `{"id": "node"}`, `{"id": "go", "version": "1.0.0", "options": {"version": {"type": "string", "default": "latest"}}}`, tool); err != nil {
+	if err := reg.PushFeatures("features", `{"id": "node"}`, goAfterNode, tool); err != nil {
 		t.Fatalf("Setup: PushFeatures(features) = %v", err)
 	}
 	testscript.Run(t, testscript.Params{

@@ -32,6 +32,8 @@ type Config struct {
 	Command func(args []string) *exec.Cmd
 	// Exec hands the terminal to a command, as tea.ExecProcess does.
 	Exec func(cmd *exec.Cmd, fn tea.ExecCallback) tea.Cmd
+	// Start are the answers the menu opens with, such as the group whose view a command named.
+	Start menu.Answers
 }
 
 // Messages the app's own commands send.
@@ -112,6 +114,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case homeMsg:
 		m.home, m.answers, m.crumbs, m.kinds, m.carry = menu.Home(msg), nil, nil, nil, nil
+		// Open at the answers the menu starts with
+		for _, a := range m.cfg.Start {
+			m.answers = m.answers.With(a.Key, a.Values)
+			m.crumbs, m.kinds = append(m.crumbs, strings.Join(a.Values, ", ")), append(m.kinds, menu.Select)
+		}
 		m.state = loading
 		return m, m.ask()
 	case askedMsg:
@@ -204,8 +211,8 @@ func (m model) follow(r result, cmd tea.Cmd) (tea.Model, tea.Cmd) {
 		m.state = loading
 		return m, m.ask()
 	case back:
-		// Leave from the main menu
-		if len(m.answers) == 0 {
+		// Leave from the screen the menu opened at
+		if len(m.answers) <= len(m.cfg.Start) {
 			return m, tea.Quit
 		}
 		n := len(m.answers) - 1

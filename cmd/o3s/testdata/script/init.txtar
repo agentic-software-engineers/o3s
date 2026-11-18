@@ -35,9 +35,9 @@ exec sh -c 'test -d "$WORK"/.local/state/o3s/*/docker-host'
 grep '"initializeCommand": "o3s init"' .devcontainer/devcontainer.json
 
 # The new home works with every command
-exec o3s firewall ls
+exec o3s firewall
 stdout '^HOST'
-exec o3s secret ls
+exec o3s secret
 stdout '^NAME'
 
 # Every start prepares the host again and keeps the home and its CA as they are

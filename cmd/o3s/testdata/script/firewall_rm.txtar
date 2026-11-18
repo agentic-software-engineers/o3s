@@ -1,20 +1,24 @@
-# A host the user alone needs leaves the allowlist
-exec o3s firewall rm example.com
-stdout '^Removed example.com$'
+# Without a terminal or --yes, removing names what leaves and asks for --yes, the allowlist left as it was
+! exec o3s firewall rm example.com
+stdout '^  - example.com:22,443$'
+stderr 'pass --yes to apply without a terminal'
+grep '"example.com"' o3s.json
 
-# A host a feature still needs stays, and the feature is named
-exec o3s firewall rm api.example.com
+# A host the user alone needs leaves the allowlist, and a host a feature still needs stays with the feature named, both at once
+exec o3s firewall rm example.com api.example.com --yes
+stdout '^  ~ api.example.com stays open, still needed by registry.example.com/features/tool$'
+stdout '^Removed example.com$'
 stdout '^Kept api.example.com, still needed by registry.example.com/features/tool$'
 
 # The file holds the host for the feature alone
 cmp o3s.json want.json
 
 # A host only features brought stays with them
-! exec o3s firewall rm example.org
+! exec o3s firewall rm example.org --yes
 stderr 'needed by features alone'
 
 # A host the allowlist lacks is turned away
-! exec o3s firewall rm absent.example
+! exec o3s firewall rm absent.example --yes
 stderr 'unknown host absent.example'
 
 -- o3s.json --

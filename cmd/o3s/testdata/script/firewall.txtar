@@ -1,0 +1,65 @@
+# Piped, the firewall lists every host with its ports, secret and who needs it, explains its marks, and names where the blocked names come from
+exec o3s firewall
+cmp stdout want.txt
+! stderr .
+
+# A running gateway without a record yet says that nothing is blocked
+exec sh -c 'touch $WORK/stack-up'
+exec o3s firewall
+stdout '^Nothing blocked yet, names the cage asks for and the firewall refuses show here$'
+
+# With the gateway's record, every host shows the data it moved, a host without data for 30 days reads as dead, and the refused names follow, most recent first
+exec sh -c 'now=$(date +%s); printf "{\"since\": %s, \"updated\": %s, \"hosts\": {\"example.com\": {\"bytes\": 1234567890, \"last_seen\": %s, \"since\": %s}, \"api.example.com\": {\"bytes\": 0, \"last_seen\": 0, \"since\": %s}}, \"blocked\": {\"blocked.example\": {\"attempts\": 3, \"last_seen\": %s}, \"old.example\": {\"attempts\": 12, \"last_seen\": %s}}}" $((now-3456000)) $now $((now-300)) $((now-3456000)) $((now-3456000)) $((now-300)) $((now-172800)) > $WORK/traffic.json'
+exec o3s firewall
+cmp stdout want-traffic.txt
+! stderr .
+
+# --limit caps the blocked names
+exec o3s firewall --limit 1
+stdout '^blocked\.example +3 +5m ago$'
+! stdout 'old\.example'
+
+# --json hands both lists to a script
+exec o3s firewall --json
+stdout '"allowed": \['
+stdout '"host": "example.com"'
+stdout '"bytes": 1234567890'
+stdout '"by": \['
+stdout '"blocked": \['
+stdout '"host": "blocked.example"'
+stdout '"attempts": 3'
+
+# A word the firewall takes no action by is a usage error
+! exec o3s firewall nosuch
+stderr 'unknown command "nosuch" for "o3s firewall"'
+
+-- o3s.json --
+{
+  "$schema": "./.devcontainer/o3s.schema.json",
+  "stores": [],
+  "hosts": [
+    {"name": "example.com", "ports": [22, 443], "by": ["user"], "expires": "2020-01-01T00:00:00Z"},
+    {"name": "api.example.com", "ports": [443], "secret": "EXAMPLE_TOKEN", "inject": ["header"], "by": ["registry.example.com/features/tool"]}
+  ]
+}
+-- want.txt --
+HOST             PORTS   DATA  LAST SEEN  EXPIRES  SECRET           BY
+example.com      22,443  –     –          expired                   user
+api.example.com  443     –     –                   EXAMPLE_TOKEN !  registry.example.com/features/tool
+
+! waits for its value: echo "$TOKEN" | o3s secret add <name>
+expired: past its end time, remove these with o3s firewall prune
+
+Blocked names show while the stack runs
+-- want-traffic.txt --
+HOST             PORTS   DATA    LAST SEEN    EXPIRES  SECRET           BY
+example.com      22,443  1.2 GB  5m ago       expired                   user
+api.example.com  443     0 B     never, dead           EXAMPLE_TOKEN !  registry.example.com/features/tool
+
+! waits for its value: echo "$TOKEN" | o3s secret add <name>
+dead: no data in 30 days, remove it with o3s firewall rm <host>
+expired: past its end time, remove these with o3s firewall prune
+
+BLOCKED          ATTEMPTS  LAST SEEN
+blocked.example  3         5m ago
+old.example      12        2d ago

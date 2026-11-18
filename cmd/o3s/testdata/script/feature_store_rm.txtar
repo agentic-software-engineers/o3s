@@ -1,10 +1,15 @@
+# Without a terminal or --yes, removing names the store that leaves and asks for --yes
+! exec o3s feature store rm registry.example.com/features
+stdout '^  - registry.example.com/features$'
+stderr 'pass --yes to apply without a terminal'
+
 # A listed store leaves the list
-exec o3s store rm registry.example.com/features
+exec o3s feature store rm registry.example.com/features --yes
 stdout '^Removed registry.example.com/features$'
 cmp o3s.json want.json
 
 # A store the list lacks is turned away
-! exec o3s store rm registry.example.com/features
+! exec o3s feature store rm registry.example.com/features --yes
 stderr 'unknown store registry.example.com/features'
 
 # A store change leaves the stack untouched

@@ -20,24 +20,33 @@ import (
 
 // runMenu shows the menu in its own screen, running each dialog's commands as this binary, until the user leaves.
 func runMenu(ctx context.Context, s Streams) int {
-	self, err := executable()
-	// Report a binary that fails to find itself
-	if err != nil {
-		fmt.Fprintf(s.Err, "error: %v\n", err)
-		return 1
-	}
-	err = tui.Run(ctx, tui.Config{
-		Home: func() menu.Home { return menuHome(ctx) },
-		Command: func(args []string) *exec.Cmd {
-			return exec.CommandContext(ctx, self, args...)
-		},
-	})
 	// Report a menu that fails to run
-	if err != nil {
+	if err := openMenu(ctx, ""); err != nil {
 		fmt.Fprintf(s.Err, "error: %v\n", err)
 		return 1
 	}
 	return 0
+}
+
+// openMenu shows the menu in its own screen, opened at a group's view where one is named, until the user leaves.
+func openMenu(ctx context.Context, group string) error {
+	self, err := executable()
+	// Hand back a binary that fails to find itself
+	if err != nil {
+		return err
+	}
+	var start menu.Answers
+	// Open the menu at the group's view
+	if group != "" {
+		start = menu.Answers{}.With("do", []string{group})
+	}
+	return tui.Run(ctx, tui.Config{
+		Home:  func() menu.Home { return menuHome(ctx) },
+		Start: start,
+		Command: func(args []string) *exec.Cmd {
+			return exec.CommandContext(ctx, self, args...)
+		},
+	})
 }
 
 // menuLookup answers the menu's questions to the stores, reading each store once.

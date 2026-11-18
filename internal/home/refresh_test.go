@@ -74,8 +74,8 @@ func TestRefreshBringsBackEditedAndLostFiles(t *testing.T) {
 	}
 }
 
-// The config takes the binary's keys and keeps the home's features and env, comments and all.
-func TestRefreshKeepsTheHomesFeaturesAndEnv(t *testing.T) {
+// The config takes the binary's keys and keeps the home's features, env and install order, comments and all.
+func TestRefreshKeepsTheHomesFeaturesEnvAndOrder(t *testing.T) {
 	dir := anInitializedHome(t)
 	config := filepath.Join(dir, ".devcontainer", "devcontainer.json")
 	data, err := os.ReadFile(config)
@@ -86,7 +86,8 @@ func TestRefreshKeepsTheHomesFeaturesAndEnv(t *testing.T) {
 	features := fmt.Sprintf("{\n        // The tool\n        %q: {}\n    }", fixture.Store+"/"+fixture.Feature+":"+fixture.Major)
 	edited := strings.Replace(string(data), `"features": {}`, `"features": `+features, 1)
 	edited = strings.Replace(edited, `"name": "o3s"`, `"name": "edited"`, 1)
-	edited = strings.Replace(edited, "\n}", ",\n    // The env\n    \"containerEnv\": {\"EXAMPLE_MODE\": \"strict\"}\n}", 1)
+	order := fmt.Sprintf("\"overrideFeatureInstallOrder\": [%q]", fixture.Store+"/"+fixture.Feature)
+	edited = strings.Replace(edited, "\n}", ",\n    // The env\n    \"containerEnv\": {\"EXAMPLE_MODE\": \"strict\"},\n    "+order+"\n}", 1)
 	// Stop when the edit fails
 	if err := os.WriteFile(config, []byte(edited), 0o600); err != nil { //nolint:gosec // the test writes inside its own temp home
 		t.Fatalf("Setup: %v", err)
@@ -108,8 +109,8 @@ func TestRefreshKeepsTheHomesFeaturesAndEnv(t *testing.T) {
 		t.Fatalf("ReadFile() = %v", err)
 	}
 	text := string(written)
-	// Require the binary's name back, and the home's features and env as they were
-	for _, want := range []string{`"name": "o3s"`, `"features": ` + features, "// The env\n    \"containerEnv\": {\"EXAMPLE_MODE\": \"strict\"}"} {
+	// Require the binary's name back, and the home's features, env and order as they were
+	for _, want := range []string{`"name": "o3s"`, `"features": ` + features, "// The env\n    \"containerEnv\": {\"EXAMPLE_MODE\": \"strict\"}", order} {
 		// Report a part the config lacks
 		if !strings.Contains(text, want) {
 			t.Errorf("config lacks %q:\n%s", want, text)

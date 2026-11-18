@@ -97,6 +97,35 @@ var aTool = fmt.Sprintf(`{
   }
 }`, fixture.Feature, fixture.Version, fixture.FloatingTag, fixture.FloatingTag, fixture.Host, fixture.Port, fixture.Secret)
 
+// A feature names the features it installs after, both those it depends on and those it follows, once each and
+// without their tags.
+func TestCollectionReadsWhatAFeatureInstallsAfter(t *testing.T) {
+	r := aRegistry(t)
+	store := r.Host + "/features"
+	after := fmt.Sprintf(`{
+  "id": %q,
+  "version": %q,
+  "dependsOn": {"%s/%s:%s": {}},
+  "installsAfter": [%q, "%s/%s"]
+}`, fixture.Feature, fixture.Version, store, fixture.OtherFeature, fixture.Major, store+"/"+fixture.ThirdFeature, store, fixture.OtherFeature)
+	// Stop when the store fails to publish
+	if err := r.PushFeatures("features", after); err != nil {
+		t.Fatalf("Setup: PushFeatures(features) = %v", err)
+	}
+
+	got, err := registry.Collection(t.Context(), store)
+
+	// Stop when the collection fails to read
+	if err != nil {
+		t.Fatalf("Collection(features) = %v", err)
+	}
+	want := []string{store + "/" + fixture.ThirdFeature, store + "/" + fixture.OtherFeature}
+	// Report a feature without exactly the features it follows
+	if len(got) != 1 || !cmp.Equal(want, got[0].After) {
+		t.Errorf("Collection(features) After = %v, want %v", got, want)
+	}
+}
+
 // A store the registry lacks is turned away.
 func TestCollectionTurnsAwayAnAbsentStore(t *testing.T) {
 	r := aRegistry(t)

@@ -6,7 +6,7 @@ cmpenv docker.log want.log
 
 # Removing a host restarts the stack as well
 rm docker.log
-exec o3s firewall rm example.com
+exec o3s firewall rm example.com --yes
 stdout '^Restarted gateway$'
 cmpenv docker.log want.log
 

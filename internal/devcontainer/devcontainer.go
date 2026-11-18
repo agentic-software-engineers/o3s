@@ -60,13 +60,13 @@ func (c *Config) Features() []string {
 
 // SetFeature names a feature with its options, in the place of any tag of the same package, keeping the options it already holds that the new ones leave out.
 func (c *Config) SetFeature(pkg, key string, options map[string]any) {
-	merged := c.featureOptions(pkg)
+	merged := c.FeatureOptions(pkg)
 	maps.Copy(merged, options)
 	c.set("features", func(m hujson.ObjectMember) bool { return samePackage(name(m), pkg) }, key, merged)
 }
 
-// featureOptions hands back the options a feature holds whatever its tag, and none for a feature the config lacks.
-func (c *Config) featureOptions(pkg string) map[string]any {
+// FeatureOptions hands back the options a feature holds whatever its tag, and none for a feature the config lacks.
+func (c *Config) FeatureOptions(pkg string) map[string]any {
 	options := map[string]any{}
 	// Read the options of the feature of that package
 	for _, m := range c.find("features").Members {

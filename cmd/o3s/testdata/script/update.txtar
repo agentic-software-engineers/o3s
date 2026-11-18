@@ -32,6 +32,30 @@ grep ${REGISTRY@R}/features/tool:2 .devcontainer/devcontainer.json
 exec o3s update
 stdout '^Up to date$'
 
+# Named parts narrow the update: the stack alone leaves a feature that moves, and the feature alone leaves the stack
+cp $WORK/edited.yaml .devcontainer/compose.yaml
+exec o3s feature add $REGISTRY/features/go:0
+exec o3s update stack --yes
+stdout '^  ~ compose\.yaml$'
+! stdout 'features/go'
+grep ${REGISTRY@R}/features/go:0 .devcontainer/devcontainer.json
+cp $WORK/edited.yaml .devcontainer/compose.yaml
+exec o3s update go --yes
+stdout '/features/go   0 -> 1$'
+! stdout 'compose\.yaml'
+cmp .devcontainer/compose.yaml $WORK/edited.yaml
+exec o3s update stack --yes
+
+# o3s alone brings the binary up and leaves the home as it is
+exec o3s update o3s
+stdout '^o3s dev builds update with go install or install\.sh$'
+! stdout 'Up to date'
+
+# A name the update finds nothing for is a usage error
+! exec o3s update nosuch
+stderr 'nosuch is up to date or not installed'
+stderr 'for usage'
+
 -- want.log --
 up --workspace-folder $WORK/home --remove-existing-container
 -- edited.yaml --

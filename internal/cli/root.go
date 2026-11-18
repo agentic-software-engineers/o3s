@@ -26,7 +26,7 @@ func newRoot(s Streams) *cobra.Command {
 	root.SetFlagErrorFunc(func(_ *cobra.Command, err error) error {
 		return fmt.Errorf("%w: %w", ErrUsage, err)
 	})
-	root.AddCommand(newInit(), newFirewall(), newSecret(), newStore(), newFeature(), newProject(), newCage(), newVM(), newUpdate())
+	root.AddCommand(newInit(), newFirewall(), newSecret(), newFeature(), newProject(), newCage(), newVM(), newUpdate())
 	return root
 }
 
@@ -41,14 +41,19 @@ func usage(args cobra.PositionalArgs) cobra.PositionalArgs {
 	}
 }
 
-// group builds a command that only holds actions, so naming none is a usage error.
-func group(use, short string) *cobra.Command {
+// group builds a command whose own name shows what it holds: its view at a terminal, and plain tables
+// where its output goes on to a pipe, a file or a flag asks for another form.
+func group(use, short string, show func(cmd *cobra.Command) error) *cobra.Command {
 	return &cobra.Command{
 		Use:   use,
 		Short: short,
 		Args:  usage(cobra.NoArgs),
-		RunE: func(*cobra.Command, []string) error {
-			return fmt.Errorf("%w: name an action", ErrUsage)
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			// Open the group's view for a user at a terminal who asks for no other form
+			if cmd.Flags().NFlag() == 0 && isInteractive(cmd.InOrStdin(), cmd.OutOrStdout()) {
+				return openMenu(cmd.Context(), use)
+			}
+			return show(cmd)
 		},
 	}
 }

@@ -1,5 +1,5 @@
 # A hand-edited file that breaks a rule stops every command and names the entry
-! exec o3s firewall ls
+! exec o3s firewall
 stderr 'o3s.json holds a broken entry'
 stderr 'port 70000'
 ! stderr 'for usage'
