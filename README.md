@@ -15,7 +15,23 @@
   </picture>
 </p>
 
-If you are not willing to trade security for productivity, o3s is a match. Let an agent generate every line of code, and review every line by hand or none at all. Either way, which hosts your agents reach and which secrets they can read stays yours to decide.
+<p align="center">
+  <img src="https://cdn.simpleicons.org/claude" alt="Claude Code CLI" title="Claude Code CLI" height="48">
+  <img src="https://cdn.simpleicons.org/docker" alt="Docker in Docker" title="Docker in Docker" height="48">
+  <img src="https://cdn.simpleicons.org/github" alt="gh (GitHub CLI)" title="gh (GitHub CLI)" height="48">
+  <img src="https://cdn.simpleicons.org/go" alt="Go" title="Go" height="48">
+  <img src="https://cdn.simpleicons.org/googlechrome" alt="Headless Chrome" title="Headless Chrome" height="48">
+  <img src="https://cdn.simpleicons.org/latex" alt="LaTeX (TeX Live)" title="LaTeX (TeX Live)" height="48">
+  <img src="https://cdn.simpleicons.org/nodedotjs" alt="Node.js" title="Node.js" height="48">
+  <img src="https://cdn.simpleicons.org/opencode" alt="OpenCode CLI" title="OpenCode CLI" height="48">
+  <img src="https://cdn.simpleicons.org/python" alt="Python" title="Python" height="48">
+  <img src="https://cdn.simpleicons.org/rust" alt="Rust" title="Rust" height="48">
+  <img src="https://cdn.simpleicons.org/gitea" alt="tea (Gitea CLI)" title="tea (Gitea CLI)" height="48">
+</p>
+
+If you are not willing to trade security for productivity, o3s is a match. Let an agent generate every line of code, and review every line by hand or none at all. Either way, the features that shape your agents' environment, the hosts they reach and the secrets they can read stay yours to decide.
+
+[Anthropic][ref] and [OpenAI][cdx] both ship a reference devcontainer, deliberately minimal: Anthropic's applies a short hardcoded allowlist from inside the container, and OpenAI's tells you to add your own DNS filtering. o3s starts where they stop: productivity on steroids, and deterministic enforcement (harness) to get there.
 
 We created o3s to keep pace: trusted environments, several projects at once, and several features inside each. AI will not be the death of good engineering. It is the golden era of agentic software engineers. This is how we build with it and still stand behind every line that ships.
 
@@ -215,3 +231,6 @@ Something here you would do differently? Open an issue, send a pull request, or 
 <p align="center">
   open secure software suite, or osss, shortened to o3s.
 </p>
+
+[ref]: https://github.com/anthropics/claude-code/tree/d945a61bc6346abce607252d5667df8a3bf0461a/.devcontainer
+[cdx]: https://github.com/openai/codex/tree/900b1e4cec1c4eada106a8071fc89c11c50de9a6/.devcontainer
