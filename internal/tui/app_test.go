@@ -75,20 +75,32 @@ func drive(m model, msgs ...tea.Msg) (model, bool) {
 	return m, quit
 }
 
-// A dialog runs its command inside the app, shows the output until Enter, and goes back to a fresh main menu.
-func TestAppRunsADialogAndGoesBack(t *testing.T) {
+// allowLine is the command line allowing the fixture host on the HTTPS port for good ends in.
+var allowLine = "firewall add " + fixture.Host + " --port 443 --yes"
+
+// allowing are the keys that allow the fixture host on the HTTPS port for good, from the main menu to the confirmation.
+func allowing() []tea.Msg {
+	return keys("fir", enter, enter, fixture.Host, enter, "1", "1", "1")
+}
+
+// A dialog runs its command inside the app, shows the output and its success, and Enter goes back to the group's view.
+func TestAppRunsADialogAndGoesBackToTheGroup(t *testing.T) {
 	m, _ := anApp(t, nil)
 
-	ran, _ := drive(m, keys("fir", enter, "ls", enter)...)
+	ran, _ := drive(m, append(allowing(), enter)...)
 	back, _ := drive(ran, enter)
 
-	// Require the output on screen, the dialog done, and its success named
-	if view := stripped(ran.View().Content); ran.state != done || !strings.Contains(view, "ran firewall ls") || !strings.Contains(view, "firewall / ls") || !strings.Contains(view, "done") {
-		t.Errorf("after ls = state %v, view:\n%s", ran.state, view)
+	view := stripped(ran.View().Content)
+	// Require the command line, its output, its success and the way back to the group
+	for _, want := range []string{"$ o3s " + allowLine, "ran " + allowLine, "✓ done", "enter back to firewall", "esc menu"} {
+		// Report a part the screen lacks
+		if ran.state != done || !strings.Contains(view, want) {
+			t.Errorf("after the dialog, state %v, view lacks %q:\n%s", ran.state, want, view)
+		}
 	}
-	// Require a fresh main menu
-	if back.state != asking || back.q.Key != "do" || len(back.answers) != 0 {
-		t.Errorf("after enter = state %v on %q with %d answers, want the main menu", back.state, back.q.Key, len(back.answers))
+	// Require the firewall's view again
+	if back.state != asking || back.q.Key != "view" || len(back.answers) != 1 {
+		t.Errorf("after enter = state %v on %q with %d answers, want the firewall's view", back.state, back.q.Key, len(back.answers))
 	}
 }
 
@@ -96,15 +108,15 @@ func TestAppRunsADialogAndGoesBack(t *testing.T) {
 func TestAppStepsBackWithTheAnswer(t *testing.T) {
 	m, _ := anApp(t, nil)
 
-	m, _ = drive(m, keys("fir", enter, "add", enter, fixture.Host, enter, esc)...)
+	m, _ = drive(m, keys("fir", enter, enter, fixture.Host, enter, esc)...)
 
-	// Require the host question again, holding the host typed
-	if m.q.Key != "host" || !strings.Contains(stripped(m.field.View(usualWidth)), "> "+fixture.Host) {
-		t.Errorf("after esc = %q, view:\n%s", m.q.Key, stripped(m.field.View(usualWidth)))
+	// Require the hosts question again, holding the host typed
+	if view := stripped(m.field.View(usualWidth, usualHeight)); m.q.Key != "hosts" || !strings.Contains(view, "❯ "+fixture.Host) {
+		t.Errorf("after esc = %q, view:\n%s", m.q.Key, view)
 	}
 	// Require the trail without the host
-	if strings.Join(m.crumbs, " / ") != "firewall / add" {
-		t.Errorf("trail = %q, want firewall / add", strings.Join(m.crumbs, " / "))
+	if strings.Join(m.crumbs, " / ") != "firewall / Allowed / Allow a host" {
+		t.Errorf("trail = %q, want firewall / Allowed / Allow a host", strings.Join(m.crumbs, " / "))
 	}
 }
 
@@ -121,15 +133,63 @@ func TestAppLeaves(t *testing.T) {
 	}
 }
 
+// A menu opened at a group's view leaves on Esc there, and goes back to that view after a dialog.
+func TestAppOpenedAtAGroupStaysThere(t *testing.T) {
+	m, _ := anApp(t, nil)
+	m.cfg.Start = menu.Open("firewall")
+	m, _ = settle(m, m.Init())
+
+	ran, _ := drive(m, keys(enter, fixture.Host, enter, "1", "1", "1", enter)...)
+	back, _ := drive(ran, enter)
+	_, quit := drive(back, esc)
+
+	// Require the dialog run from the firewall's view
+	if ran.state != done || !strings.Contains(stripped(ran.View().Content), "ran "+allowLine) {
+		t.Errorf("after the dialog, state %v, view:\n%s", ran.state, stripped(ran.View().Content))
+	}
+	// Require the firewall's view again, and Esc there to leave
+	if back.q.Key != "view" || !quit {
+		t.Errorf("after enter on %q, esc quit %v, want the firewall's view and leaving", back.q.Key, quit)
+	}
+}
+
+// A declined change says that nothing changed, and goes back to the group's view.
+func TestAppNamesADeclinedChange(t *testing.T) {
+	m, _ := anApp(t, nil)
+
+	m, _ = drive(m, append(allowing(), typed("n")...)...)
+
+	// Require the note and the way back, with nothing run
+	if view := stripped(m.View().Content); m.state != done || !strings.Contains(view, "Nothing changed.") || strings.Contains(view, "$ o3s") {
+		t.Errorf("state %v, view:\n%s", m.state, view)
+	}
+}
+
+// Quiet commands that succeed show the view they changed, at the row they name, without their output.
+func TestAppShowsTheViewAfterQuietCommands(t *testing.T) {
+	m, _ := anApp(t, nil)
+	m.cfg.Home = func() menu.Home {
+		return menu.Home{Dir: "/home/ubuntu/o3s", Exists: true, Installed: []menu.Installed{{Package: fixture.Store + "/" + fixture.Feature, Tag: fixture.Major}, {Package: fixture.Store + "/" + fixture.OtherFeature, Tag: fixture.Major}}}
+	}
+	m, _ = settle(m, m.Init())
+
+	m, _ = drive(m, keys("feat", enter, tea.KeyPressMsg{Code: tea.KeyDown, Mod: tea.ModCtrl})...)
+
+	// Require the feature view again, without a result screen
+	if m.state != asking || m.q.Key != "view" {
+		t.Errorf("after the move, state %v on %q, want the feature view", m.state, m.q.Key)
+	}
+}
+
 // A failing command stops the dialog and names how it failed.
 func TestAppShowsAFailure(t *testing.T) {
-	m, _ := anApp(t, map[string]string{"firewall ls": "echo boom; exit 3"})
+	m, _ := anApp(t, map[string]string{allowLine: "echo boom; exit 3"})
 
-	m, _ = drive(m, keys("fir", enter, "ls", enter)...)
+	m, _ = drive(m, append(allowing(), enter)...)
 
 	view := stripped(m.View().Content)
-	// Require the output, the status and the failure
-	if !m.failed || !strings.Contains(view, "boom") || !strings.Contains(view, "error: exit status 3") {
+	// Require the output, the failure and its reason
+	if !m.failed || !strings.Contains(view, "boom") || !strings.Contains(view, "error: exit status 3") || !strings.Contains(view, "✗ failed") {
 		t.Errorf("failed %v, view:\n%s", m.failed, view)
 	}
 }
@@ -159,9 +219,9 @@ func TestAppKeepsTheReasonOfAFailureOnTheTerminal(t *testing.T) {
 
 // A captured command that names its own error shows that error alone.
 func TestAppNamesACapturedErrorOnce(t *testing.T) {
-	m, _ := anApp(t, map[string]string{"firewall ls": "echo 'error: boom'; exit 3"})
+	m, _ := anApp(t, map[string]string{allowLine: "echo 'error: boom'; exit 3"})
 
-	m, _ = drive(m, keys("fir", enter, "ls", enter)...)
+	m, _ = drive(m, append(allowing(), enter)...)
 
 	view := stripped(m.View().Content)
 	// Require the command's own error alone
@@ -179,6 +239,34 @@ func TestAppHandsTheTerminalToTheShell(t *testing.T) {
 	// Require the shell handed the terminal, and the dialog done
 	if len(*handed) != 1 || !strings.HasSuffix((*handed)[0], "cage shell") || m.state != done {
 		t.Errorf("handed %v, state %v, want cage shell and done", *handed, m.state)
+	}
+}
+
+// A trail wider than the screen keeps its end in view, cut at its start.
+func TestAppKeepsTheEndOfALongTrail(t *testing.T) {
+	m, _ := anApp(t, nil)
+	m.width = narrow
+
+	m, _ = drive(m, keys("fir", enter, enter, fixture.Host+" "+fixture.Subdomain+" "+fixture.OtherHost, enter, "1")...)
+
+	trail := strings.Split(stripped(m.View().Content), "\n")[1]
+	// Require the trail within the width, its start cut and its end, the last answer, in view
+	if ansi.StringWidth(trail) > narrow || !strings.HasPrefix(trail, "…") || !strings.HasSuffix(trail, "443") {
+		t.Errorf("trail = %q, want its end within %d columns", trail, narrow)
+	}
+}
+
+// A command line shows as a shell takes it: a value with a space quoted, and a flag held to its value where it breaks.
+func TestEchoedQuotesAndHoldsFlagsToTheirValues(t *testing.T) {
+	got := echoed([]string{"firewall", "add", "bad host!", "--port", "443"})
+
+	// Require the value quoted and the flag held to its value
+	if want := "firewall add 'bad host!' --port" + nonBreakingSpace + "443"; got != want {
+		t.Errorf("echoed() = %q, want %q", got, want)
+	}
+	// Require the flag and its value on one line however narrow the screen
+	if lines := wrapped(got, len("firewall add 'bad host!' --port")); !strings.HasSuffix(lines[len(lines)-1], "--port 443") {
+		t.Errorf("wrapped() = %q, want --port 443 on one line", lines)
 	}
 }
 
@@ -254,7 +342,7 @@ func TestAppKeepsALongConfirmationInView(t *testing.T) {
 func TestAppPagesThroughALongPreview(t *testing.T) {
 	m := aLongConfirmation()
 
-	paged, _ := drive(m, tea.KeyPressMsg{Code: tea.KeyPgDown})
+	paged, _ := drive(m, tea.KeyPressMsg{Code: tea.KeyPgDown}, tea.KeyPressMsg{Code: tea.KeyPgDown})
 
 	view := stripped(paged.View().Content)
 	// Require the last lines and the question in view

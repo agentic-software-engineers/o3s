@@ -1,19 +1,27 @@
 # Removing a feature drops it, its env, and the hosts it alone needs
 cp o3s.json.in o3s.json
 exec o3s feature add $REGISTRY/features/tool
-exec o3s feature rm $REGISTRY/features/tool
+exec o3s feature rm $REGISTRY/features/tool --yes
 cmpenv stdout removed.txt
 cmp .devcontainer/devcontainer.json want.jsonc
 cmp o3s.json want.json
 
 # A feature the menu previewed already prints its removal without the preview
 exec o3s feature add $REGISTRY/features/tool
-exec o3s feature rm $REGISTRY/features/tool --no-preview
+exec o3s feature rm $REGISTRY/features/tool --no-preview --yes
 ! stdout '^  - '
 stdout '^Removed '${REGISTRY@R}'/features/tool$'
 
-# A feature the config lacks is turned away
+# Without a terminal or --yes, removing shows what leaves and asks for --yes, the home left as it was
+exec o3s feature add $REGISTRY/features/tool
 ! exec o3s feature rm $REGISTRY/features/tool
+stdout '^  - '
+stderr 'pass --yes to apply without a terminal'
+grep 'features/tool' .devcontainer/devcontainer.json
+exec o3s feature rm $REGISTRY/features/tool --yes
+
+# A feature the config lacks is turned away
+! exec o3s feature rm $REGISTRY/features/tool --yes
 stderr 'unknown feature .*/features/tool'
 
 -- stack-up --

@@ -7,11 +7,20 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 )
 
+// CheckStore holds a store's id to the one form a store takes, a registry and a repository in full.
+func CheckStore(id string) error {
+	// Turn away an id that names no repository in full
+	if _, err := name.NewRepository(id, name.StrictValidation); err != nil {
+		return fmt.Errorf("%w store %q: name it as a registry and a repository, as in ghcr.io/devcontainers/features", ErrInvalid, id)
+	}
+	return nil
+}
+
 // AddStore adds a store to the list and reports whether the list lacked it.
 func (c *Config) AddStore(id string) (bool, error) {
 	// Turn away an id that names no repository in full
-	if _, err := name.NewRepository(id, name.StrictValidation); err != nil {
-		return false, fmt.Errorf("%w store %q: name it as a registry and a repository, as in ghcr.io/devcontainers/features", ErrInvalid, id)
+	if err := CheckStore(id); err != nil {
+		return false, err
 	}
 	// Keep a store the list already holds
 	if slices.Contains(c.Stores, Store{ID: id}) {

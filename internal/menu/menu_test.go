@@ -10,28 +10,35 @@ import (
 	"github.com/hansehart/o3s/internal/fixture"
 )
 
-// Ports as a dialog takes them as text, the one a host opens by default and both a host may open.
+// Ports as a dialog takes them, the one a host opens by default and both a host may open.
 var (
 	port      = strconv.Itoa(fixture.Port)
 	bothPorts = strconv.Itoa(fixture.OtherPort) + "," + port
 )
 
-// aHome is a home that allows a host with a secret, knows two secrets, and offers one store.
+// aHome is a home that allows a host the user added, a host with a secret, an expired host and one a feature needs,
+// knows two secrets, refused two names, offers one store and lists one project.
 var aHome = Home{
 	Dir:    "/home/ubuntu/o3s",
 	Exists: true,
+	Now:    fixture.Now,
 	Hosts: []config.Host{
 		{Name: fixture.Host, Ports: []int{fixture.OtherPort, fixture.Port}, By: []string{"user"}},
 		{Name: fixture.Subdomain, Ports: []int{fixture.Port}, Secret: fixture.Secret, Inject: []string{"header", "body"}, By: []string{"user"}},
-		{Name: fixture.OtherHost, Ports: []int{fixture.Port}, By: []string{fixture.Store + "/" + fixture.Feature}},
+		{Name: fixture.ThirdHost, Ports: []int{fixture.Port}, By: []string{"user"}, Expires: fixture.LongAgoText},
+		{Name: fixture.OtherHost, Ports: []int{fixture.Port}, By: []string{fixture.Store + "/" + fixture.Feature, "user"}},
 	},
+	Traffic:  map[string]Traffic{fixture.Host: {Data: "1.2 GB", Seen: "2m ago"}},
 	Secrets:  []Secret{{Name: fixture.Secret, Set: false}, {Name: fixture.OtherSecret, Set: true}},
 	Stores:   []string{fixture.Store},
-	Projects: []string{fixture.NestedRepo},
-	Blocked:  []Option{{Value: fixture.RefusedName, Note: "3 attempts, 5m ago"}, {Value: fixture.AbsentName, Note: "1 attempt, 2h ago"}},
+	Projects: []string{"github.com/" + fixture.Repo},
+	Blocked:  []Option{{Value: fixture.RefusedName, Columns: []string{"3 attempts", "5m ago"}}, {Value: fixture.AbsentName, Columns: []string{"1 attempt", "2h ago"}}},
+	Running:  true,
+	Stack:    []Fact{{Label: "Cage", Value: "running"}},
+	Lookup:   fakeLookup{},
 }
 
-// walk answers each question the core asks in turn and hands back what it asked and the command it ends in.
+// walk answers each question the core asks in turn and hands back what it asked and the commands it ends in.
 func walk(t *testing.T, h Home, answers ...[]string) ([]Question, []Command) {
 	t.Helper()
 	var a Answers
@@ -52,310 +59,292 @@ func walk(t *testing.T, h Home, answers ...[]string) ([]Question, []Command) {
 	}
 }
 
-// titles lists what each question asked.
-func titles(qs []Question) []string {
+// keys lists the key of each question asked.
+func keys(qs []Question) []string {
 	out := make([]string, len(qs))
-	// Take every question's title
+	// Take every question's key
 	for i, q := range qs {
-		out[i] = q.Title
+		out[i] = q.Key
 	}
 	return out
 }
 
-// Every dialog ends in the command line the CLI runs for it.
-func TestEveryDialogEndsInItsCommand(t *testing.T) {
-	value := fixture.SecretValue
-	tests := []struct {
-		name    string
-		answers [][]string
-		titles  []string
-		want    []Command
-	}{
+// dialogs are walks through a dialog with the questions they ask and the commands they end in.
+type dialogs []struct {
+	name    string
+	answers [][]string
+	keys    []string
+	want    []Command
+}
+
+// check walks every dialog and reports the questions and the commands that differ.
+func (ds dialogs) check(t *testing.T, h Home) {
+	t.Helper()
+	// Walk every dialog
+	for _, d := range ds {
+		asked, cmds := walk(t, h, d.answers...)
+
+		// Report questions that differ
+		if diff := cmp.Diff(d.keys, keys(asked)); diff != "" {
+			t.Errorf("%s: questions (-want +got):\n%s", d.name, diff)
+		}
+		// Report commands that differ
+		if diff := cmp.Diff(d.want, cmds); diff != "" {
+			t.Errorf("%s: commands (-want +got):\n%s", d.name, diff)
+		}
+	}
+}
+
+// The main menu of a home offers every group, each noting what it holds.
+func TestTheMainMenuNotesWhatEachGroupHolds(t *testing.T) {
+	q, _ := Next(aHome, nil)
+
+	want := []Option{
+		{Value: "cage", Note: "VM, stack and cage · running"},
+		{Value: "feature", Note: "tools in the cage · 0 installed"},
+		{Value: "firewall", Note: "hosts the cage reaches · 4 allowed · 2 blocked"},
+		{Value: "project", Note: "repositories in the workspace · 1"},
+		{Value: "secret", Note: "values the proxy injects · 2"},
+		{Value: "update", Note: "o3s, the stack and the features"},
+	}
+	// Report entries that differ
+	if diff := cmp.Diff(want, q.Options); diff != "" {
+		t.Errorf("main menu (-want +got):\n%s", diff)
+	}
+}
+
+// Outside a home the main menu offers what works there: making the home, and the secrets kept on the host.
+func TestOutsideAHomeTheMainMenuOffersInit(t *testing.T) {
+	q, _ := Next(Home{Dir: aHome.Dir}, nil)
+
+	// Report entries that differ
+	if got := []string{q.Options[0].Value, q.Options[1].Value}; len(q.Options) != 2 || !cmp.Equal([]string{"init", "secret"}, got) {
+		t.Errorf("main menu = %v, want init and secret", q.Options)
+	}
+}
+
+// The menu opens at the view of the group a command names, the stores at the feature view's Stores tab.
+func TestOpenStartsAtTheGroupsView(t *testing.T) {
+	got := []Answers{Open(), Open("firewall"), Open("feature", "store")}
+
+	want := []Answers{nil, {{Key: "do", Values: []string{"firewall"}}}, {{Key: "do", Values: []string{"feature"}}, {Key: "tab", Values: []string{storesTab}}}}
+	// Report answers that differ
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("Open() (-want +got):\n%s", diff)
+	}
+}
+
+// The firewall's view shows every host with its ports, traffic, end and who needs it, a key to prune where one has
+// expired, and the refused names to mark.
+func TestTheFirewallViewShowsTheHostsAndTheRefusedNames(t *testing.T) {
+	q, _ := Next(aHome, Answers{}.With("do", []string{"firewall"}))
+
+	allowed, blocked := q.Tabs[0], q.Tabs[1]
+	// Require the add row first, then every host with its columns
+	if allowed.Options[0].Value != add || len(allowed.Options) != len(aHome.Hosts)+1 {
+		t.Errorf("Allowed = %v", allowed.Options)
+	}
+	// Require the host's traffic and end in its columns
+	if diff := cmp.Diff([]string{bothPorts, "1.2 GB", "2m ago", "for good", "", "user"}, allowed.Options[1].Columns); diff != "" {
+		t.Errorf("host columns (-want +got):\n%s", diff)
+	}
+	// Require the expired host to read as expired, and the key that prunes it
+	if allowed.Options[3].Columns[3] != "expired" || len(allowed.Keys) != 1 || allowed.Keys[0].Value != prune {
+		t.Errorf("expired host = %v, keys %v", allowed.Options[3], allowed.Keys)
+	}
+	// Require the refused names to mark
+	if !blocked.Multi || len(blocked.Options) != 2 {
+		t.Errorf("Blocked = %+v", blocked)
+	}
+}
+
+// Every firewall dialog ends in the command line the CLI runs for it, asking for --yes where the menu asked already.
+func TestEveryFirewallDialogEndsInItsCommand(t *testing.T) {
+	dialogs{
 		{
-			"a new host with a new secret and two sites",
-			[][]string{{"firewall"}, {"add"}, {fixture.ThirdHost}, {bothPorts}, {"new"}, {fixture.NewSecret}, {"header", "body"}, {"always"}},
-			[]string{"What do you want to do?", "Action", "Host", "Ports", "Secret", "Secret name", "Inject", "For"},
-			[]Command{{Args: []string{"firewall", "add", fixture.ThirdHost, "--port", bothPorts, "--secret", fixture.NewSecret, "--inject", "header,body"}}},
+			"a new host on the HTTPS port for good",
+			[][]string{{"firewall"}, {"Allowed", add}, {"one.example.net"}, {port}, {always}, {none}, {yes}},
+			[]string{"do", "view", "hosts", "ports", "for", "secret", "apply"},
+			[]Command{{Args: []string{"firewall", "add", "one.example.net", "--port", port, "--yes"}}},
 		},
 		{
-			"a host without a secret skips where to inject it",
-			[][]string{{"firewall"}, {"add"}, {fixture.ThirdHost}, {port}, {"none"}, {"always"}},
-			[]string{"What do you want to do?", "Action", "Host", "Ports", "Secret", "For"},
-			[]Command{{Args: []string{"firewall", "add", fixture.ThirdHost, "--port", port}}},
+			"two hosts on typed ports for a typed time with a new secret in two sites",
+			[][]string{{"firewall"}, {"Allowed", add}, {"one.example.net two.example.net"}, {typed}, {"22, 443"}, {typed}, {"90m"}, {fresh}, {fixture.NewSecret}, {"header", "body"}, {yes}},
+			[]string{"do", "view", "hosts", "ports", "portsTyped", "for", "forTyped", "secret", "secretName", "inject", "apply"},
+			[]Command{{Args: []string{"firewall", "add", "one.example.net", "two.example.net", "--port", bothPorts, "--for", "90m", "--secret", fixture.NewSecret, "--inject", "header,body", "--yes"}}},
 		},
 		{
-			"a new host for a set time",
-			[][]string{{"firewall"}, {"add"}, {fixture.ThirdHost}, {port}, {"none"}, {"1h"}},
-			[]string{"What do you want to do?", "Action", "Host", "Ports", "Secret", "For"},
-			[]Command{{Args: []string{"firewall", "add", fixture.ThirdHost, "--port", port, "--for", "1h"}}},
+			"two refused names for an hour",
+			[][]string{{"firewall"}, {"Blocked", fixture.RefusedName, fixture.AbsentName}, {port}, {"1h"}, {none}, {yes}},
+			[]string{"do", "view", "ports", "for", "secret", "apply"},
+			[]Command{{Args: []string{"firewall", "add", fixture.RefusedName, fixture.AbsentName, "--port", port, "--for", "1h", "--yes"}}},
 		},
 		{
-			"a known host for a set time, at the real terminal where the CLI asks before it closes sooner",
-			[][]string{{"firewall"}, {"add"}, {fixture.Host}, {bothPorts}, {"none"}, {"1h"}},
-			[]string{"What do you want to do?", "Action", "Host", "Ports", "Secret", "For"},
-			[]Command{{Args: []string{"firewall", "add", fixture.Host, "--port", bothPorts, "--for", "1h"}, Terminal: true}},
+			"a host's ports",
+			[][]string{{"firewall"}, {"Allowed", fixture.Host}, {changePorts}, {port}, {yes}},
+			[]string{"do", "view", "action", "ports", "apply"},
+			[]Command{{Args: []string{"firewall", "add", fixture.Host, "--port", port, "--yes"}}},
 		},
 		{
-			"pruning the expired hosts, at the real terminal where the CLI asks",
-			[][]string{{"firewall"}, {"prune"}},
-			[]string{"What do you want to do?", "Action"},
-			[]Command{{Args: []string{"firewall", "prune"}, Terminal: true}},
+			"a host's end",
+			[][]string{{"firewall"}, {"Allowed", fixture.Host}, {changeEnd}, {"8h"}, {yes}},
+			[]string{"do", "view", "action", "for", "apply"},
+			[]Command{{Args: []string{"firewall", "add", fixture.Host, "--for", "8h", "--yes"}}},
 		},
 		{
-			"removing a host the user needs",
-			[][]string{{"firewall"}, {"rm"}, {fixture.Host}},
-			[]string{"What do you want to do?", "Action", "Host"},
-			[]Command{{Args: []string{"firewall", "rm", fixture.Host}}},
+			"a host's secret",
+			[][]string{{"firewall"}, {"Allowed", fixture.Host}, {changeSecret}, {fixture.OtherSecret}, {"header"}, {yes}},
+			[]string{"do", "view", "action", "secret", "inject", "apply"},
+			[]Command{{Args: []string{"firewall", "add", fixture.Host, "--secret", fixture.OtherSecret, "--inject", "header", "--yes"}}},
 		},
 		{
-			"listing the allowlist",
-			[][]string{{"firewall"}, {"ls"}},
-			[]string{"What do you want to do?", "Action"},
-			[]Command{{Args: []string{"firewall", "ls"}}},
+			"removing a host",
+			[][]string{{"firewall"}, {"Allowed", fixture.Host}, {remove}, {yes}},
+			[]string{"do", "view", "action", "apply"},
+			[]Command{{Args: []string{"firewall", "rm", fixture.Host, "--yes"}}},
 		},
 		{
-			"showing the log",
-			[][]string{{"firewall"}, {"log"}},
-			[]string{"What do you want to do?", "Action"},
-			[]Command{{Args: []string{"firewall", "log"}}},
+			"declining the removal",
+			[][]string{{"firewall"}, {"Allowed", fixture.Host}, {remove}, {"no"}},
+			[]string{"do", "view", "action", "apply"},
+			[]Command{{Note: nothingChanged}},
 		},
 		{
-			"allowing two blocked hosts at once",
-			[][]string{{"firewall"}, {"blocked"}, {fixture.RefusedName, fixture.AbsentName}, {port}},
-			[]string{"What do you want to do?", "Action", "Blocked", "Ports"},
-			[]Command{
-				{Args: []string{"firewall", "add", fixture.RefusedName, "--port", port}},
-				{Args: []string{"firewall", "add", fixture.AbsentName, "--port", port}},
-			},
-		},
-		{
-			"a value for a known secret",
-			[][]string{{"secret"}, {"add"}, {fixture.Secret}, {value}},
-			[]string{"What do you want to do?", "Action", "Name", "Value"},
-			[]Command{{Args: []string{"secret", "add", fixture.Secret}, Stdin: &value}},
-		},
-		{
-			"a value for a secret of another name",
-			[][]string{{"secret"}, {"add"}, {"other"}, {fixture.NewSecret}, {value}},
-			[]string{"What do you want to do?", "Action", "Name", "Secret name", "Value"},
-			[]Command{{Args: []string{"secret", "add", fixture.NewSecret}, Stdin: &value}},
-		},
-		{
-			"removing a stored secret",
-			[][]string{{"secret"}, {"rm"}, {fixture.OtherSecret}},
-			[]string{"What do you want to do?", "Action", "Name"},
-			[]Command{{Args: []string{"secret", "rm", fixture.OtherSecret}}},
-		},
-		{
-			"adding a store",
-			[][]string{{"store"}, {"add"}, {fixture.AbsentStore}},
-			[]string{"What do you want to do?", "Action", "Store"},
-			[]Command{{Args: []string{"store", "add", fixture.AbsentStore}}},
-		},
-		{
-			"removing a store",
-			[][]string{{"store"}, {"rm"}, {fixture.Store}},
-			[]string{"What do you want to do?", "Action", "Store"},
-			[]Command{{Args: []string{"store", "rm", fixture.Store}}},
-		},
-		{
-			"creating a home",
-			[][]string{{"init"}, {"yes"}},
-			[]string{"What do you want to do?", "Create an o3s home in /home/ubuntu/o3s?"},
-			[]Command{{Args: []string{"init"}, Terminal: true}},
-		},
-		{
-			"declining to create a home",
-			[][]string{{"init"}, {"no"}},
-			[]string{"What do you want to do?", "Create an o3s home in /home/ubuntu/o3s?"},
+			"stepping back from a host",
+			[][]string{{"firewall"}, {"Allowed", fixture.Host}, {back}},
+			[]string{"do", "view", "action"},
 			nil,
 		},
 		{
-			"updating the home",
-			[][]string{{"update"}},
-			[]string{"What do you want to do?"},
-			[]Command{{Args: []string{"update"}, Terminal: true}},
+			"pruning the expired hosts",
+			[][]string{{"firewall"}, {"Allowed", prune}, {yes}},
+			[]string{"do", "view", "apply"},
+			[]Command{{Args: []string{"firewall", "prune", "--yes"}}},
+		},
+	}.check(t, aHome)
+}
+
+// A host's detail shows its facts, and offers the removal only of a host the user added.
+func TestAHostsDetailShowsItsFacts(t *testing.T) {
+	asked, _ := walk(t, aHome, []string{"firewall"}, []string{"Allowed", fixture.Host}, []string{back})
+
+	got := asked[2]
+	// Require the facts of the host
+	if diff := cmp.Diff([]Fact{{"Ports", "22, 443"}, {"Data", "1.2 GB"}, {"Last seen", "2m ago"}, {"Closes", "for good"}, {"Secret", "none"}, {"Needed by", "user"}}, got.Facts); diff != "" {
+		t.Errorf("facts (-want +got):\n%s", diff)
+	}
+	// Require the removal among the actions, and Back last
+	if n := len(got.Options); n != 5 || got.Options[3].Value != remove || got.Options[4].Value != back {
+		t.Errorf("actions = %v", got.Options)
+	}
+}
+
+// Removing a host a feature still needs names the feature that keeps it open.
+func TestRemovingAHostNamesWhoKeepsItOpen(t *testing.T) {
+	asked, _ := walk(t, aHome, []string{"firewall"}, []string{"Allowed", fixture.OtherHost}, []string{remove}, []string{"no"})
+
+	// Require the feature named
+	if want := "~ " + fixture.OtherHost + " stays open, still needed by " + fixture.Store + "/" + fixture.Feature; asked[3].Preview[0] != want {
+		t.Errorf("preview = %v, want %q", asked[3].Preview, want)
+	}
+}
+
+// Every secret, project, cage, update and init dialog ends in the command lines the CLI runs for it.
+func TestEveryOtherDialogEndsInItsCommand(t *testing.T) {
+	value := fixture.SecretValue
+	dialogs{
+		{
+			"a new secret bound to a host",
+			[][]string{{"secret"}, {"Secrets", add}, {fixture.NewSecret}, {value}, {yes}, {fixture.Host}},
+			[]string{"do", "view", "name", "value", "bind", "host"},
+			[]Command{{Args: []string{"secret", "add", fixture.NewSecret, "--no-bind-hint"}, Stdin: &value}, {Args: []string{"firewall", "add", fixture.Host, "--secret", fixture.NewSecret, "--yes"}}},
 		},
 		{
-			"cloning a project",
-			[][]string{{"project"}, {"add"}, {fixture.Repo}},
-			[]string{"What do you want to do?", "Action", "Repository"},
-			[]Command{{Args: []string{"project", "add", fixture.Repo}}},
+			"a new secret bound later",
+			[][]string{{"secret"}, {"Secrets", add}, {fixture.NewSecret}, {value}, {notNow}},
+			[]string{"do", "view", "name", "value", "bind"},
+			[]Command{{Args: []string{"secret", "add", fixture.NewSecret, "--no-bind-hint"}, Stdin: &value}},
 		},
 		{
-			"creating a project",
-			[][]string{{"project"}, {"create"}, {fixture.Repo}},
-			[]string{"What do you want to do?", "Action", "Repository"},
+			"a value for a secret a host carries",
+			[][]string{{"secret"}, {"Secrets", fixture.Secret}, {setValue}, {value}},
+			[]string{"do", "view", "action", "value"},
+			[]Command{{Args: []string{"secret", "add", fixture.Secret, "--no-bind-hint"}, Stdin: &value}},
+		},
+		{
+			"removing a secret's value",
+			[][]string{{"secret"}, {"Secrets", fixture.OtherSecret}, {remove}, {yes}},
+			[]string{"do", "view", "action", "apply"},
+			[]Command{{Args: []string{"secret", "rm", fixture.OtherSecret, "--yes"}}},
+		},
+		{
+			"two projects",
+			[][]string{{"project"}, {"Projects", add}, {fixture.Repo + " " + fixture.NestedRepo}},
+			[]string{"do", "view", "repos"},
+			[]Command{{Args: []string{"project", "add", fixture.Repo, fixture.NestedRepo}}},
+		},
+		{
+			"a new project",
+			[][]string{{"project"}, {"Projects", create}, {fixture.Repo}},
+			[]string{"do", "view", "repos"},
 			[]Command{{Args: []string{"project", "create", fixture.Repo}}},
 		},
 		{
-			"removing a project at the real terminal, where the user types its name",
-			[][]string{{"project"}, {"rm"}, {fixture.NestedRepo}},
-			[]string{"What do you want to do?", "Action", "Project"},
-			[]Command{{Args: []string{"project", "rm", fixture.NestedRepo}, Terminal: true}},
+			"removing a project once its name is typed",
+			[][]string{{"project"}, {"Projects", "github.com/" + fixture.Repo}, {remove}, {fixture.Repo}},
+			[]string{"do", "view", "action", "typed"},
+			[]Command{{Args: []string{"project", "rm", "github.com/" + fixture.Repo, "--yes"}}},
 		},
 		{
-			"listing the projects",
-			[][]string{{"project"}, {"ls"}},
-			[]string{"What do you want to do?", "Action"},
-			[]Command{{Args: []string{"project", "ls"}}},
-		},
-		{
-			"opening the cage in VS Code",
-			[][]string{{"cage"}, {"ide"}},
-			[]string{"What do you want to do?", "Action"},
-			[]Command{{Args: []string{"cage", "ide"}}},
-		},
-		{
-			"opening a shell in the cage",
-			[][]string{{"cage"}, {"shell"}},
-			[]string{"What do you want to do?", "Action"},
+			"the shell, on the real terminal",
+			[][]string{{"cage"}, {shell}},
+			[]string{"do", "action"},
 			[]Command{{Args: []string{"cage", "shell"}, Terminal: true}},
 		},
-	}
-	// Walk every dialog
-	for _, tt := range tests {
-		asked, got := walk(t, aHome, tt.answers...)
+		{
+			"the marked parts of an update",
+			[][]string{{"update"}, {"Update", "o3s", "stack"}, {yes}},
+			[]string{"do", "view", "apply"},
+			[]Command{{Args: []string{"update", "o3s", "stack", "--yes"}}},
+		},
+		{
+			"an update with nothing marked",
+			[][]string{{"update"}, {"Update"}},
+			[]string{"do", "view"},
+			[]Command{{Note: "Everything is up to date."}},
+		},
+	}.check(t, aHome)
+	dialogs{
+		{
+			"a new home, asking sudo on the real terminal",
+			[][]string{{"init"}, {yes}},
+			[]string{"do", "init"},
+			[]Command{{Args: []string{"init"}, Terminal: true}},
+		},
+	}.check(t, Home{Dir: aHome.Dir})
+}
 
-		// Report questions that differ
-		if diff := cmp.Diff(tt.titles, titles(asked)); diff != "" {
-			t.Errorf("%s: questions (-want +got):\n%s", tt.name, diff)
-		}
-		// Report a command that differs
-		if diff := cmp.Diff(tt.want, got); diff != "" {
-			t.Errorf("%s: command (-want +got):\n%s", tt.name, diff)
-		}
+// The update's view marks every part with a newer version, each with what changes.
+func TestTheUpdateViewMarksEveryNewerPart(t *testing.T) {
+	q, _ := Next(aHome, Answers{}.With("do", []string{"update"}))
+
+	tab := q.Tabs[0]
+	// Require every part marked with what changes
+	if !tab.Multi || !cmp.Equal([]string{"o3s", "stack", toolPkg}, tab.Marked) || tab.Options[0].Columns[0] != fixture.Version+" -> "+fixture.NewerVersion {
+		t.Errorf("update tab = %+v", tab)
 	}
 }
 
-// A host the allowlist holds offers its ports, its secret and its sites as the defaults.
-func TestFirewallAddOffersTheHostsCurrentValues(t *testing.T) {
-	asked, _ := walk(t, aHome, []string{"firewall"}, []string{"add"}, []string{fixture.Subdomain}, []string{port}, []string{fixture.Secret}, []string{"header", "body"}, []string{"always"})
+// A project's removal holds the name typed back to the project's owner/name.
+func TestAProjectsRemovalChecksTheTypedName(t *testing.T) {
+	asked, cmds := walk(t, aHome, []string{"project"}, []string{"Projects", "github.com/" + fixture.Repo}, []string{remove}, []string{"other/name"})
 
-	got := []any{asked[3].Default, asked[4].Default, asked[5].Default}
-
-	want := []any{[]string{port}, []string{fixture.Secret}, []string{"header", "body"}}
-	// Report defaults that differ
-	if diff := cmp.Diff(want, got); diff != "" {
-		t.Errorf("defaults (-want +got):\n%s", diff)
+	// Require the name checked as it is typed
+	if _, err := asked[3].Check("other/name"); err == nil {
+		t.Errorf("Check(other/name) = nil, want the name named")
 	}
-}
-
-// A new host starts on the HTTPS port and puts a secret into the header.
-func TestFirewallAddOffersTheDefaultsOfANewHost(t *testing.T) {
-	asked, _ := walk(t, aHome, []string{"firewall"}, []string{"add"}, []string{fixture.ThirdHost}, []string{port}, []string{fixture.OtherSecret}, []string{"header"}, []string{"always"})
-
-	got := []any{asked[3].Default, asked[4].Default, asked[5].Default}
-
-	want := []any{[]string{port}, []string{"none"}, []string{"header"}}
-	// Report defaults that differ
-	if diff := cmp.Diff(want, got); diff != "" {
-		t.Errorf("defaults (-want +got):\n%s", diff)
-	}
-}
-
-// The secrets on offer show whether each holds a value, and leave room for none or a new one.
-func TestFirewallAddOffersEverySecret(t *testing.T) {
-	asked, _ := walk(t, aHome, []string{"firewall"}, []string{"add"}, []string{fixture.ThirdHost}, []string{port}, []string{"none"}, []string{"always"})
-
-	got := asked[4].Options
-
-	want := []Option{{Value: "none"}, {Value: fixture.Secret, Note: "empty"}, {Value: fixture.OtherSecret, Note: "set"}, {Value: "new"}}
-	// Report options that differ
-	if diff := cmp.Diff(want, got); diff != "" {
-		t.Errorf("options (-want +got):\n%s", diff)
-	}
-}
-
-// The firewall offers its actions, the log and the blocked hosts among them.
-func TestFirewallOffersTheLogAndTheBlockedHosts(t *testing.T) {
-	q, _ := next(aHome, Answers{}.With("do", []string{"firewall"}))
-
-	want := []Option{{Value: "add"}, {Value: "rm"}, {Value: "ls"}, {Value: "log"}, {Value: "blocked"}, {Value: "prune"}}
-	// Report actions that differ
-	if diff := cmp.Diff(want, q.Options); diff != "" {
-		t.Errorf("firewall actions (-want +got):\n%s", diff)
-	}
-}
-
-// The blocked hosts come as a multi-select, each noting how often and when it was refused.
-func TestBlockedOffersEveryRefusedName(t *testing.T) {
-	asked, _ := walk(t, aHome, []string{"firewall"}, []string{"blocked"}, []string{fixture.RefusedName}, []string{port})
-
-	got := asked[2]
-
-	// Report a question that takes one answer alone
-	if got.Kind != Multi {
-		t.Errorf("Blocked kind = %v, want Multi", got.Kind)
-	}
-	// Report options that differ
-	if diff := cmp.Diff(aHome.Blocked, got.Options); diff != "" {
-		t.Errorf("options (-want +got):\n%s", diff)
-	}
-}
-
-// Removing offers the hosts the user needs alone, since features own the rest.
-func TestFirewallRmOffersTheUsersHosts(t *testing.T) {
-	asked, _ := walk(t, aHome, []string{"firewall"}, []string{"rm"}, []string{fixture.Host})
-
-	got := asked[2].Options
-
-	want := []Option{{Value: fixture.Host}, {Value: fixture.Subdomain}}
-	// Report options that differ
-	if diff := cmp.Diff(want, got); diff != "" {
-		t.Errorf("options (-want +got):\n%s", diff)
-	}
-}
-
-// A removal with nothing to remove ends with a note.
-func TestRmWithNothingToRemoveEndsWithANote(t *testing.T) {
-	tests := []struct {
-		group string
-		want  string
-	}{
-		{"firewall", "No host to remove"},
-		{"secret", "No secret to remove"},
-		{"store", "No store to remove"},
-		{"project", "No project to remove"},
-	}
-	// Check every group
-	for _, tt := range tests {
-		_, got := walk(t, Home{Dir: "/home/ubuntu/o3s"}, []string{tt.group}, []string{"rm"})
-
-		// Report a command that differs
-		if diff := cmp.Diff([]Command{{Note: tt.want}}, got); diff != "" {
-			t.Errorf("%s rm (-want +got):\n%s", tt.group, diff)
-		}
-	}
-}
-
-// Without a blocked host the dialog ends with a note, which points a stopped stack at starting it.
-func TestBlockedWithNothingBlockedEndsWithANote(t *testing.T) {
-	tests := []struct {
-		running bool
-		want    string
-	}{
-		{true, "No blocked host"},
-		{false, "Start the stack to see the blocked hosts"},
-	}
-	// Check a running and a stopped stack
-	for _, tt := range tests {
-		_, got := walk(t, Home{Dir: "/home/ubuntu/o3s", Exists: true, Running: tt.running}, []string{"firewall"}, []string{"blocked"})
-
-		// Report a command that differs
-		if diff := cmp.Diff([]Command{{Note: tt.want}}, got); diff != "" {
-			t.Errorf("firewall blocked with running %v (-want +got):\n%s", tt.running, diff)
-		}
-	}
-}
-
-// The cage offers its own actions, the editor and the shell.
-func TestCageOffersTheEditorAndTheShell(t *testing.T) {
-	q, _ := next(aHome, Answers{}.With("do", []string{"cage"}))
-
-	want := []Option{{Value: "ide"}, {Value: "shell"}}
-	// Report actions that differ
-	if diff := cmp.Diff(want, q.Options); diff != "" {
-		t.Errorf("cage actions (-want +got):\n%s", diff)
+	// Require nothing deleted for a name that differs
+	if diff := cmp.Diff([]Command{{Note: nothingChanged}}, cmds); diff != "" {
+		t.Errorf("commands (-want +got):\n%s", diff)
 	}
 }

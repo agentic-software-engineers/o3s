@@ -1,0 +1,76 @@
+# Features install in the order they were added, each behind the features its store names it to follow
+exec o3s feature add $REGISTRY/features/go $REGISTRY/features/tool $REGISTRY/features/node
+cmpenv .devcontainer/devcontainer.json want-added.jsonc
+
+# Piped, the features list in the order they install
+exec o3s feature
+stdout '(?s)^FEATURE +VERSION +HOSTS\n.*/features/tool +2 +example\.com\n.*/features/node +latest *\n.*/features/go +1 *\n$'
+
+# Features named first install first, in that order, and the rest keep theirs
+exec o3s feature order $REGISTRY/features/tool
+cmpenv stdout want-order.txt
+cmpenv .devcontainer/devcontainer.json want-ordered.jsonc
+
+# A feature put before one it installs after is turned away, both named, the order left as it was
+! exec o3s feature order $REGISTRY/features/go
+stderr 'installs after .*/features/node, so .*/features/node comes first'
+stderr 'for usage'
+cmpenv .devcontainer/devcontainer.json want-ordered.jsonc
+
+# A feature the home lacks is turned away
+! exec o3s feature order $REGISTRY/features/absent
+stderr 'features/absent is not installed'
+
+# The order keeps the features that stay once one leaves
+exec o3s feature rm $REGISTRY/features/tool --yes
+grep '"overrideFeatureInstallOrder": \[\n +"'${REGISTRY@R}'/features/node",\n +"'${REGISTRY@R}'/features/go"\n +\]' .devcontainer/devcontainer.json
+
+-- o3s.json --
+{"$schema": "./.devcontainer/o3s.schema.json", "stores": [], "hosts": []}
+-- .devcontainer/devcontainer.json --
+{
+    "features": {}
+}
+-- want-added.jsonc --
+{
+    "features": {
+        "$REGISTRY/features/go:1": {},
+        "$REGISTRY/features/tool:2": {
+            "stateDir": "/home/ubuntu/features/$REGISTRY/features/tool"
+        },
+        "$REGISTRY/features/node:latest": {}
+    },
+    "containerEnv": {
+        "EXAMPLE_MODE": "strict",
+        "EXAMPLE_HOME": "/home/ubuntu/features/$REGISTRY/features/tool"
+    },
+    "overrideFeatureInstallOrder": [
+        "$REGISTRY/features/tool",
+        "$REGISTRY/features/node",
+        "$REGISTRY/features/go"
+    ]
+}
+-- want-order.txt --
+1. $REGISTRY/features/tool
+2. $REGISTRY/features/node
+3. $REGISTRY/features/go
+Rebuild the cage to apply it
+-- want-ordered.jsonc --
+{
+    "features": {
+        "$REGISTRY/features/go:1": {},
+        "$REGISTRY/features/tool:2": {
+            "stateDir": "/home/ubuntu/features/$REGISTRY/features/tool"
+        },
+        "$REGISTRY/features/node:latest": {}
+    },
+    "containerEnv": {
+        "EXAMPLE_MODE": "strict",
+        "EXAMPLE_HOME": "/home/ubuntu/features/$REGISTRY/features/tool"
+    },
+    "overrideFeatureInstallOrder": [
+        "$REGISTRY/features/tool",
+        "$REGISTRY/features/node",
+        "$REGISTRY/features/go"
+    ]
+}

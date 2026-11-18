@@ -114,6 +114,22 @@ func (l Lima) Exec(ctx context.Context, name string, in io.Reader, out, errOut i
 	return l.run(ctx, in, out, errOut, append([]string{"shell", name}, args...)...)
 }
 
+// Status reads the state of a home's VM as the VM manager names it, such as Running or Stopped, and Absent where
+// the home has none.
+func (l Lima) Status(ctx context.Context, name string) (string, error) {
+	names, err := l.output(ctx, "list", "--quiet")
+	// Hand back a VM manager that fails to list its VMs
+	if err != nil {
+		return "", err
+	}
+	// Name a VM the home lacks
+	if !slices.Contains(strings.Fields(names), name) {
+		return "Absent", nil
+	}
+	status, err := l.output(ctx, "list", "--format={{.Status}}", name)
+	return strings.TrimSpace(status), err
+}
+
 // Delete removes a home's VM and its disk, stopping it first so its files are free to go.
 func (l Lima) Delete(ctx context.Context, name string, out io.Writer) error {
 	status, err := l.output(ctx, "list", "--format={{.Status}}", name)

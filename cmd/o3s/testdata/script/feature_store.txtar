@@ -1,6 +1,6 @@
-# Every store shows how many features it offers, and a store out of reach shows a warning
-exec o3s store add $REGISTRY/features
-exec o3s store ls
+# Piped, every store shows how many features it offers, and a store out of reach shows a warning
+exec o3s feature store add $REGISTRY/features
+exec o3s feature store
 stdout '^STORE +FEATURES$'
 stdout '^127\.0\.0\.1:1/features +!$'
 stdout '/features +3$'

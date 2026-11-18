@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 
@@ -17,7 +18,8 @@ import (
 	"github.com/hansehart/o3s/internal/registry/registrytest"
 )
 
-// The menu knows every secret the home names or stores, whether it holds a value, and the home's stores.
+// The menu knows every secret the home names or stores, whether it holds a value, and the home's stores, the clock,
+// the traffic and the stack aside, which the engine and the moment decide.
 func TestMenuHomeReadsTheHome(t *testing.T) {
 	dir := t.TempDir()
 	t.Chdir(dir)
@@ -37,7 +39,7 @@ func TestMenuHomeReadsTheHome(t *testing.T) {
 
 	got := menuHome(t.Context())
 
-	got.Lookup = nil
+	got.Lookup, got.Now, got.Traffic, got.Stack = nil, time.Time{}, nil, nil
 	want := menu.Home{
 		Dir:     dir,
 		Exists:  true,
@@ -63,7 +65,7 @@ func TestMenuHomeStartsOutsideAHome(t *testing.T) {
 
 	got := menuHome(t.Context())
 
-	got.Lookup = nil
+	got.Lookup, got.Now, got.Traffic, got.Stack = nil, time.Time{}, nil, nil
 	// Require a home that names the folder alone
 	if diff := cmp.Diff(menu.Home{Dir: dir}, got); diff != "" {
 		t.Errorf("menuHome() (-want +got):\n%s", diff)
@@ -109,10 +111,10 @@ func TestMenuLookupShowsWhatAFeatureBrings(t *testing.T) {
 	aHomeIn(t)
 	l := menuLookup{ctx: t.Context(), r: &registry.Resolver{}}
 
-	ids, err := l.Features(store)
+	catalog, err := l.Catalog(store)
 	// Stop when the store fails to read
 	if err != nil {
-		t.Fatalf("Features() = %v", err)
+		t.Fatalf("Catalog() = %v", err)
 	}
 	pv, err := l.Add(store + "/" + fixture.Feature)
 	// Stop when the preview fails
@@ -120,9 +122,9 @@ func TestMenuLookupShowsWhatAFeatureBrings(t *testing.T) {
 		t.Fatalf("Add() = %v", err)
 	}
 
-	// Require the store's ids in order
-	if diff := cmp.Diff([]string{fixture.OtherFeature, fixture.Feature}, ids); diff != "" {
-		t.Errorf("Features() (-want +got):\n%s", diff)
+	// Require the store's features in order
+	if diff := cmp.Diff([]menu.Offer{{ID: fixture.OtherFeature}, {ID: fixture.Feature}}, catalog); diff != "" {
+		t.Errorf("Catalog() (-want +got):\n%s", diff)
 	}
 	want := menu.Preview{
 		Lines:    []string{store + "/" + fixture.Feature + ":" + fixture.Major, fmt.Sprintf("  + %s:%d  %s !", fixture.Host, fixture.Port, fixture.Secret), "  + EXAMPLE_MODE=strict"},
@@ -135,7 +137,7 @@ func TestMenuLookupShowsWhatAFeatureBrings(t *testing.T) {
 	}
 }
 
-// The menu shows what leaves with an installed feature, and lists the features the home holds.
+// The menu shows what leaves with an installed feature, and lists the features the home installs with their tags.
 func TestMenuLookupShowsWhatLeavesWithAFeature(t *testing.T) {
 	store := aStoreWithTheTool(t)
 	dir := aHomeIn(t)
@@ -172,8 +174,8 @@ func TestMenuLookupShowsWhatLeavesWithAFeature(t *testing.T) {
 	if diff := cmp.Diff(menu.Preview{Lines: []string{pkg, fmt.Sprintf("  - %s:%d", fixture.Host, fixture.Port), "  - EXAMPLE_MODE=strict"}, Features: 1, Hosts: 1, Env: 1}, pv); diff != "" {
 		t.Errorf("Remove() (-want +got):\n%s", diff)
 	}
-	// Require the installed feature on offer
-	if diff := cmp.Diff([]string{pkg}, menuHome(t.Context()).Features); diff != "" {
-		t.Errorf("menuHome().Features (-want +got):\n%s", diff)
+	// Require the installed feature with its tag
+	if diff := cmp.Diff([]menu.Installed{{Package: pkg, Tag: fixture.Major, Options: map[string]string{}}}, menuHome(t.Context()).Installed); diff != "" {
+		t.Errorf("menuHome().Installed (-want +got):\n%s", diff)
 	}
 }

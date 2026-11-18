@@ -12,7 +12,7 @@ import (
 	"github.com/hansehart/o3s/test/stacktest"
 )
 
-// The data a host moves through the gateway shows in the allowlist, and a name the cage was refused shows in the log.
+// The data a host moves through the gateway shows beside it, and a name the cage was refused shows among the blocked names.
 func TestTheFirewallShowsTrafficAndBlockedNames(t *testing.T) {
 	t.Setenv("O3S_TRAFFIC_INTERVAL", "1")
 	_, err := stacktest.O3s(t, "firewall", "add", "github.com", "--port", strconv.Itoa(fixture.Port))
@@ -32,20 +32,17 @@ func TestTheFirewallShowsTrafficAndBlockedNames(t *testing.T) {
 	// Ask for a name the policy leaves out, which the gateway refuses
 	_, _ = stacktest.ContainerExec(t, raised.ContainerID, "getent", "hosts", fixture.RefusedName)
 
-	listed := waitForO3s(t, []string{"firewall", "ls"}, func(out string) bool {
-		return strings.Contains(out, "github.com") && !strings.Contains(firstLine(out, "github.com"), " – ") && !strings.Contains(firstLine(out, "github.com"), " 0 B ")
-	})
-	logged := waitForO3s(t, []string{"firewall", "log"}, func(out string) bool {
-		return strings.Contains(out, fixture.RefusedName)
+	shown := waitForO3s(t, []string{"firewall"}, func(out string) bool {
+		return strings.Contains(out, "github.com") && !strings.Contains(firstLine(out, "github.com"), " – ") && !strings.Contains(firstLine(out, "github.com"), " 0 B ") && strings.Contains(out, fixture.RefusedName)
 	})
 
 	// Report an allowed host whose data is missing
-	if !strings.Contains(firstLine(listed, "github.com"), " ago") {
-		t.Errorf("o3s firewall ls = %q, want github.com with its data and when it last moved any", listed)
+	if !strings.Contains(firstLine(shown, "github.com"), " ago") {
+		t.Errorf("o3s firewall = %q, want github.com with its data and when it last moved any", shown)
 	}
-	// Report a refused name missing from the log
-	if !strings.Contains(logged, fixture.RefusedName) {
-		t.Errorf("o3s firewall log = %q, want %s among the blocked names", logged, fixture.RefusedName)
+	// Report a refused name missing from the blocked names
+	if !strings.Contains(shown, fixture.RefusedName) {
+		t.Errorf("o3s firewall = %q, want %s among the blocked names", shown, fixture.RefusedName)
 	}
 }
 

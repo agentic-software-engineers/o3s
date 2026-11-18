@@ -100,7 +100,7 @@ func TestSelfUpdateFollowsTheChannel(t *testing.T) {
 		path, restarted := aRunningBinary(t, tt.running, tt.binary)
 		var out strings.Builder
 
-		done, err := selfUpdate(t.Context(), strings.NewReader(""), &out, &out, true)
+		done, err := selfUpdate(t.Context(), strings.NewReader(""), &out, &out, true, []string{})
 
 		// Require the update done in place, under the channel's own name
 		if err != nil || !done || contents(path) != binaryAt(tt.want) {
@@ -121,7 +121,7 @@ func TestSelfUpdateMovesAPlainBinaryToLatest(t *testing.T) {
 	latestPath := filepath.Join(filepath.Dir(path), "o3s-latest")
 	var out strings.Builder
 
-	done, err := selfUpdate(t.Context(), strings.NewReader(""), &out, &out, true)
+	done, err := selfUpdate(t.Context(), strings.NewReader(""), &out, &out, true, []string{})
 
 	// Stop when the update fails
 	if err != nil || !done {
@@ -185,7 +185,7 @@ func TestSelfUpdateGoesOnToTheHome(t *testing.T) {
 		path, restarted := aRunningBinary(t, tt.version, tt.binary)
 		var out strings.Builder
 
-		done, err := selfUpdate(t.Context(), strings.NewReader(""), &out, &out, true)
+		done, err := selfUpdate(t.Context(), strings.NewReader(""), &out, &out, true, []string{})
 
 		// Require the update to go on with this binary, left as it was
 		if err != nil || done || *restarted != nil || contents(path) != "old" {

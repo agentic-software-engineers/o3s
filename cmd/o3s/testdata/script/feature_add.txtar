@@ -23,7 +23,7 @@ stdout '^Rebuild the cage to install it$'
 ! exists docker.log
 
 # A feature the menu previewed already prints what it did without the preview, its warnings kept
-exec o3s feature rm $REGISTRY/features/tool
+exec o3s feature rm $REGISTRY/features/tool --yes
 exec o3s feature add $REGISTRY/features/tool --no-preview
 ! stdout '^  \+ '
 stdout '^Added '${REGISTRY@R}'/features/tool$'
@@ -68,7 +68,10 @@ Rebuild the cage to install it
     "containerEnv": {
         "EXAMPLE_MODE": "strict",
         "EXAMPLE_HOME": "/home/ubuntu/features/$REGISTRY/features/tool"
-    }
+    },
+    "overrideFeatureInstallOrder": [
+        "$REGISTRY/features/tool"
+    ]
 }
 -- want.log --
 ps -q --filter label=com.docker.compose.project.working_dir=$WORK/.devcontainer --filter label=com.docker.compose.service=gateway

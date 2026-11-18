@@ -26,6 +26,8 @@ type Setup struct {
 	Offered []Option
 	Hosts   []Host
 	Env     []Env
+	// After are the features this one installs after, as store/id.
+	After []string
 }
 
 // Resolver works out what features set up and reads each store once.
@@ -52,7 +54,7 @@ func (r *Resolver) Resolve(ctx context.Context, ref Ref) (Setup, error) {
 		ref.Tag = Major(f.Version)
 	}
 	dir := FeaturesRoot + ref.Package()
-	s := Setup{Ref: ref, Version: f.Version, Hosts: f.Hosts, Offered: f.Options}
+	s := Setup{Ref: ref, Version: f.Version, Hosts: f.Hosts, Offered: f.Options, After: f.After}
 	// Give the feature its state dir where it takes one
 	if slices.ContainsFunc(f.Options, func(o Option) bool { return o.Name == StateDir }) {
 		s.Options = map[string]any{StateDir: dir}

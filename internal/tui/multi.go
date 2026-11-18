@@ -1,22 +1,24 @@
 package tui
 
 import (
-	"maps"
+	"strings"
 
+	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/hansehart/o3s/internal/menu"
 )
 
-// multi takes any number of a question's options, filtered as the user types and marked with Space or Tab.
+// multi takes any number of a question's options, filtered as the user types and marked with Space.
 type multi struct {
+	q menu.Question
 	list
-	marks map[string]bool
 }
 
 // newMulti starts a multi-select with the question's defaults marked.
 func newMulti(q menu.Question) multi {
-	m := multi{q: q, marks: map[string]bool{}}
+	m := multi{q: q}
+	m.options, m.marks = q.Options, map[string]bool{}
 	// Mark every default
 	for _, d := range q.Default {
 		m.marks[d] = true
@@ -24,7 +26,7 @@ func newMulti(q menu.Question) multi {
 	return m
 }
 
-// Update follows a key: typing filters, Space and Tab mark, Enter hands back, Esc clears the filter or steps back.
+// Update follows a key: typing filters, Space marks, Enter hands back the marks, Esc clears the filter or steps back.
 func (m multi) Update(msg tea.Msg) (field, result, tea.Cmd) {
 	k, isKey := msg.(tea.KeyPressMsg)
 	// Keep the field as it is on anything but a key
@@ -40,58 +42,40 @@ func (m multi) Update(msg tea.Msg) (field, result, tea.Cmd) {
 		}
 		m.filter, m.cursor = "", 0
 	case "enter":
-		// Hand back the marks, or the highlighted option where none is marked
-		if values := m.chosen(); len(values) > 0 {
+		values := m.marked()
+		// Take the highlighted option where the user marked none
+		if o, ok := m.highlighted(); len(values) == 0 && ok {
+			values = []string{o.Value}
+		}
+		// Hand back what the user chose
+		if len(values) > 0 {
 			return m, result{outcome: answered, values: values}, nil
 		}
-	case "space", "tab":
-		// Mark or unmark the highlighted option
-		if o, ok := m.highlighted(); ok {
-			m.marks = toggled(m.marks, o.Value)
-		}
+	case "space":
+		m.toggle()
 	default:
-		m.move(k.String(), k.Text)
+		m.move(k.String(), k.Text, true)
 	}
 	return m, result{}, nil
 }
 
-// chosen hands back the marked options in the question's order, or the highlighted one where none is marked.
-func (m multi) chosen() []string {
-	var out []string
-	// Take every marked option in order
-	for _, o := range m.q.Options {
-		// Take an option the user marked
-		if m.marks[o.Value] {
-			out = append(out, o.Value)
-		}
+// View draws the title, the filter once typed, and the options with their marks.
+func (m multi) View(width, height int) string {
+	lines := heading(m.q, width)
+	// Show the filter once the user types
+	if m.filter != "" {
+		lines = append(lines, dim.Render("  ⌕ ")+m.filter)
 	}
-	// Take the highlighted option where the user marked none
-	if o, ok := m.highlighted(); len(out) == 0 && ok {
-		out = []string{o.Value}
+	lines = append(lines, m.view(width, height-len(lines))...)
+	return strings.Join(lines, "\n")
+}
+
+// Keys are the keys of a multi-select.
+func (m multi) Keys() []key.Binding {
+	esc := keyBack
+	// Name Esc as clearing a filter the user typed
+	if m.filter != "" {
+		esc = keyClear
 	}
-	return out
-}
-
-// View draws the options with their marks.
-func (m multi) View(int) string {
-	return m.view(func(o menu.Option) string {
-		// Fill the box of a marked option
-		if m.marks[o.Value] {
-			return marked.Render("[x]") + " "
-		}
-		return "[ ] "
-	})
-}
-
-// Hint names the keys of a multi-select.
-func (multi) Hint() string {
-	return "type to filter | space mark | enter done | esc back"
-}
-
-// toggled hands back marks with one value flipped, leaving the marks given as they were.
-func toggled(marks map[string]bool, value string) map[string]bool {
-	out := make(map[string]bool, len(marks)+1)
-	maps.Copy(out, marks)
-	out[value] = !out[value]
-	return out
+	return []key.Binding{keyNavigate, keyToggle, keyType, keyContinue, esc}
 }

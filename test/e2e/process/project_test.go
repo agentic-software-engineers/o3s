@@ -49,10 +49,10 @@ func TestAProjectIsClonedListedAndRemovedInTheCage(t *testing.T) {
 	if _, err := stacktest.ContainerExec(t, raised.ContainerID, "test", "-f", helloPath+"/README"); err != nil {
 		t.Errorf("README in the cage's clone: %v", err)
 	}
-	listed, err := stacktest.O3s(t, "project", "ls")
+	listed, err := stacktest.O3s(t, "project")
 	// Report a list that misses the project
 	if err != nil || !strings.Contains(listed, "octocat/Hello-World  "+helloPath) {
-		t.Errorf("o3s project ls = %q, %v, want octocat/Hello-World at %s", listed, err, helloPath)
+		t.Errorf("o3s project = %q, %v, want octocat/Hello-World at %s", listed, err, helloPath)
 	}
 	// Stop when the removal fails
 	if _, err := stacktest.O3s(t, "project", "rm", "octocat/Hello-World", "--yes"); err != nil {

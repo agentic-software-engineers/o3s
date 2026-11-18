@@ -22,7 +22,7 @@ type FileChange struct {
 }
 
 // homeKeys are the keys of the config that belong to the home, which a refresh keeps.
-var homeKeys = []string{"features", "containerEnv"}
+var homeKeys = []string{"features", "containerEnv", "overrideFeatureInstallOrder"}
 
 // Refresh compares the home's stack with the one the binary ships and hands back each file that differs.
 func Refresh(dir string) ([]FileChange, error) {
@@ -73,7 +73,7 @@ func Write(dir string, changes []FileChange) error {
 	return nil
 }
 
-// withHomeKeys hands back the binary's config with the home's features and env, as the home writes them.
+// withHomeKeys hands back the binary's config with the keys the home owns, as the home writes them.
 func withHomeKeys(shipped, home []byte) ([]byte, error) {
 	out, err := hujson.Parse(shipped)
 	// Hand back a shipped config that holds no JSON with comments

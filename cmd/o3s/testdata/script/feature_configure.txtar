@@ -1,0 +1,53 @@
+# Without options, configure lists what the feature offers, the value each holds and the one it falls back to
+exec o3s feature add $REGISTRY/features/tool --option mode=loose
+exec o3s feature configure $REGISTRY/features/tool
+cmp stdout want-options.txt
+
+# Options set on an installed feature join the ones it holds, each shown with its value before and after
+exec o3s feature configure $REGISTRY/features/tool --option mode=strict --option debug=true
+cmpenv stdout want-set.txt
+cmpenv .devcontainer/devcontainer.json want.jsonc
+
+# A value the option takes none of is a usage error, the config left as it was
+! exec o3s feature configure $REGISTRY/features/tool --option mode=wild
+stderr 'invalid value "wild" for mode, want strict or loose'
+stderr 'for usage'
+cmpenv .devcontainer/devcontainer.json want.jsonc
+
+# A feature the home lacks is turned away
+! exec o3s feature configure $REGISTRY/features/go --option version=1.24
+stderr 'unknown feature .*/features/go'
+
+-- o3s.json --
+{"$schema": "./.devcontainer/o3s.schema.json", "stores": [], "hosts": []}
+-- .devcontainer/devcontainer.json --
+{
+    "features": {}
+}
+-- want-options.txt --
+OPTION   VALUE  DEFAULT
+debug    –      false
+mode     loose  strict
+version  –      latest
+-- want-set.txt --
+$REGISTRY/features/tool
+  ~ debug false -> true
+  ~ mode loose -> strict
+Rebuild the cage to apply it
+-- want.jsonc --
+{
+    "features": {
+        "$REGISTRY/features/tool:2": {
+            "debug": true,
+            "mode": "strict",
+            "stateDir": "/home/ubuntu/features/$REGISTRY/features/tool"
+        }
+    },
+    "containerEnv": {
+        "EXAMPLE_MODE": "strict",
+        "EXAMPLE_HOME": "/home/ubuntu/features/$REGISTRY/features/tool"
+    },
+    "overrideFeatureInstallOrder": [
+        "$REGISTRY/features/tool"
+    ]
+}

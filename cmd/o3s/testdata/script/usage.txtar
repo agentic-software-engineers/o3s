@@ -2,19 +2,15 @@
 exec o3s
 stdout 'firewall'
 
-# A group without an action is a usage error, named the way git and cargo name errors
-! exec o3s firewall
-stderr '^error: '
-stderr 'for usage'
-
-# An unknown action is a usage error
+# An unknown action is a usage error, named the way git and cargo name errors
 ! exec o3s firewall bogus
+stderr '^error: '
 stderr 'unknown command "bogus"'
 stderr 'for usage'
 
 # A missing host is a usage error
 ! exec o3s firewall add
-stderr 'accepts 1 arg'
+stderr 'requires at least 1 arg'
 
 # A malformed flag is a usage error
 ! exec o3s firewall add example.com --port twenty
@@ -24,7 +20,7 @@ stderr 'for usage'
 # A folder without an o3s home points at the command that starts one
 mkdir empty
 cd empty
-! exec o3s firewall ls
+! exec o3s firewall
 stderr 'no o3s home'
 stderr 'o3s init'
 

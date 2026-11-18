@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 
@@ -26,9 +27,14 @@ var ErrNoCollection = errors.New("holds no feature collection")
 type Feature struct {
 	ID      string
 	Version string
-	Options []Option
-	Hosts   []Host
-	Env     []Env
+	// Name and Description are how the store names the feature and says what it does.
+	Name, Description string
+	Options           []Option
+	Hosts             []Host
+	Env               []Env
+	// After are the features this one installs after, as store/id: the ones it depends on and the ones it
+	// names to follow.
+	After []string
 }
 
 // Option is a setting a feature offers, with the values it takes and the one it falls back to.
@@ -112,7 +118,11 @@ func features(l v1.Layer) ([]Feature, error) {
 		Features []struct {
 			ID             string                `json:"id"`
 			Version        string                `json:"version"`
+			Name           string                `json:"name"`
+			Description    string                `json:"description"`
 			Options        map[string]optionSpec `json:"options"`
+			InstallsAfter  []string              `json:"installsAfter"`
+			DependsOn      map[string]any        `json:"dependsOn"`
 			Customizations struct {
 				O3S struct {
 					Hosts []Host `json:"hosts"`
@@ -129,7 +139,15 @@ func features(l v1.Layer) ([]Feature, error) {
 	// Take what every feature tells
 	for i, f := range c.Features {
 		o := f.Customizations.O3S
-		fs[i] = Feature{ID: f.ID, Version: f.Version, Hosts: o.Hosts, Env: o.Env}
+		fs[i] = Feature{ID: f.ID, Version: f.Version, Name: f.Name, Description: f.Description, Hosts: o.Hosts, Env: o.Env}
+		// Take every feature this one names to follow, without its tag
+		for _, id := range append(slices.Collect(maps.Keys(f.DependsOn)), f.InstallsAfter...) {
+			// Take each feature once
+			if pkg := packageOf(id); !slices.Contains(fs[i].After, pkg) {
+				fs[i].After = append(fs[i].After, pkg)
+			}
+		}
+		slices.Sort(fs[i].After)
 		// List the options the feature offers, with what each takes
 		for name, o := range f.Options {
 			fs[i].Options = append(fs[i].Options, Option{Name: name, Type: o.Type, Default: defaultOf(o.Default), Enum: o.Enum, Proposals: o.Proposals, Description: o.Description})
@@ -138,6 +156,16 @@ func features(l v1.Layer) ([]Feature, error) {
 	}
 	slices.SortFunc(fs, func(a, b Feature) int { return strings.Compare(a.ID, b.ID) })
 	return fs, nil
+}
+
+// packageOf strips the tag or the digest off a feature's id, leaving store/id.
+func packageOf(id string) string {
+	slash := strings.LastIndex(id, "/")
+	// Cut at the digest or the tag that follows the last part of the path
+	if i := strings.IndexAny(id[slash+1:], "@:"); i >= 0 {
+		return id[:slash+1+i]
+	}
+	return id
 }
 
 // defaultOf writes an option's fallback as text, a boolean as true or false.
