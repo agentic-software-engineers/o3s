@@ -15,12 +15,6 @@
   </picture>
 </p>
 
-If you are not willing to trade security for productivity, o3s is a match. Let an agent generate every line of code, and review every line by hand or none at all. Either way, which hosts your agents reach and which secrets they can read stays yours to decide.
-
-[Anthropic][ref] and [OpenAI][cdx] both ship a reference devcontainer, deliberately minimal: Anthropic's applies a short hardcoded allowlist from inside the container, and OpenAI's tells you to add your own DNS filtering. o3s starts where they stop: productivity on steroids, and deterministic enforcement (harness) to get there.
-
-We created o3s to keep pace: trusted environments, several projects at once, and several features inside each. AI will not be the death of good engineering. It is the golden era of agentic software engineers. This is how we build with it and still stand behind every line that ships.
-
 <p align="center">
   <img src="https://cdn.simpleicons.org/claude" alt="Claude Code CLI" title="Claude Code CLI" height="48">
   <img src="https://cdn.simpleicons.org/docker" alt="Docker in Docker" title="Docker in Docker" height="48">
@@ -34,6 +28,12 @@ We created o3s to keep pace: trusted environments, several projects at once, and
   <img src="https://cdn.simpleicons.org/rust" alt="Rust" title="Rust" height="48">
   <img src="https://cdn.simpleicons.org/gitea" alt="tea (Gitea CLI)" title="tea (Gitea CLI)" height="48">
 </p>
+
+If you are not willing to trade security for productivity, o3s is a match. Let an agent generate every line of code, and review every line by hand or none at all. Either way, which hosts your agents reach and which secrets they can read stays yours to decide.
+
+[Anthropic][ref] and [OpenAI][cdx] both ship a reference devcontainer, deliberately minimal: Anthropic's applies a short hardcoded allowlist from inside the container, and OpenAI's tells you to add your own DNS filtering. o3s starts where they stop: productivity on steroids, and deterministic enforcement (harness) to get there.
+
+We created o3s to keep pace: trusted environments, several projects at once, and several features inside each. AI will not be the death of good engineering. It is the golden era of agentic software engineers. This is how we build with it and still stand behind every line that ships.
 
 ## Commands
 
