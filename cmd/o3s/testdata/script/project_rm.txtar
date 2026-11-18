@@ -1,7 +1,7 @@
 # Without a terminal nobody can type owner/name, so rm asks for --yes and deletes nothing
 mkdir home
 cd home
-exec o3s init
+exec o3s init --guest
 exec o3s project create example/scratch
 ! exec o3s project rm example/scratch
 stderr 'pass --yes to delete without a terminal'

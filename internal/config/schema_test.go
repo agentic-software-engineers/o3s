@@ -160,3 +160,16 @@ func TestTheSchemaTakesTheAppArmorOptOut(t *testing.T) {
 		t.Errorf("schema on unconfined = %v, on another value = %v, want it taken and turned away", opted, other)
 	}
 }
+
+// The schema takes process as the one value of isolation, the opt-out from the home's VM.
+func TestTheSchemaTakesTheIsolationOptOut(t *testing.T) {
+	schema := theShippedSchema(t)
+
+	opted := check(t, schema, []byte(`{"stores": [], "hosts": [], "isolation": "process"}`))
+	other := check(t, schema, []byte(`{"stores": [], "hosts": [], "isolation": "vm"}`))
+
+	// Require the opt-out taken and any other value turned away
+	if opted != nil || other == nil {
+		t.Errorf("schema on process = %v, on another value = %v, want it taken and turned away", opted, other)
+	}
+}

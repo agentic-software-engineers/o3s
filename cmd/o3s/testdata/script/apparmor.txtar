@@ -1,20 +1,20 @@
 # A daemon with AppArmor confines the cage with its own profile
 mkdir home
 cd home
-exec o3s init
+exec o3s init --guest
 grep '^O3S_APPARMOR_PROFILE=o3s-cage$' .devcontainer/.env
 
 # A daemon without AppArmor stops the start, naming the opt-out, and leaves the values as they were
 cp .devcontainer/.env $WORK/env-before
 cp $WORK/no-apparmor-marker $WORK/no-apparmor
-! exec o3s init
+! exec o3s init --guest
 stderr '^error: the cage''s profile o3s-cage needs AppArmor, but Docker reports it unavailable'
 stderr '"appArmorProfile": "unconfined"'
 cmp .devcontainer/.env $WORK/env-before
 
 # A home that opts out starts unconfined, and says so
 cp $WORK/opted.json o3s.json
-exec o3s init
+exec o3s init --guest
 stderr '^warning: the cage runs without AppArmor, remove "appArmorProfile" from o3s.json to go back to the secure default$'
 grep '^O3S_APPARMOR_PROFILE=unconfined$' .devcontainer/.env
 

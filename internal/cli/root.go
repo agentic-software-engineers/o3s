@@ -6,6 +6,8 @@ import (
 	"strings"
 
 	"github.com/spf13/cobra"
+
+	"github.com/hansehart/o3s/internal/preview"
 )
 
 // newRoot builds the o3s command tree, wired to the given streams.
@@ -20,6 +22,14 @@ func newRoot(s Streams) *cobra.Command {
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			return cmd.Help()
 		},
+	}
+	var previews bool
+	root.PersistentFlags().BoolVar(&previews, "preview", false, "turn on the features o3s ships as previews, as O3S_PREVIEW=1 does")
+	root.PersistentPreRun = func(*cobra.Command, []string) {
+		// Turn every preview on for this run, where the flag asks
+		if previews {
+			preview.EnableAll()
+		}
 	}
 	root.SetIn(s.In)
 	root.SetOut(s.Out)
@@ -50,8 +60,8 @@ func group(use, short string, show func(cmd *cobra.Command) error) *cobra.Comman
 		Short: short,
 		Args:  usage(cobra.NoArgs),
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			// Open the group's view for a user at a terminal who asks for no other form
-			if cmd.Flags().NFlag() == 0 && isInteractive(cmd.InOrStdin(), cmd.OutOrStdout()) {
+			// Open the group's view for a user at a terminal who asks for no other form with a flag of its own
+			if cmd.LocalNonPersistentFlags().NFlag() == 0 && isInteractive(cmd.InOrStdin(), cmd.OutOrStdout()) {
 				return openMenu(cmd.Context(), strings.Fields(cmd.CommandPath())[1:]...)
 			}
 			return show(cmd)
