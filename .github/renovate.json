@@ -23,12 +23,12 @@
   },
   "packageRules": [
     {
-      "description": "Tooling bumps change how the repo is built, not what ships.",
+      "description": "Tooling bumps change how the repo is built.",
       "matchPackageNames": ["*"],
       "semanticCommitType": "build"
     },
     {
-      "description": "Workflow bumps change only the pipeline.",
+      "description": "Workflow bumps change the pipeline.",
       "matchManagers": ["github-actions"],
       "semanticCommitType": "ci"
     },
