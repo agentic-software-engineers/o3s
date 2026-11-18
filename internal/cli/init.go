@@ -162,7 +162,7 @@ func nextSteps(out io.Writer) {
 	fmt.Fprintf(out, "\nNext steps:\n")
 	w := tabwriter.NewWriter(out, 0, 0, 3, ' ', 0)
 	fmt.Fprintf(w, "  o3s firewall add <host> --port 443\tallow a host\n")
-	fmt.Fprintf(w, "  echo \"$TOKEN\" | o3s secret add <NAME>\tstore a secret\n")
+	fmt.Fprintf(w, "  echo \"$TOKEN\" | o3s secret add <name>\tstore a secret\n")
 	fmt.Fprintln(w, "  o3s cage ide\topen it in the cage")
 	_ = w.Flush()
 }
