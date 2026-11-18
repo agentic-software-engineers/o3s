@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.7.6-rc.2](https://github.com/hansehart/o3s/compare/v0.7.6-rc.1...v0.7.6-rc.2) (2026-11-18)
+
+
+### Features
+
+* **cli:** set a feature's options when adding it ([#277](https://github.com/hansehart/o3s/issues/277)) ([69c8cfe](https://github.com/hansehart/o3s/commit/69c8cfef43f8892bee4f1c1b7ec145d1a694a087))
+
+
+### Bug Fixes
+
+* **cli:** keep the confirmation in view beside a summary ([#283](https://github.com/hansehart/o3s/issues/283)) ([f7b8377](https://github.com/hansehart/o3s/commit/f7b83779d9d37428dbb42f0ec1fd0a560a6ab872))
+* **cli:** keep the menu's output whole and its failures named ([#275](https://github.com/hansehart/o3s/issues/275)) ([e26dd31](https://github.com/hansehart/o3s/commit/e26dd31acfa8e47c14ff4525bec385c7dbc060d5))
+* **cli:** open o3s cage ide over SSH ([#285](https://github.com/hansehart/o3s/issues/285)) ([fbfe0eb](https://github.com/hansehart/o3s/commit/fbfe0eb71266f80ea59958c5aeb11e13bbcb9d9b))
+* **repo:** decide installs and updates by the checksum alone ([#267](https://github.com/hansehart/o3s/issues/267)) ([2cf8d0b](https://github.com/hansehart/o3s/commit/2cf8d0bd2dad7e04ecf82a985d87822afe4fb295))
+
 ## [0.7.6-rc.1](https://github.com/hansehart/o3s/compare/v0.7.5...v0.7.6-rc.1) (2026-11-16)
 
 
