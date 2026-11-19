@@ -5,6 +5,7 @@ import (
 
 	"charm.land/bubbles/v2/help"
 	"charm.land/bubbles/v2/key"
+	"github.com/charmbracelet/x/ansi"
 )
 
 // bind builds a key binding with the help the footer shows for it.
@@ -51,5 +52,11 @@ func footer(width int, bindings []key.Binding) string {
 	h.ShortSeparator = " · "
 	h.Styles.ShortKey, h.Styles.ShortDesc, h.Styles.ShortSeparator, h.Styles.Ellipsis = dim, dim, dim, dim
 	h.SetWidth(width)
-	return h.ShortHelpView(bindings)
+	line := h.ShortHelpView(bindings)
+	// Leave out the last key until the line fits, as help keeps one key too many where no ellipsis fits after the rest
+	for width > 0 && ansi.StringWidth(line) > width && len(bindings) > 0 {
+		bindings = bindings[:len(bindings)-1]
+		line = h.ShortHelpView(bindings)
+	}
+	return line
 }
