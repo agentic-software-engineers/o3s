@@ -37,9 +37,9 @@ func initDialog(h Home, a Answers) (Question, bool) {
 	return ask(a, Question{Key: "apply", Kind: Confirm, Title: "Apply?", Summary: "Creates an o3s home in " + h.Dir + ", " + where, Default: []string{yes}})
 }
 
-// initPlan makes the home the way the user chose, handing the answers on so init asks nothing again: the VM in the
-// menu, which shows its steps as they come, and a home on this machine on the real terminal, where init asks for sudo
-// to load the cage's AppArmor profile.
+// initPlan makes the home the way the user chose, handing the answers on so init asks nothing again: in the menu,
+// which shows its steps as they come, and on the real terminal where init asks for sudo to load the cage's AppArmor
+// profile on this machine.
 func initPlan(a Answers) []Command {
 	// Leave the folder as it was where the user declines
 	if !confirmed(a) {
@@ -49,10 +49,9 @@ func initPlan(a Answers) []Command {
 	if a.get("isolation") != inProcess {
 		return []Command{{Args: []string{"init", "--yes"}}}
 	}
-	args := []string{"init", "--dangerously-skip-vm"}
-	// Name the cage's run without AppArmor
+	// Make the home on this machine without AppArmor in the menu, since it asks for no sudo
 	if a.get("apparmor") == off {
-		args = append(args, "--dangerously-skip-apparmor")
+		return []Command{{Args: []string{"init", "--dangerously-skip-vm", "--dangerously-skip-apparmor"}}}
 	}
-	return []Command{{Args: args, Terminal: true}}
+	return []Command{{Args: []string{"init", "--dangerously-skip-vm"}, Terminal: true}}
 }

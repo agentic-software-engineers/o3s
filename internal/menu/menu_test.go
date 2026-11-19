@@ -323,16 +323,16 @@ func TestEveryOtherDialogEndsInItsCommand(t *testing.T) {
 			[]Command{{Args: []string{"init", "--yes"}}},
 		},
 		{
-			"a new home on this machine's kernel with AppArmor",
+			"a new home on this machine's kernel with AppArmor, on the real terminal for sudo",
 			[][]string{{"init"}, {inProcess}, {on}, {yes}},
 			[]string{"do", "isolation", "apparmor", "apply"},
 			[]Command{{Args: []string{"init", "--dangerously-skip-vm"}, Terminal: true}},
 		},
 		{
-			"a new home on this machine's kernel without AppArmor",
+			"a new home on this machine's kernel without AppArmor, in the menu",
 			[][]string{{"init"}, {inProcess}, {off}, {yes}},
 			[]string{"do", "isolation", "apparmor", "apply"},
-			[]Command{{Args: []string{"init", "--dangerously-skip-vm", "--dangerously-skip-apparmor"}, Terminal: true}},
+			[]Command{{Args: []string{"init", "--dangerously-skip-vm", "--dangerously-skip-apparmor"}}},
 		},
 		{
 			"declining a new home",
