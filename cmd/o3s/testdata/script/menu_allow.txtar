@@ -1,0 +1,24 @@
+# Allowing a host through the menu on a terminal writes it into the home, as the command would
+[!unix] skip 'the pseudo-terminal runs on unix'
+mkdir home
+cd home
+exec o3s init --guest
+pty o3s
+screen '❯ cage'
+keys fir enter
+screen 'Firewall +Allowed +Blocked'
+keys enter
+screen 'A name, a wildcard, an IPv4 address or an IPv4 range'
+keys $NEW_HOST enter
+screen '1\. 443 +HTTPS \(recommended\)'
+keys 1
+screen 'For how long'
+keys 1
+screen 'Secret the proxy injects'
+keys 1
+screen 'Allows '${NEW_HOST@R}' for good'
+keys y
+screen '✓ done'
+keys esc esc
+ptywait
+grep '"name": "'${NEW_HOST@R}'"' o3s.json

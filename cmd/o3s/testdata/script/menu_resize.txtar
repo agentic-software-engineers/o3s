@@ -1,0 +1,9 @@
+# The menu draws itself again at the size a terminal takes while it runs
+[!unix] skip 'the pseudo-terminal runs on unix'
+pty -size=100x30 o3s
+screen 'What do you want to do\?'
+ptysize 60x16
+screen '^o3s  \S+ *$'
+screen '❯ init +make this folder a home'
+keys esc
+ptywait
