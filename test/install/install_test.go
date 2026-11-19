@@ -320,7 +320,7 @@ func TestInstallKeepsTheLimaItInstalled(t *testing.T) {
 	h := aHost(t, "Darwin", "arm64", map[string]string{})
 	prefix := aLima(t, h)
 
-	out, err := h.run(t, aRelease(t, false), "--no-devcontainer")
+	out, err := h.run(t, aRelease(t, false), "--no-devcontainer", "--preview")
 
 	// Require the install to keep Lima
 	if err != nil || !strings.Contains(out, "Found Lima in "+prefix) {
@@ -340,7 +340,7 @@ func TestInstallStopsOnATamperedLima(t *testing.T) {
 	t.Cleanup(s.Close)
 	h.env = append(h.env, "O3S_LIMA_URL="+s.URL)
 
-	out, err := h.run(t, aRelease(t, false), "--no-devcontainer")
+	out, err := h.run(t, aRelease(t, false), "--no-devcontainer", "--preview")
 
 	_, unpacked := os.Stat(filepath.Join(h.home, ".local", "share", "o3s", "lima", "bin", "limactl"))
 	// Require a stop that names the checksum, with Lima left out
@@ -354,10 +354,37 @@ func TestInstallNamesTheMissingQEMU(t *testing.T) {
 	h := aHost(t, "Linux", "x86_64", map[string]string{})
 	aLima(t, h)
 
-	out, err := h.run(t, aRelease(t, false), "--no-devcontainer")
+	out, err := h.run(t, aRelease(t, false), "--no-devcontainer", "--preview")
 
 	// Require the install to finish and name QEMU's packages
 	if err != nil || !strings.Contains(out, "QEMU") || !strings.Contains(out, "qemu-system-x86") {
 		t.Errorf("install.sh without QEMU = %v, want a hint naming QEMU\n%s", err, out)
+	}
+}
+
+// Without the VM preview, the install leaves Lima and QEMU alone, as the VM is off by default.
+func TestInstallLeavesLimaToTheVMPreview(t *testing.T) {
+	h := aHost(t, "Linux", "x86_64", map[string]string{})
+
+	out, err := h.run(t, aRelease(t, false), "--no-devcontainer")
+
+	_, unpacked := os.Stat(filepath.Join(h.home, ".local", "share", "o3s", "lima"))
+	// Require o3s in place, with neither Lima nor a word about it or QEMU
+	if err != nil || !h.installed() || unpacked == nil || strings.Contains(out, "Lima") || strings.Contains(out, "QEMU") {
+		t.Errorf("install.sh without the preview = %v, Lima unpacked %v, want o3s alone\n%s", err, unpacked == nil, out)
+	}
+}
+
+// O3S_PREVIEW turns the VM preview on for the install, as --preview does.
+func TestInstallReadsTheVMPreviewFromTheEnvironment(t *testing.T) {
+	h := aHost(t, "Linux", "x86_64", map[string]string{})
+	aLima(t, h)
+	h.env = append(h.env, "O3S_PREVIEW=vm")
+
+	out, err := h.run(t, aRelease(t, false), "--no-devcontainer")
+
+	// Require the install to take the Lima step
+	if err != nil || !strings.Contains(out, "Found Lima in") {
+		t.Errorf("install.sh with O3S_PREVIEW=vm = %v, want the Lima step\n%s", err, out)
 	}
 }
