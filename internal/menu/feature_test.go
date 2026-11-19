@@ -112,8 +112,8 @@ func TestEveryFeatureDialogEndsInItsCommand(t *testing.T) {
 			[]Command{{Args: []string{"feature", "rm", toolPkg, "--no-preview", "--yes"}}},
 		},
 		{
-			"moving the tool up, quietly",
-			[][]string{{"feature"}, {installedTab, move, toolPkg, "up"}},
+			"ordering the features, quietly",
+			[][]string{{"feature"}, {installedTab, Order, toolPkg, toolPkg}},
 			[]string{"do", "view"},
 			nil,
 		},
@@ -148,22 +148,22 @@ func TestEveryFeatureDialogEndsInItsCommand(t *testing.T) {
 	}.check(t, aHomeWithTheTool())
 }
 
-// Moving an installed feature orders the features again with it one place further, quietly, and leaves one at either
-// end where it is.
-func TestMovingAFeatureOrdersThemQuietly(t *testing.T) {
+// A new order of the installed features runs one quiet feature order over all of them, and nothing where the order
+// stays.
+func TestOrderingFeaturesRunsOneQuietOrder(t *testing.T) {
 	h := aHomeWithTheTool()
 	h.Installed = append(h.Installed, Installed{Package: otherPkg, Tag: fixture.Major})
-
-	down := Plan(h, Answers{}.With("do", []string{"feature"}).With("view", []string{installedTab, move, toolPkg, "down"}))
-	up := Plan(h, Answers{}.With("do", []string{"feature"}).With("view", []string{installedTab, move, toolPkg, "up"}))
-
-	// Require the order with the tool second, quietly
-	if diff := cmp.Diff([]Command{{Args: []string{"feature", "order", otherPkg, toolPkg}, Quiet: true}}, down); diff != "" {
-		t.Errorf("down (-want +got):\n%s", diff)
+	ordered := func(order ...string) []Command {
+		return Plan(h, Answers{}.With("do", []string{"feature"}).With("view", append([]string{installedTab, Order, toolPkg}, order...)))
 	}
-	// Require nothing for the first feature moving up
-	if up != nil {
-		t.Errorf("up = %v, want nothing", up)
+
+	// Require one quiet order with the tool second
+	if diff := cmp.Diff([]Command{{Args: []string{"feature", "order", otherPkg, toolPkg}, Quiet: true}}, ordered(otherPkg, toolPkg)); diff != "" {
+		t.Errorf("new order (-want +got):\n%s", diff)
+	}
+	// Require nothing for the order the features have
+	if got := ordered(toolPkg, otherPkg); got != nil {
+		t.Errorf("same order = %v, want nothing", got)
 	}
 }
 

@@ -3,6 +3,7 @@ package tui
 import (
 	"fmt"
 	"maps"
+	"slices"
 	"strings"
 
 	"github.com/charmbracelet/x/ansi"
@@ -23,6 +24,38 @@ type list struct {
 	numbered bool
 	// marks are the options marked, and nil for a list that takes one.
 	marks map[string]bool
+	// before are the options as they stood when the user picked the row under the cursor up, and nil while the user
+	// holds no row.
+	before []menu.Option
+}
+
+// pick takes the row under the cursor up, so the arrows move it.
+func (l *list) pick() {
+	l.before = l.options
+	l.options = slices.Clone(l.options)
+}
+
+// shift moves the row the user holds by the steps given, and keeps it at either end.
+func (l *list) shift(by int) {
+	j := l.cursor + by
+	// Keep a row at either end where it is
+	if j < 0 || j >= len(l.options) {
+		return
+	}
+	l.options[l.cursor], l.options[j] = l.options[j], l.options[l.cursor]
+	l.cursor = j
+}
+
+// drop leaves the row the user holds where it is now.
+func (l *list) drop() {
+	l.before = nil
+}
+
+// putBack returns the row the user holds to where it was.
+func (l *list) putBack() {
+	o, _ := l.highlighted()
+	l.options, l.before = l.before, nil
+	l.cursor = max(slices.IndexFunc(l.options, func(p menu.Option) bool { return p.Value == o.Value }), 0)
 }
 
 // shown lists the options the filter keeps, in their order.
@@ -161,8 +194,12 @@ func (l list) view(width, height int) []string {
 func (l list) row(o menu.Option, i int, current bool, label int, columns []int, width int) []string {
 	var b strings.Builder
 	b.WriteString("  ")
-	// Point at the highlighted option
-	if current {
+	// Point at the highlighted option, as held where the user carries it
+	switch {
+	case current && l.before != nil:
+		b.Reset()
+		b.WriteString(pointer.Render("↕ "))
+	case current:
 		b.Reset()
 		b.WriteString(pointer.Render("❯ "))
 	}

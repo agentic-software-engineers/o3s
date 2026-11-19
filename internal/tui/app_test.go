@@ -177,7 +177,7 @@ func TestAppShowsTheViewAfterQuietCommands(t *testing.T) {
 	}
 	m, _ = settle(m, m.Init())
 
-	m, _ = drive(m, keys("feat", enter, tea.KeyPressMsg{Code: tea.KeyDown, Mod: tea.ModCtrl})...)
+	m, _ = drive(m, keys("feat", enter, tea.KeyPressMsg{Code: tea.KeyDown, Mod: tea.ModCtrl}, enter)...)
 
 	// Require the feature view again, without a result screen
 	if m.state != asking || m.q.Key != "view" {

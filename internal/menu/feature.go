@@ -20,14 +20,13 @@ const (
 
 // Values the feature view and a feature's detail answer with.
 const (
-	move      = "+move"
 	configure = "configure"
 )
 
 // featureView shows the installed features in the order they install, every feature the stores offer, and the
 // stores.
 func featureView(h Home, a Answers) Question {
-	installed := Tab{Name: installedTab, About: "Installed in this order on every rebuild. Move one with ctrl+↑/↓.", Empty: "No features yet. Mark the ones you want on the Discover tab.", Header: InstalledHeader, Reorder: true}
+	installed := Tab{Name: installedTab, About: "Installed in this order on every rebuild. Pick one up with m to move it.", Empty: "No features yet. Mark the ones you want on the Discover tab.", Header: InstalledHeader, Reorder: true}
 	// Show every installed feature as its row
 	for _, f := range h.Installed {
 		installed.Options = append(installed.Options, Option{Value: f.Package, Label: path.Base(f.Package), Columns: InstalledRow(f, h.Hosts)})
@@ -115,8 +114,8 @@ func featureDialog(h Home, a Answers) (Question, bool) {
 	// Follow what the user picked on its tab
 	switch tab {
 	case installedTab:
-		// End a move or an empty pick, which the plan runs or leaves
-		if len(picked) == 0 || picked[0] == move {
+		// End a new order or an empty pick, which the plan runs or leaves
+		if len(picked) == 0 || picked[0] == Order {
 			return Question{}, true
 		}
 		return installedDialog(h, a, picked[0])
@@ -233,9 +232,9 @@ func featurePlan(h Home, a Answers) []Command {
 	if len(picked) == 0 || a.get("action") == back {
 		return nil
 	}
-	// Move a feature without asking, since moving it back undoes it
-	if tab == installedTab && picked[0] == move {
-		return movePlan(h, picked[1:])
+	// Order the features without asking, since moving them back undoes it
+	if tab == installedTab && picked[0] == Order && len(picked) > 1 {
+		return orderPlan(h, picked[2:])
 	}
 	// Add the store the user typed, which asks no confirmation since removing it undoes it
 	if tab == storesTab && picked[0] == add {
@@ -313,20 +312,13 @@ func discoverPlan(h Home, a Answers, marked []string) []Command {
 	return cmds
 }
 
-// movePlan moves an installed feature one place up or down, which the install order then follows.
-func movePlan(h Home, move []string) []Command {
-	order := packages(h)
-	i := slices.Index(order, move[0])
-	j := i + 1
-	// Move up where the user says so
-	if len(move) > 1 && move[1] == "up" {
-		j = i - 1
-	}
-	// Leave a feature at either end where it is
-	if i < 0 || j < 0 || j >= len(order) {
+// orderPlan installs the features in the order the user dropped them in, at once and quietly, and runs nothing where
+// the order stays as it was.
+func orderPlan(h Home, order []string) []Command {
+	// Run nothing for an order that stays
+	if slices.Equal(order, packages(h)) {
 		return nil
 	}
-	order[i], order[j] = order[j], order[i]
 	return []Command{{Args: append([]string{"feature", "order"}, order...), Quiet: true}}
 }
 

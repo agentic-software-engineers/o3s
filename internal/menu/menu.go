@@ -158,7 +158,8 @@ type Tab struct {
 	// Multi marks a tab whose rows the user marks and hands back together, the ones in Marked marked from the start.
 	Multi  bool
 	Marked []string
-	// Reorder lets the user move a row up or down.
+	// Reorder lets the user pick a row up, move it and drop it, which answers Order, the row and every row's value in
+	// the new order.
 	Reorder bool
 	// Loading marks a tab whose rows are still on their way, which the view asks for again until they all came in.
 	Loading bool
@@ -424,3 +425,7 @@ func ask(a Answers, q Question) (Question, bool) {
 	}
 	return q, false
 }
+
+// Order is what a view answers after the tab's value where the user dropped a row in a new place, followed by the row
+// and every row's value in the new order.
+const Order = "+order"

@@ -210,6 +210,10 @@ func (m model) refreshed() (tea.Model, tea.Cmd) {
 	if m.state != asking || !isView {
 		return m, nil
 	}
+	// Ask again later while the user holds a row, which a new view would put back
+	if v.holding() {
+		return m, tea.Tick(refreshEvery, func(time.Time) tea.Msg { return refreshMsg{} })
+	}
 	m.carry = v.place()
 	h, a := m.home, m.answers
 	return m, func() tea.Msg {
@@ -363,14 +367,14 @@ func (m model) group() menu.Answers {
 	return m.answers[:1]
 }
 
-// place is where the group's view opens again: the tab the user picked in and the row, the one a move names.
+// place is where the group's view opens again: the tab the user picked in and the row, the one a new order names.
 func (m model) place() []string {
 	// Look for the answer the view took
 	for _, a := range m.answers {
 		// Read the tab and the row from the view's answer
 		if a.Key == "view" && len(a.Values) > 0 {
-			// Read the row a move names
-			if len(a.Values) > 2 && a.Values[1] == "+move" {
+			// Read the row a new order names
+			if len(a.Values) > 2 && a.Values[1] == menu.Order {
 				return []string{a.Values[0], a.Values[2]}
 			}
 			return a.Values[:min(len(a.Values), 2)]
@@ -424,8 +428,10 @@ func crumb(q menu.Question, values []string) string {
 		if len(q.Tabs) > 1 {
 			parts = append(parts, values[0])
 		}
-		// Name the row picked on a tab that takes one, and how many on a tab that takes marks
+		// Name a new order, the row picked on a tab that takes one, and how many on a tab that takes marks
 		switch {
+		case len(values) > 1 && values[1] == menu.Order:
+			parts = append(parts, "order")
 		case i >= 0 && q.Tabs[i].Multi:
 			parts = append(parts, fmt.Sprintf("%d marked", len(values)-1))
 		case i >= 0 && len(values) > 1:
