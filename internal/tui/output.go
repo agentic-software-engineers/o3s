@@ -27,6 +27,17 @@ func (p *pane) add(line string) {
 	p.fill()
 }
 
+// redraw puts a line in the place of the last one, as a progress bar redraws itself.
+func (p *pane) redraw(line string) {
+	// Add the line where there is none to redraw
+	if len(p.lines) == 0 {
+		p.add(line)
+		return
+	}
+	p.lines[len(p.lines)-1] = colored(line)
+	p.fill()
+}
+
 // size fits the pane into the room the screen leaves it, breaking every line anew for its width.
 func (p *pane) size(width, height int) {
 	p.width = width

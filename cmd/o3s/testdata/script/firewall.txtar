@@ -43,7 +43,7 @@ stderr 'unknown command "nosuch" for "o3s firewall"'
   ]
 }
 -- want.txt --
-HOST             PORTS   DATA  LAST SEEN  EXPIRES   SECRET           BY
+HOST             PORTS   DATA  LAST SEEN  CLOSES    SECRET           BY
 example.com      22,443  –     –          expired                    user
 api.example.com  443     –     –          for good  EXAMPLE_TOKEN !  registry.example.com/features/tool
 
@@ -52,7 +52,7 @@ expired: past its end time, remove these with o3s firewall prune
 
 Blocked names show while the stack runs
 -- want-traffic.txt --
-HOST             PORTS   DATA    LAST SEEN    EXPIRES   SECRET           BY
+HOST             PORTS   DATA    LAST SEEN    CLOSES    SECRET           BY
 example.com      22,443  1.2 GB  5m ago       expired                    user
 api.example.com  443     0 B     never, dead  for good  EXAMPLE_TOKEN !  registry.example.com/features/tool
 
@@ -60,6 +60,6 @@ api.example.com  443     0 B     never, dead  for good  EXAMPLE_TOKEN !  registr
 dead: no data in 30 days, remove it with o3s firewall rm <host>
 expired: past its end time, remove these with o3s firewall prune
 
-BLOCKED          ATTEMPTS  LAST SEEN
+NAME             ATTEMPTS  LAST SEEN
 blocked.example  3         5m ago
 old.example      12        2d ago

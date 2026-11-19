@@ -11,7 +11,7 @@ const create = "+create"
 
 // projectView shows the projects the workspace lists.
 func projectView(h Home) Question {
-	t := Tab{Name: "Projects", About: "Repositories in the workspace, cloned into projects/<host>/<owner>/<name>.", Options: []Option{{Value: add, Label: "+ Add a project…"}, {Value: create, Label: "+ Create a project…"}}}
+	t := Tab{Name: "Projects", About: "Repositories in the workspace, cloned into projects/<host>/<owner>/<name>.", Header: []string{"NAME", "HOST"}, Options: []Option{{Value: add, Label: "+ Add a project…"}, {Value: create, Label: "+ Create a project…"}}}
 	// Show every project by its name with its host
 	for _, p := range h.Projects {
 		r, err := project.Parse(p)

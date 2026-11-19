@@ -21,7 +21,7 @@ import (
 
 // newInit builds the command that makes the working folder a home, and prepares the host for it on every start.
 func newInit() *cobra.Command {
-	var skipVM, skipAppArmor, guest bool
+	var skipVM, skipAppArmor, guest, yes bool
 	c := &cobra.Command{
 		Use:   "init",
 		Short: "Make this folder an o3s home, or prepare the host for the home it is",
@@ -37,10 +37,9 @@ func newInit() *cobra.Command {
 				return fmt.Errorf("%w: AppArmor always runs in the home's VM, pair --dangerously-skip-apparmor with --dangerously-skip-vm", ErrUsage)
 			}
 			_, vmErr := vm.Find(dir)
-			// Ask a new home at a terminal how it isolates the cage, where no flag chose already
-			if !guest && !skipVM && !home.Exists(dir) && vmErr != nil && isInteractive(cmd.InOrStdin(), cmd.OutOrStdout()) {
-				chosen := interview(cmd.InOrStdin(), cmd.OutOrStdout())
-				skipVM, skipAppArmor = chosen.skipVM, chosen.skipAppArmor
+			// Ask a new home at a terminal how it isolates the cage, in the menu's own dialog, where no flag chose already
+			if !guest && !skipVM && !yes && !home.Exists(dir) && vmErr != nil && isInteractive(cmd.InOrStdin(), cmd.OutOrStdout()) {
+				return openMenu(cmd.Context(), "init")
 			}
 			// Make the home inside its VM, the default, where this folder holds no home of its own
 			if !guest && !skipVM && !home.Exists(dir) {
@@ -102,13 +101,15 @@ func newInit() *cobra.Command {
 	}
 	c.Flags().BoolVar(&skipVM, "dangerously-skip-vm", false, "run the stack on this machine's kernel, without the home's VM")
 	c.Flags().BoolVar(&skipAppArmor, "dangerously-skip-apparmor", false, "run the cage without AppArmor, for a home without its VM on a host that lacks it")
+	c.Flags().BoolVarP(&yes, "yes", "y", false, "take the recommended answers, the home's VM among them, without asking")
 	c.Flags().BoolVar(&guest, "guest", false, "make the home inside the VM it runs in")
 	_ = c.Flags().MarkHidden("guest")
 	return c
 }
 
-// initVM makes the home inside its VM: it binds this folder to the VM, starts the VM, puts this o3s into it where it runs
-// another, and makes the home there.
+// initVM makes the home inside its VM, step by step, each named as it starts: it checks that this machine runs the VM,
+// starts the VM, puts this o3s into it where it runs another, makes the home there, and marks it finished. A step that
+// fails names its cause, and running init again goes on where it stopped.
 func initVM(cmd *cobra.Command, dir string) error {
 	current := version()
 	folder, err := release.Folder(current)
@@ -121,28 +122,53 @@ func initVM(cmd *cobra.Command, dir string) error {
 	if err != nil {
 		return err
 	}
+	// Hand back a machine that lacks what runs the VM, before anything is written or downloads
+	if err := lima.Check(); err != nil {
+		return err
+	}
 	name, err := vm.Bind(dir)
 	// Hand back a folder that fails to hold its VM's ID
 	if err != nil {
 		return err
 	}
-	ctx, errOut := cmd.Context(), cmd.ErrOrStderr()
-	// Hand back a VM that fails to come up
-	if err := lima.Start(ctx, name, errOut); err != nil {
-		return fmt.Errorf("start the VM %s: %w", name, err)
+	m, err := managed(dir, name)
+	// Hand back a host without the VM manager
+	if err != nil {
+		return err
+	}
+	ctx, out, errOut := cmd.Context(), cmd.OutOrStdout(), cmd.ErrOrStderr()
+	// Warn that the VM runs slowly without the machine's own acceleration
+	if !m.lima.Accelerated() {
+		warn(errOut, "this machine offers no KVM, so the home's VM runs slowly")
+	}
+	fmt.Fprintf(out, "Starting the VM %s, its first start downloads Ubuntu and takes a few minutes\n", name)
+	// Hand back a VM that fails to come up, in the manager's words
+	if err := m.lima.Start(ctx, name, errOut); err != nil {
+		return vmFailure("start the VM "+name, err, vmLogPath(dir))
 	}
 	// Put this o3s into the VM where it runs another, and a dev build every time
-	if !release.IsRelease(current) || !lima.Installed(ctx, name, current) {
+	if !release.IsRelease(current) || !m.lima.Installed(ctx, name, current) {
+		fmt.Fprintf(out, "Installing o3s %s in the VM\n", current)
 		// Hand back o3s that fails to reach the VM
-		if err := installInVM(ctx, lima, name, folder, errOut); err != nil {
+		if err := installInVM(ctx, m.lima, dir, name, folder, errOut); err != nil {
 			return err
 		}
 	}
-	return lima.Init(ctx, name, cmd.InOrStdin(), cmd.OutOrStdout(), errOut)
+	fmt.Fprintln(out, "Making the home in the VM")
+	// Hand back a home that fails to appear in the VM
+	if err := m.lima.Init(ctx, name, cmd.InOrStdin(), out, errOut); err != nil {
+		return vmFailure("make the home in the VM "+name, err, vmLogPath(dir))
+	}
+	// Hand back a home whose finish stays unrecorded
+	if err := vm.MarkReady(dir); err != nil {
+		return err
+	}
+	fmt.Fprintf(out, "The home runs in its VM %s, step in with: o3s cage shell --vm\n", name)
+	return nil
 }
 
 // installInVM checks the release files of a folder on this host and installs o3s from them in a home's VM.
-func installInVM(ctx context.Context, lima vm.Lima, name, folder string, out io.Writer) error {
+func installInVM(ctx context.Context, lima vm.Lima, dir, name, folder string, out io.Writer) error {
 	staging, err := os.MkdirTemp("", "o3s")
 	// Hand back a host without room for the release files
 	if err != nil {
@@ -158,9 +184,9 @@ func installInVM(ctx context.Context, lima vm.Lima, name, folder string, out io.
 	if err := release.Bundle(ctx, folder, bundle); err != nil {
 		return err
 	}
-	// Hand back an install that fails in the VM
+	// Hand back an install that fails in the VM, in the manager's words
 	if err := lima.Install(ctx, name, bundle, out); err != nil {
-		return fmt.Errorf("install o3s in the VM %s: %w", name, err)
+		return vmFailure("install o3s in the VM "+name, err, vmLogPath(dir))
 	}
 	return nil
 }

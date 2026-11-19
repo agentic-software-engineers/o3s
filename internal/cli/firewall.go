@@ -205,7 +205,7 @@ func showFirewall(cmd *cobra.Command, limit int, asJSON bool) error {
 	out := cmd.OutOrStdout()
 	now := time.Now()
 	w := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "HOST\tPORTS\tDATA\tLAST SEEN\tEXPIRES\tSECRET\tBY")
+	fmt.Fprintln(w, strings.Join(menu.HostHeader, "\t"))
 	waiting, dead, expired := false, false, false
 	// Write a row per host, in the order the file holds them
 	for _, h := range c.Hosts {
@@ -252,10 +252,10 @@ func showFirewall(cmd *cobra.Command, limit int, asJSON bool) error {
 		return nil
 	}
 	w = tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "BLOCKED\tATTEMPTS\tLAST SEEN")
+	fmt.Fprintln(w, strings.Join(menu.BlockedHeader, "\t"))
 	// Write a row per refused name
 	for _, b := range blocked {
-		fmt.Fprintf(w, "%s\t%d\t%s\n", b.Name, b.Attempts, traffic.Ago(b.LastSeen, now))
+		fmt.Fprintln(w, strings.Join(append([]string{b.Name}, menu.BlockedRow(b.Attempts, traffic.Ago(b.LastSeen, now))...), "\t"))
 	}
 	return w.Flush()
 }

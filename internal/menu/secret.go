@@ -15,10 +15,10 @@ const (
 
 // secretView shows the secrets the proxy injects, each with whether it holds a value and the hosts that carry it.
 func secretView(h Home) Question {
-	t := Tab{Name: "Secrets", About: "Values the proxy injects. The cage never sees them.", Options: []Option{{Value: add, Label: "+ Add a secret…"}}}
+	t := Tab{Name: "Secrets", About: "Values the proxy injects. The cage never sees them.", Header: SecretHeader, Options: []Option{{Value: add, Label: "+ Add a secret…"}}}
 	// Show every secret with its state and its hosts
 	for _, s := range h.Secrets {
-		t.Options = append(t.Options, Option{Value: s.Name, Columns: []string{SecretState(s.Set), strings.Join(carrying(h, s.Name), ", ")}})
+		t.Options = append(t.Options, Option{Value: s.Name, Columns: SecretRow(s.Set, carrying(h, s.Name))})
 	}
 	return Question{Key: "view", Kind: View, Title: "Secret", Tabs: []Tab{t}}
 }

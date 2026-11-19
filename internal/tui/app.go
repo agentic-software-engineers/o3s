@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"slices"
 	"strings"
+	"time"
 
 	"charm.land/bubbles/v2/key"
 	"github.com/charmbracelet/x/ansi"
@@ -137,6 +138,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, m.ask()
 	case askedMsg:
 		return m.asked(msg)
+	case refreshMsg:
+		return m.refreshed()
 	case plannedMsg:
 		m.queue, m.failed, m.ran, m.quiet = msg, false, 0, len(msg) > 0
 		m.out = pane{}
@@ -153,7 +156,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.state = running
 		return m.runNext()
 	case lineMsg:
-		m.out.add(string(msg))
+		// Redraw the last line where the command redraws it, and add a line otherwise
+		if msg.redraw {
+			m.out.redraw(msg.text)
+		} else {
+			m.out.add(msg.text)
+		}
 		return m, m.stream.next()
 	case endMsg:
 		return m.ended(msg)
@@ -181,7 +189,33 @@ func (m model) asked(msg askedMsg) (tea.Model, tea.Cmd) {
 		q.Default, m.carry = m.carry, nil
 	}
 	m.q, m.field, m.state, m.previewTop = q, newField(q), asking, 0
+	// Ask again for the rows still on their way
+	if q.Pending() {
+		return m, tea.Tick(refreshEvery, func(time.Time) tea.Msg { return refreshMsg{} })
+	}
 	return m, nil
+}
+
+// refreshEvery is how often a view asks again for rows still on their way.
+const refreshEvery = 300 * time.Millisecond
+
+// refreshMsg asks a view still waiting for rows to ask again.
+type refreshMsg struct{}
+
+// refreshed asks the view in front of the user again, at the tab and the row the user is on, so the rows that came in
+// show where they belong.
+func (m model) refreshed() (tea.Model, tea.Cmd) {
+	v, isView := m.field.(view)
+	// Leave a screen that moved on from the view
+	if m.state != asking || !isView {
+		return m, nil
+	}
+	m.carry = v.place()
+	h, a := m.home, m.answers
+	return m, func() tea.Msg {
+		q, done := menu.Next(h, a)
+		return askedMsg{q: q, done: done}
+	}
 }
 
 // key follows a key press in the state the app is in.

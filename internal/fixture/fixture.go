@@ -27,6 +27,27 @@ const (
 	RefusedName = "blocked.example"
 	// AbsentName is a name nothing knows.
 	AbsentName = "absent.example"
+	// NewHost and NextHost are two hosts a test allows afresh, apart from every other.
+	NewHost  = "new.example.net"
+	NextHost = "next.example.net"
+)
+
+// What the gateway records for a host, as the screen shows it.
+const (
+	// DataMoved is the data a host moved.
+	DataMoved = "1.2 GB"
+	// LastSeen is when a host last moved data, or a name was last refused.
+	LastSeen = "2m ago"
+	// Attempts is how often the gateway refused a name.
+	Attempts = 3
+)
+
+// What a run leaves behind.
+const (
+	// Duration is how long a host stays open, as the user types it.
+	Duration = "90m"
+	// LogFile is where a step writes its whole log.
+	LogFile = "/var/log/o3s/example.log"
 )
 
 // Machines a home runs on.
@@ -83,6 +104,8 @@ const (
 const (
 	// Repo is a repository named by its owner, on the default host.
 	Repo = "example/app"
+	// OtherRepo is a second repository, apart from Repo.
+	OtherRepo = "example/other"
 	// NestedRepo is a repository on its own host, with groups above it.
 	NestedRepo = "example.com/group/sub/app"
 )
@@ -159,6 +182,13 @@ func Env() map[string]string {
 		"THIRD_HOST":        ThirdHost,
 		"REFUSED_NAME":      RefusedName,
 		"ABSENT_NAME":       AbsentName,
+		"NEW_HOST":          NewHost,
+		"NEXT_HOST":         NextHost,
+		"DATA_MOVED":        DataMoved,
+		"LAST_SEEN":         LastSeen,
+		"ATTEMPTS":          strconv.Itoa(Attempts),
+		"DURATION":          Duration,
+		"LOG_FILE":          LogFile,
 		"SSH_HOST":          SSHHost,
 		"ADDRESS":           Address,
 		"RANGE":             Range,
@@ -175,6 +205,7 @@ func Env() map[string]string {
 		"OTHER_FEATURE":     OtherFeature,
 		"THIRD_FEATURE":     ThirdFeature,
 		"REPO":              Repo,
+		"OTHER_REPO":        OtherRepo,
 		"NESTED_REPO":       NestedRepo,
 		"VERSION":           Version,
 		"NEWER_VERSION":     NewerVersion,

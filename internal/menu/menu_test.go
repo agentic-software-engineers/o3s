@@ -8,6 +8,7 @@ import (
 
 	"github.com/hansehart/o3s/internal/config"
 	"github.com/hansehart/o3s/internal/fixture"
+	"github.com/hansehart/o3s/internal/vm"
 )
 
 // Ports as a dialog takes them, the one a host opens by default and both a host may open.
@@ -28,11 +29,11 @@ var aHome = Home{
 		{Name: fixture.ThirdHost, Ports: []int{fixture.Port}, By: []string{"user"}, Expires: fixture.LongAgoText},
 		{Name: fixture.OtherHost, Ports: []int{fixture.Port}, By: []string{fixture.Store + "/" + fixture.Feature, "user"}},
 	},
-	Traffic:  map[string]Traffic{fixture.Host: {Data: "1.2 GB", Seen: "2m ago"}},
+	Traffic:  map[string]Traffic{fixture.Host: {Data: fixture.DataMoved, Seen: fixture.LastSeen}},
 	Secrets:  []Secret{{Name: fixture.Secret, Set: false}, {Name: fixture.OtherSecret, Set: true}},
 	Stores:   []string{fixture.Store},
 	Projects: []string{"github.com/" + fixture.Repo},
-	Blocked:  []Option{{Value: fixture.RefusedName, Columns: []string{"3 attempts", "5m ago"}}, {Value: fixture.AbsentName, Columns: []string{"1 attempt", "2h ago"}}},
+	Blocked:  []Option{{Value: fixture.RefusedName, Columns: BlockedRow(fixture.Attempts, fixture.LastSeen)}, {Value: fixture.AbsentName, Columns: BlockedRow(fixture.Attempts, fixture.LastSeen)}},
 	Running:  true,
 	Stack:    []Fact{{Label: "Cage", Value: "running"}},
 	Lookup:   fakeLookup{},
@@ -145,7 +146,7 @@ func TestTheFirewallViewShowsTheHostsAndTheRefusedNames(t *testing.T) {
 		t.Errorf("Allowed = %v", allowed.Options)
 	}
 	// Require the host's traffic and end in its columns
-	if diff := cmp.Diff([]string{bothPorts, "1.2 GB", "2m ago", "for good", "", "user"}, allowed.Options[1].Columns); diff != "" {
+	if diff := cmp.Diff([]string{bothPorts, fixture.DataMoved, fixture.LastSeen, "for good", "", "user"}, allowed.Options[1].Columns); diff != "" {
 		t.Errorf("host columns (-want +got):\n%s", diff)
 	}
 	// Require the expired host to read as expired, and the key that prunes it
@@ -163,15 +164,15 @@ func TestEveryFirewallDialogEndsInItsCommand(t *testing.T) {
 	dialogs{
 		{
 			"a new host on the HTTPS port for good",
-			[][]string{{"firewall"}, {"Allowed", add}, {"one.example.net"}, {port}, {always}, {none}, {yes}},
+			[][]string{{"firewall"}, {"Allowed", add}, {fixture.NewHost}, {port}, {always}, {none}, {yes}},
 			[]string{"do", "view", "hosts", "ports", "for", "secret", "apply"},
-			[]Command{{Args: []string{"firewall", "add", "one.example.net", "--port", port, "--yes"}}},
+			[]Command{{Args: []string{"firewall", "add", fixture.NewHost, "--port", port, "--yes"}}},
 		},
 		{
 			"two hosts on typed ports for a typed time with a new secret in two sites",
-			[][]string{{"firewall"}, {"Allowed", add}, {"one.example.net two.example.net"}, {typed}, {"22, 443"}, {typed}, {"90m"}, {fresh}, {fixture.NewSecret}, {"header", "body"}, {yes}},
+			[][]string{{"firewall"}, {"Allowed", add}, {fixture.NewHost + " " + fixture.NextHost}, {typed}, {strconv.Itoa(fixture.OtherPort) + ", " + port}, {typed}, {fixture.Duration}, {fresh}, {fixture.NewSecret}, {"header", "body"}, {yes}},
 			[]string{"do", "view", "hosts", "ports", "portsTyped", "for", "forTyped", "secret", "secretName", "inject", "apply"},
-			[]Command{{Args: []string{"firewall", "add", "one.example.net", "two.example.net", "--port", bothPorts, "--for", "90m", "--secret", fixture.NewSecret, "--inject", "header,body", "--yes"}}},
+			[]Command{{Args: []string{"firewall", "add", fixture.NewHost, fixture.NextHost, "--port", bothPorts, "--for", fixture.Duration, "--secret", fixture.NewSecret, "--inject", "header,body", "--yes"}}},
 		},
 		{
 			"two refused names for an hour",
@@ -230,7 +231,7 @@ func TestAHostsDetailShowsItsFacts(t *testing.T) {
 
 	got := asked[2]
 	// Require the facts of the host
-	if diff := cmp.Diff([]Fact{{"Ports", bothPorts}, {"Data", "1.2 GB"}, {"Last seen", "2m ago"}, {"Closes", "for good"}, {"Secret", "none"}, {"Needed by", "user"}}, got.Facts); diff != "" {
+	if diff := cmp.Diff([]Fact{{"Ports", bothPorts}, {"Data", fixture.DataMoved}, {"Last seen", fixture.LastSeen}, {"Closes", "for good"}, {"Secret", "none"}, {"Needed by", "user"}}, got.Facts); diff != "" {
 		t.Errorf("facts (-want +got):\n%s", diff)
 	}
 	// Require the removal among the actions, and Back last
@@ -316,10 +317,10 @@ func TestEveryOtherDialogEndsInItsCommand(t *testing.T) {
 	}.check(t, aHome)
 	dialogs{
 		{
-			"a new home inside its VM, on the real terminal for sudo and the VM",
+			"a new home inside its VM, its steps shown in the menu",
 			[][]string{{"init"}, {inVM}, {yes}},
 			[]string{"do", "isolation", "apply"},
-			[]Command{{Args: []string{"init"}, Terminal: true}},
+			[]Command{{Args: []string{"init", "--yes"}}},
 		},
 		{
 			"a new home on this machine's kernel with AppArmor",
@@ -355,11 +356,11 @@ func TestTheUpdateViewMarksEveryNewerPart(t *testing.T) {
 
 // A project's removal holds the name typed back to the project's owner/name.
 func TestAProjectsRemovalChecksTheTypedName(t *testing.T) {
-	asked, cmds := walk(t, aHome, []string{"project"}, []string{"Projects", "github.com/" + fixture.Repo}, []string{remove}, []string{"other/name"})
+	asked, cmds := walk(t, aHome, []string{"project"}, []string{"Projects", "github.com/" + fixture.Repo}, []string{remove}, []string{fixture.OtherRepo})
 
 	// Require the name checked as it is typed
-	if _, err := asked[3].Check("other/name"); err == nil {
-		t.Errorf("Check(other/name) = nil, want the name named")
+	if _, err := asked[3].Check(fixture.OtherRepo); err == nil {
+		t.Errorf("Check(%s) = nil, want the name named", fixture.OtherRepo)
 	}
 	// Require nothing deleted for a name that differs
 	if diff := cmp.Diff([]Command{{Note: nothingChanged}}, cmds); diff != "" {
@@ -376,7 +377,7 @@ func TestHostRowShowsAHostTheSameEverywhere(t *testing.T) {
 		waiting bool
 		want    []string
 	}{
-		{aHome.Hosts[0], aHome.Traffic[fixture.Host], false, []string{bothPorts, "1.2 GB", "2m ago", "for good", "", "user"}},
+		{aHome.Hosts[0], aHome.Traffic[fixture.Host], false, []string{bothPorts, fixture.DataMoved, fixture.LastSeen, "for good", "", "user"}},
 		{aHome.Hosts[1], Traffic{}, true, []string{port, "–", "–", "for good", fixture.Secret + " !", "user"}},
 		{aHome.Hosts[2], Traffic{}, false, []string{port, "–", "–", "expired", "", "user"}},
 		{config.Host{Name: fixture.Host, Ports: []int{fixture.Port}, Expires: fixture.InAnHourText, By: []string{"user"}}, Traffic{}, false, []string{port, "–", "–", "in 1h", "", "user"}},
@@ -398,36 +399,70 @@ func TestSecretStateReadsSetOrEmpty(t *testing.T) {
 	}
 }
 
-// Every cage dialog ends in its command: a shell on the real terminal, the start, the stop, and the removal once
-// confirmed, and a home in its VM opens its shell in the VM.
+// aVMHome is a folder whose home lives in its VM, the VM in the state given.
+func aVMHome(state vm.State) Home {
+	return Home{Dir: aHome.Dir, VM: state, Stack: []Fact{{Label: "VM", Value: string(state)}}, Lookup: fakeLookup{}}
+}
+
+// Every cage dialog ends in its command: the start, the stop, and the removal once confirmed, a shell in a running VM
+// on the real terminal, and init for a VM it has yet to finish.
 func TestEveryCageDialogEndsInItsCommand(t *testing.T) {
 	dialogs{
 		{"starting", [][]string{{"cage"}, {start}}, []string{"do", "action"}, []Command{{Args: []string{"cage", "start"}}}},
-		{"stopping", [][]string{{"cage"}, {stop}}, []string{"do", "action"}, []Command{{Args: []string{"cage", "stop"}}}},
 		{"removing", [][]string{{"cage"}, {remove}, {yes}}, []string{"do", "action", "apply"}, []Command{{Args: []string{"cage", "rm", "--yes"}}}},
 		{"declining the removal", [][]string{{"cage"}, {remove}, {"no"}}, []string{"do", "action", "apply"}, []Command{{Note: nothingChanged}}},
 	}.check(t, aHome)
-	inVM := Home{Dir: aHome.Dir, InVM: true, Stack: []Fact{{Label: "VM", Value: "running"}}, Lookup: fakeLookup{}}
 	dialogs{
 		{"a shell in the VM, on the real terminal", [][]string{{"cage"}, {vmShell}}, []string{"do", "action"}, []Command{{Args: []string{"cage", "shell", "--vm"}, Terminal: true}}},
-	}.check(t, inVM)
+		{"stopping the VM", [][]string{{"cage"}, {stop}}, []string{"do", "action"}, []Command{{Args: []string{"cage", "stop"}}}},
+	}.check(t, aVMHome(vm.Running))
+	dialogs{
+		{"finishing the VM", [][]string{{"cage"}, {finish}}, []string{"do", "action"}, []Command{{Args: []string{"init", "--yes"}}}},
+	}.check(t, aVMHome(vm.Unfinished))
 }
 
-// Beside a home in its VM, the main menu offers the cage and the secrets, noting the VM's state, and the removal names
-// the VM's disk.
+// The cage view offers what applies where the cage stands, and removing it always.
+func TestTheCageOffersWhatApplies(t *testing.T) {
+	running := aHome
+	running.Stack = []Fact{{Label: "Cage", Value: "running"}}
+	tests := []struct {
+		name string
+		h    Home
+		want []string
+	}{
+		{"a stopped stack", Home{Dir: aHome.Dir, Exists: true, Stack: []Fact{{Label: "Cage", Value: "stopped"}}}, []string{ide, shell, start, remove}},
+		{"a running stack", running, []string{ide, shell, stop, remove}},
+		{"an unfinished VM", aVMHome(vm.Unfinished), []string{finish, remove}},
+		{"a stopped VM", aVMHome(vm.Stopped), []string{start, remove}},
+		{"a running VM", aVMHome(vm.Running), []string{vmShell, stop, remove}},
+	}
+	// Check every state
+	for _, tt := range tests {
+		q, _ := Next(tt.h, Answers{}.With("do", []string{"cage"}))
+
+		var got []string
+		// Take every action offered
+		for _, o := range q.Options {
+			got = append(got, o.Value)
+		}
+		// Report actions that differ
+		if !cmp.Equal(tt.want, got) {
+			t.Errorf("%s: actions = %v, want %v", tt.name, got, tt.want)
+		}
+	}
+}
+
+// Beside a home in its VM, the main menu offers the cage alone, noting the VM's state, since the home's secrets live
+// in the VM, and the removal names the VM's disk.
 func TestAHomeInItsVMOffersItsCage(t *testing.T) {
-	h := Home{Dir: aHome.Dir, InVM: true, Stack: []Fact{{Label: "VM", Value: "running"}}, Lookup: fakeLookup{}}
+	h := aVMHome(vm.Running)
 
 	q, _ := Next(h, nil)
 	asked, _ := walk(t, h, []string{"cage"}, []string{remove}, []string{"no"})
 
-	// Require the cage with the VM's state, and the secrets
-	if len(q.Options) != 2 || q.Options[0].Value != "cage" || q.Options[0].Note != "VM, stack and cage · running" || q.Options[1].Value != "secret" {
+	// Require the cage alone, with the VM's state
+	if len(q.Options) != 1 || q.Options[0].Value != "cage" || q.Options[0].Note != "VM, stack and cage · running" {
 		t.Errorf("main menu = %+v", q.Options)
-	}
-	// Require the shell in the VM first among the actions
-	if asked[1].Options[0].Value != vmShell {
-		t.Errorf("actions = %+v, want the shell in the VM first", asked[1].Options)
 	}
 	// Require the removal to name the VM's disk
 	if want := "- the VM and its disk, with the home and the projects inside"; asked[2].Preview[0] != want {

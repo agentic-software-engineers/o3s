@@ -4,9 +4,41 @@ mkdir $WORK/home
 cd $WORK/home
 exec o3s init
 exists .o3s/id
+exists .o3s/ready
 ! exists o3s.json
-grep 'tty=false start --name=o3s-[0-9a-f]{12} --vm-type=qemu --timeout=30m0s -$' $WORK/limactl.log
-grep 'tty=false copy -r \S+/o3s-release o3s-[0-9a-f]{12}:/tmp/$' $WORK/limactl.log
+grep 'tty=false --log-format=json start --name=o3s-[0-9a-f]{12} --vm-type=qemu --timeout=30m0s -$' $WORK/limactl.log
+grep 'tty=false --log-format=json copy -r \S+/o3s-release o3s-[0-9a-f]{12}:/tmp/$' $WORK/limactl.log
+
+# init names its steps in o3s's words, shows the download's progress, and keeps Lima's own records in the home's VM log
+stdout '^Starting the VM o3s-[0-9a-f]{12}, its first start downloads Ubuntu and takes a few minutes$'
+stdout '^Installing o3s dev in the VM$'
+stdout '^Making the home in the VM$'
+stdout '^The home runs in its VM o3s-[0-9a-f]{12}, step in with: o3s cage shell --vm$'
+stderr '819.29 MiB / 819.29 MiB'
+! stderr 'level'
+exec sh -c 'cat $WORK/.local/state/o3s/*/vm.log'
+stdout '"msg":"Starting the instance"'
+
+# A machine without QEMU stops before anything downloads, naming how to install it
+mv $WORK/.bin/qemu-img $WORK/qemu-img
+mkdir $WORK/noqemu
+cd $WORK/noqemu
+! exec o3s init --yes
+stderr 'this machine lacks QEMU, which runs the home''s VM on Linux, install it as in:'
+! exists .o3s/id
+mv $WORK/qemu-img $WORK/.bin/qemu-img
+
+# A VM that fails to start names the host this machine could not reach and that init goes on where it stopped
+exec sh -c 'printf "%s" "failed to download the image: dial tcp: lookup $HOST on 127.0.0.11:53: server misbehaving" > $WORK/lima-fails'
+mkdir $WORK/offline
+cd $WORK/offline
+! exec o3s init --yes
+stderr '^error: start the VM o3s-[0-9a-f]{12}: failed to download the image'
+stderr 'this machine could not reach '${HOST@R}', check its network'
+stderr 'run o3s init again, it goes on where it stopped'
+! exists .o3s/ready
+rm $WORK/lima-fails
+cd $WORK/home
 grep '^O3S_RELEASE_URL=file:///tmp/o3s-release sh /tmp/o3s-release/install.sh$' $WORK/vm.log
 grep 'init --guest' $WORK/vm.log
 

@@ -26,7 +26,7 @@ func newView(q menu.Question) view {
 	v := view{q: q, lists: make([]list, len(q.Tabs))}
 	// Build the list of every tab
 	for i, t := range q.Tabs {
-		v.lists[i] = list{options: t.Options}
+		v.lists[i] = list{options: t.Options, header: t.Header}
 		// Start the marks of a tab the user marks
 		if t.Multi {
 			v.lists[i].marks = map[string]bool{}
@@ -45,6 +45,17 @@ func newView(q menu.Question) view {
 		v.lists[v.tab].cursor = max(slices.IndexFunc(q.Tabs[v.tab].Options, func(o menu.Option) bool { return o.Value == q.Default[1] }), 0)
 	}
 	return v
+}
+
+// place is where the user is in the view: the tab in view and the row under the cursor.
+func (v view) place() []string {
+	t, l := v.current()
+	o, ok := l.highlighted()
+	// Name the tab alone where no row is under the cursor
+	if !ok {
+		return []string{t.Name}
+	}
+	return []string{t.Name, o.Value}
 }
 
 // current is the tab in view and its list.

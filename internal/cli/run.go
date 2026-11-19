@@ -45,7 +45,7 @@ func Run(ctx context.Context, args []string, s Streams) int {
 	if exit, ok := errors.AsType[errExit](err); ok {
 		return exit.code
 	}
-	err = inItsVM(err)
+	err = inItsVM(ctx, err)
 	fmt.Fprintf(s.Err, "error: %v\n", err)
 	// Leave the error where the menu asks for it, which outlasts the terminal it printed on
 	if file := os.Getenv(tui.ErrorFileEnv); file != "" {
@@ -59,16 +59,26 @@ func Run(ctx context.Context, args []string, s Streams) int {
 	return 1
 }
 
-// inItsVM names the way into the home's VM where a command finds no home in a folder whose home lives there.
-func inItsVM(err error) error {
-	dir, werr := workingHome()
-	// Keep the error of a folder without a home in a VM
-	if !errors.Is(err, config.ErrNoHome) || werr != nil {
+// inItsVM names the way into the home's VM where a command finds no home in a folder whose home lives there: in through
+// the VM's shell where it runs, and what starts or finishes it otherwise.
+func inItsVM(ctx context.Context, err error) error {
+	// Keep the error of a folder that holds no home of any kind
+	if !errors.Is(err, config.ErrNoHome) {
 		return err
 	}
+	m, inVM, merr := homeMachine()
 	// Keep the error of a folder whose home has no VM
-	if _, ferr := vm.Find(dir); ferr != nil {
+	if !inVM {
 		return err
+	}
+	// Point at the VM's shell where the VM's state stays unknown
+	if merr != nil {
+		return errors.New("this home lives in its VM, run its commands there: o3s cage shell --vm")
+	}
+	state, serr := m.state(ctx)
+	// Point a VM that is not running at what starts or finishes it
+	if serr == nil && state != vm.Running {
+		return fmt.Errorf("this home lives in its VM: %w", notRunning(m.name, state))
 	}
 	return errors.New("this home lives in its VM, run its commands there: o3s cage shell --vm")
 }

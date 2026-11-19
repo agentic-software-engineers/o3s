@@ -15,7 +15,7 @@ func updateDialog(h Home, a Answers) (Question, bool) {
 	}
 	// Show the parts with a newer version first, all of them marked
 	if !a.has("view") {
-		t := Tab{Name: "Update", About: "Newer versions, all chosen.", Empty: "Everything is up to date.", Multi: true}
+		t := Tab{Name: "Update", About: "Newer versions, all chosen.", Empty: "Everything is up to date.", Header: []string{"PART", "CHANGE"}, Multi: true}
 		// Show every part with what changes, marked
 		for _, u := range updates {
 			t.Options = append(t.Options, Option{Value: u.Target, Label: u.Name, Columns: []string{u.Change}})

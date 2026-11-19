@@ -1,14 +1,8 @@
-# cage start creates the home's VM, named by the folder's ID, from the template in o3s's own VM folder
+# cage start starts the home's finished VM, named by the folder's ID
 cd home
 exec o3s cage start
 stdout '^The VM o3s-0123456789ab runs$'
-grep 'LIMA_HOME=\S+/\.local/share/o3s/vm --tty=false start --name=o3s-0123456789ab --vm-type=qemu --timeout=30m0s -$' $WORK/limactl.log
-grep 'plain: true' $WORK/template.yaml
-! exists o3s.json
-
-# Starting again starts the VM the home has
-exec o3s cage start
-grep 'tty=false start o3s-0123456789ab$' $WORK/limactl.log
+grep 'LIMA_HOME=\S+/\.local/share/o3s/vm --tty=false --log-format=json start o3s-0123456789ab$' $WORK/limactl.log
 
 # A command in the VM runs with its exit code passed on
 exec o3s cage shell --vm -- echo inside
@@ -23,7 +17,16 @@ stdout '^vm +running$'
 # stop stops the VM
 exec o3s cage stop
 stdout '^Stopped the VM o3s-0123456789ab$'
-grep 'tty=false stop o3s-0123456789ab$' $WORK/limactl.log
+grep 'tty=false --log-format=json stop o3s-0123456789ab$' $WORK/limactl.log
+
+# A stopped VM points at what starts it, from its shell and from a command that runs in it
+exec o3s cage
+stdout '^vm +stopped$'
+! exec o3s cage shell --vm -- true
+stderr 'the VM o3s-0123456789ab is stopped, start it with o3s cage start'
+! exec o3s firewall
+stderr 'this home lives in its VM: the VM o3s-0123456789ab is stopped, start it with o3s cage start'
+exec o3s cage start
 
 # Without a terminal or --yes, rm names the VM's disk and asks for --yes
 ! exec o3s cage rm
@@ -38,12 +41,7 @@ stderr 'this home lives in its VM, run its commands there: o3s cage shell --vm'
 exec o3s cage rm --yes
 stdout '^Deleted the VM o3s-0123456789ab$'
 ! exec o3s cage shell --vm -- true
-stderr 'does not exist'
-
-# The engine that needs a DNS server gets one
-env O3S_ENGINE=hcs
-exec o3s cage start
-grep 'vm-type=hcs --timeout=30m0s --dns=8.8.8.8 -$' $WORK/limactl.log
+stderr 'the VM o3s-0123456789ab is absent, run o3s init to make it'
 
 # An unknown engine is turned away
 env O3S_ENGINE=firecracker
@@ -58,3 +56,6 @@ stderr 'put limactl on PATH'
 
 -- home/.o3s/id --
 0123456789ab
+-- home/.o3s/ready --
+-- vms --
+o3s-0123456789ab

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/hansehart/o3s/internal/config"
+	"github.com/hansehart/o3s/internal/vm"
 )
 
 // Home is what the menu knows about the home it runs in when it starts, and where it asks the stores.
@@ -14,8 +15,8 @@ type Home struct {
 	Dir string
 	// Exists marks a folder that holds a home already.
 	Exists bool
-	// InVM marks a folder whose home lives in its VM, which holds the home's files.
-	InVM bool
+	// VM is where the VM of a home that lives in one stands, and empty for a home on this machine.
+	VM vm.State
 	// Now is the moment the menu reads the home at, which end times count from.
 	Now   time.Time
 	Hosts []config.Host
@@ -49,8 +50,10 @@ type Installed struct {
 
 // Lookup asks the stores what they offer and works out what a change brings to the home.
 type Lookup interface {
-	// Catalog lists the features a store offers.
+	// Catalog lists the features a store offers, once its catalog is read.
 	Catalog(store string) ([]Offer, error)
+	// Peek lists the features a store offers where its catalog is read already, and reports whether it is.
+	Peek(store string) ([]Offer, bool, error)
 	// Add shows what adding a feature brings.
 	Add(id string) (Preview, error)
 	// Remove shows what leaves with a feature.
@@ -135,20 +138,30 @@ type Question struct {
 	Tabs []Tab
 }
 
+// Pending reports whether a view waits for rows still on their way, so its screen asks again for them.
+func (q Question) Pending() bool {
+	return slices.ContainsFunc(q.Tabs, func(t Tab) bool { return t.Loading })
+}
+
 // Fact is one labeled fact a detail shows.
 type Fact struct {
 	Label, Value string
 }
 
-// Tab is one tab of a view: what it holds, what it says while it holds nothing, and how its rows answer.
+// Tab is one tab of a view: what it holds, what it says while it holds nothing, how its rows answer, and the labels of
+// its columns.
 type Tab struct {
 	Name, About, Empty string
 	Options            []Option
+	// Header labels the rows' label and each of their columns, the words the piped tables use.
+	Header []string
 	// Multi marks a tab whose rows the user marks and hands back together, the ones in Marked marked from the start.
 	Multi  bool
 	Marked []string
 	// Reorder lets the user move a row up or down.
 	Reorder bool
+	// Loading marks a tab whose rows are still on their way, which the view asks for again until they all came in.
+	Loading bool
 	// Keys are the single keys the tab acts on beside Enter.
 	Keys []Key
 }
@@ -283,12 +296,28 @@ func mainMenu(h Home) Question {
 	q := Question{Key: "do", Kind: Select, Title: "What do you want to do?"}
 	// Offer every group that works here
 	for _, e := range entries {
-		// Take init outside a home, every other group inside one, the secrets in both, and the cage beside a home in its VM
-		if e.Value == "init" && !h.Exists && !h.InVM || e.Value != "init" && (h.Exists || e.Value == "secret" || h.InVM && e.Value == "cage") {
+		// Take a group that works where the menu runs
+		if works(h, e.Value) {
 			q.Options = append(q.Options, e)
 		}
 	}
 	return q
+}
+
+// works reports whether a group works where the menu runs: init outside a home, the cage beside any home, the secrets
+// on this machine, which a home in its VM keeps inside it, and every other group inside a home on this machine.
+func works(h Home, group string) bool {
+	inVM := h.VM != ""
+	// Judge each group by where it acts
+	switch group {
+	case "init":
+		return !h.Exists && !inVM
+	case "cage":
+		return h.Exists || inVM
+	case "secret":
+		return !inVM
+	}
+	return h.Exists
 }
 
 // stackState names in a word whether the cage runs, or the VM of a home that lives in one.

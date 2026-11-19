@@ -29,6 +29,10 @@ func settle(m model, cmd tea.Cmd) (model, bool) {
 		if _, quit := msg.(tea.QuitMsg); quit {
 			return m, true
 		}
+		// Stop at a view's next ask for its rows, which a test sends itself when the rows came in
+		if _, refresh := msg.(refreshMsg); refresh {
+			return m, false
+		}
 		var next tea.Model
 		next, cmd = m.Update(msg)
 		m = next.(model)
@@ -76,7 +80,7 @@ func drive(m model, msgs ...tea.Msg) (model, bool) {
 }
 
 // allowLine is the command line allowing the fixture host on the HTTPS port for good ends in.
-var allowLine = "firewall add " + fixture.Host + " --port 443 --yes"
+var allowLine = "firewall add " + fixture.Host + " --port " + port + " --yes"
 
 // allowing are the keys that allow the fixture host on the HTTPS port for good, from the main menu to the confirmation.
 func allowing() []tea.Msg {
@@ -251,17 +255,17 @@ func TestAppKeepsTheEndOfALongTrail(t *testing.T) {
 
 	trail := strings.Split(stripped(m.View().Content), "\n")[1]
 	// Require the trail within the width, its start cut and its end, the last answer, in view
-	if ansi.StringWidth(trail) > narrow || !strings.HasPrefix(trail, "…") || !strings.HasSuffix(trail, "443") {
+	if ansi.StringWidth(trail) > narrow || !strings.HasPrefix(trail, "…") || !strings.HasSuffix(trail, port) {
 		t.Errorf("trail = %q, want its end within %d columns", trail, narrow)
 	}
 }
 
 // A command line shows as a shell takes it: a value with a space quoted, and a flag held to its value where it breaks.
 func TestEchoedQuotesAndHoldsFlagsToTheirValues(t *testing.T) {
-	got := echoed([]string{"firewall", "add", "bad host!", "--port", "443"})
+	got := echoed([]string{"firewall", "add", "bad host!", "--port", port})
 
 	// Require the value quoted and the flag held to its value
-	if want := "firewall add 'bad host!' --port" + nonBreakingSpace + "443"; got != want {
+	if want := "firewall add 'bad host!' --port" + nonBreakingSpace + port; got != want {
 		t.Errorf("echoed() = %q, want %q", got, want)
 	}
 	// Require the flag and its value on one line however narrow the screen
@@ -361,5 +365,72 @@ func TestAppShowsAShortPreviewWhole(t *testing.T) {
 	// Require every line and the summary, the whole preview in view
 	if !strings.Contains(view, "line 01") || !strings.Contains(view, "Adds 1 feature") || strings.Contains(view, "pgup/pgdn") {
 		t.Errorf("view:\n%s", view)
+	}
+}
+
+// A command that redraws its line, as a progress bar does, shows the line's last state alone, the lines around it
+// kept.
+func TestAppRedrawsALineTheCommandRedraws(t *testing.T) {
+	m, _ := anApp(t, map[string]string{allowLine: `printf 'before\n10%%\r50%%\r100%%\nafter\n'`})
+
+	m, _ = drive(m, append(allowing(), enter)...)
+
+	var trimmed []string
+	// Take every line without the padding the pane fills it to the width with
+	for line := range strings.SplitSeq(stripped(m.View().Content), "\n") {
+		trimmed = append(trimmed, strings.TrimRight(line, " "))
+	}
+	view := strings.Join(trimmed, "\n")
+	// Require the bar's last state between the lines around it, its earlier states gone
+	if !strings.Contains(view, "before\n100%\nafter") || strings.Contains(view, "50%") {
+		t.Errorf("view:\n%s", view)
+	}
+}
+
+// slowStore is a store whose catalog comes in once it is told to, offering one feature.
+type slowStore struct{ ready *bool }
+
+// Catalog lists the store's one feature.
+func (s slowStore) Catalog(string) ([]menu.Offer, error) {
+	return []menu.Offer{{ID: fixture.Feature}}, nil
+}
+
+// Peek lists the feature once the catalog came in.
+func (s slowStore) Peek(store string) ([]menu.Offer, bool, error) {
+	catalog, err := s.Catalog(store)
+	return catalog, *s.ready, err
+}
+
+// Add shows nothing a feature brings.
+func (slowStore) Add(string) (menu.Preview, error) { return menu.Preview{}, nil }
+
+// Remove shows nothing that leaves.
+func (slowStore) Remove(string) (menu.Preview, error) { return menu.Preview{}, nil }
+
+// Updates lists nothing newer.
+func (slowStore) Updates() ([]menu.Update, error) { return nil, nil }
+
+// A view waiting for rows asks again at the tab the user is on, and shows the rows once they come in.
+func TestAppFillsInAViewAsItsRowsComeIn(t *testing.T) {
+	ready := false
+	m, _ := anApp(t, nil)
+	m.cfg.Home = func() menu.Home {
+		return menu.Home{Dir: "/home/ubuntu/o3s", Exists: true, Stores: []string{fixture.Store}, Lookup: slowStore{ready: &ready}}
+	}
+	m, _ = settle(m, m.Init())
+	m, _ = drive(m, keys("feat", enter, right)...)
+
+	waiting := stripped(m.View().Content)
+	ready = true
+	next, cmd := m.Update(refreshMsg{})
+	m, _ = settle(next.(model), cmd)
+
+	// Require the loading line while the store answers
+	if !strings.Contains(waiting, "Loading the stores' features…") {
+		t.Errorf("waiting view:\n%s", waiting)
+	}
+	// Require the feature on the Discover tab the user stayed on
+	if view := stripped(m.View().Content); !strings.Contains(view, fixture.Feature) || !strings.Contains(view, "Every feature the stores offer") {
+		t.Errorf("view after the store answered:\n%s", view)
 	}
 }

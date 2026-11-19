@@ -26,12 +26,17 @@ const (
 // featureView shows the installed features in the order they install, every feature the stores offer, and the
 // stores.
 func featureView(h Home, a Answers) Question {
-	installed := Tab{Name: installedTab, About: "Installed in this order on every rebuild. Move one with ctrl+↑/↓.", Empty: "No features yet. Mark the ones you want on the Discover tab.", Reorder: true}
+	installed := Tab{Name: installedTab, About: "Installed in this order on every rebuild. Move one with ctrl+↑/↓.", Empty: "No features yet. Mark the ones you want on the Discover tab.", Header: []string{"FEATURE", "TAG", "STORE"}, Reorder: true}
 	// Show every installed feature with its tag and its store
 	for _, f := range h.Installed {
 		installed.Options = append(installed.Options, Option{Value: f.Package, Label: path.Base(f.Package), Columns: []string{":" + f.Tag, path.Dir(f.Package)}})
 	}
-	discover := Tab{Name: discoverTab, About: "Every feature the stores offer. Mark the ones the cage installs.", Empty: "No store offers a feature. Add one on the Stores tab.", Multi: true, Options: offers(h), Marked: packages(h)}
+	rows, loading := offers(h)
+	discover := Tab{Name: discoverTab, About: "Every feature the stores offer. Mark the ones the cage installs.", Empty: "No store offers a feature. Add one on the Stores tab.", Header: []string{"FEATURE", "STORE"}, Multi: true, Options: rows, Marked: packages(h), Loading: loading}
+	// Say that the features are on their way while the stores answer
+	if loading && len(rows) == 0 {
+		discover.Empty = "Loading the stores' features…"
+	}
 	stores := Tab{Name: storesTab, About: "Where features come from.", Options: []Option{{Value: add, Label: "+ Add a store…"}}}
 	// Show every store
 	for _, s := range h.Stores {
@@ -40,25 +45,50 @@ func featureView(h Home, a Answers) Question {
 	return Question{Key: "view", Kind: View, Title: "Feature", Tabs: []Tab{installed, discover, stores}, Default: []string{a.get("tab")}}
 }
 
-// offers lists every feature the stores offer, the installed ones among them, by store/id.
-func offers(h Home) []Option {
+// offers lists every feature the stores offer, the installed ones among them, by store/id, and reports whether a store's
+// catalog is still on its way. Peek takes what is read already, so the view shows it at once.
+func offers(h Home) ([]Option, bool) {
 	var out []Option
-	// Ask every store what it offers
+	loading := false
+	// Take every store's catalog that is read
+	for _, s := range h.Stores {
+		catalog, read, err := h.Lookup.Peek(s)
+		// Wait for a catalog on its way, and leave out a store out of reach
+		if !read || err != nil {
+			loading = loading || !read
+			continue
+		}
+		out = append(out, offerRows(h, s, catalog)...)
+	}
+	return out, loading
+}
+
+// offerRows shows a store's features by their id, with what they do and the store, each installed one noted.
+func offerRows(h Home, store string, catalog []Offer) []Option {
+	out := make([]Option, 0, len(catalog))
+	// Show every feature of the store
+	for _, f := range catalog {
+		o := Option{Value: store + "/" + f.ID, Label: f.ID, Detail: words.Or(f.Description, f.Name), Columns: []string{path.Base(path.Dir(store))}}
+		// Note a feature the cage installs already
+		if slices.Contains(packages(h), o.Value) {
+			o.Note = "installed"
+		}
+		out = append(out, o)
+	}
+	return out
+}
+
+// offered lists every feature the stores offer, waiting for every catalog, as the changes a dialog plans need.
+func offered(h Home) []Option {
+	var out []Option
+	// Take every store's catalog once it is read
 	for _, s := range h.Stores {
 		catalog, err := h.Lookup.Catalog(s)
 		// Leave out a store out of reach
 		if err != nil {
 			continue
 		}
-		// Show every feature by its id, with what it does and its store
-		for _, f := range catalog {
-			o := Option{Value: s + "/" + f.ID, Label: f.ID, Detail: words.Or(f.Description, f.Name), Columns: []string{path.Base(path.Dir(s))}}
-			// Note a feature the cage installs already
-			if slices.Contains(packages(h), o.Value) {
-				o.Note = "installed"
-			}
-			out = append(out, o)
-		}
+		out = append(out, offerRows(h, s, catalog)...)
 	}
 	return out
 }
@@ -301,7 +331,7 @@ func movePlan(h Home, move []string) []Command {
 
 // changes works out which marked features are new and which installed ones the stores offer and the user unmarked.
 func changes(h Home, marked []string) ([]string, []string) {
-	offered := offers(h)
+	all := offered(h)
 	var added, removed []string
 	// Take every marked feature the cage lacks
 	for _, id := range marked {
@@ -313,7 +343,7 @@ func changes(h Home, marked []string) ([]string, []string) {
 	// Take every installed feature the stores offer that the user unmarked
 	for _, pkg := range packages(h) {
 		// Take an unmarked feature the view showed
-		if !slices.Contains(marked, pkg) && slices.ContainsFunc(offered, func(o Option) bool { return o.Value == pkg }) {
+		if !slices.Contains(marked, pkg) && slices.ContainsFunc(all, func(o Option) bool { return o.Value == pkg }) {
 			removed = append(removed, pkg)
 		}
 	}

@@ -150,11 +150,11 @@ func showSecrets(cmd *cobra.Command) error {
 	}
 	slices.Sort(names)
 	w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "NAME\tVALUE\tHOSTS")
+	fmt.Fprintln(w, strings.Join(menu.SecretHeader, "\t"))
 	// Write a row per name
 	for _, name := range names {
 		_, set := store.Value(name)
-		fmt.Fprintf(w, "%s\t%s\t%s\n", name, menu.SecretState(set), strings.Join(hostsNaming(name), ", "))
+		fmt.Fprintln(w, strings.Join(append([]string{name}, menu.SecretRow(set, hostsNaming(name))...), "\t"))
 	}
 	return w.Flush()
 }
