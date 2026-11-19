@@ -80,9 +80,11 @@ services:
     # Its sole exit is the gateway
     networks:
       - cage
-    # Wait until the gateway is routing before this container starts
+    # Wait until the gateway is routing and the proxy takes the redirected HTTPS before this container starts
     depends_on:
       gateway:
+        condition: service_healthy
+      proxy:
         condition: service_healthy
     # Resolve through the gateway's dnsmasq
     dns:
@@ -183,6 +185,15 @@ services:
       - -s
       - /addons/inject.py
     restart: unless-stopped
+    healthcheck:
+      # Report healthy once a socket listens on the proxy's port, the one the gateway redirects HTTPS to
+      test: ["CMD-SHELL", "grep -qE ':20FB [0-9A-F]+:[0-9A-F]+ 0A' /proc/net/tcp"]
+      # Probe fast during startup so the cage's service_healthy gate clears in seconds
+      start_interval: 1s
+      start_period: 30s
+      interval: 10m
+      timeout: 5s
+      retries: 3
     # Shares the gateway's network namespace, so it must start after the gateway and restart with it.
     depends_on:
       gateway:
