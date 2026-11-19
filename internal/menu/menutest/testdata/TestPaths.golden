@@ -1,7 +1,7 @@
 # outside, 12 paths
-init / VM (recommended) / yes → o3s init --yes
-init / VM (recommended) / no → (Nothing changed.)
-init / Process / On (recommended) / yes → o3s init --dangerously-skip-vm [terminal]
+init / VM / yes → o3s init --yes
+init / VM / no → (Nothing changed.)
+init / Process / On / yes → o3s init --dangerously-skip-vm [terminal]
 init / Process / Off / yes → o3s init --dangerously-skip-vm --dangerously-skip-apparmor
 secret / Secrets + Add a secret… / NEW_TOKEN / *** → o3s secret add NEW_TOKEN --no-bind-hint
 secret / Secrets EXAMPLE_TOKEN / Set a value / *** → o3s secret add EXAMPLE_TOKEN --no-bind-hint

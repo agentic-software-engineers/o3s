@@ -33,9 +33,7 @@ var instant = map[string]string{
 // knownBreaks are the breaks of the rules the menu shows today, each named by the finding a fix removes it with.
 // Fixing one removes its entry, and a new break fails the test.
 var knownBreaks = map[string]string{
-	"crumb: On (recommended)": "F21: a crumb carries its label's note",
-	"crumb: VM (recommended)": "F21: a crumb carries its label's note",
-	"wider than 60: feature":  "F25: the footer overflows, upstream charmbracelet/bubbles#1066",
+	"wider than 60: feature": "F25: the footer overflows, upstream charmbracelet/bubbles#1066",
 }
 
 // breaks are every break of the rules on the screens and in the plans of every path of every home, at the sizes
