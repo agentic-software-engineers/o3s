@@ -4,7 +4,7 @@
 #
 # SYNOPSIS
 #        curl -fsSL https://github.com/hansehart/o3s/releases/latest/download/install.sh | sh
-#        sh install.sh [--rc | --version <X.Y.Z[-rc.N]>] [--no-devcontainer] [--no-lima]
+#        sh install.sh [--rc | --version <X.Y.Z[-rc.N]>] [--no-devcontainer] [--preview] [--no-lima]
 #
 # DESCRIPTION
 #        Downloads the o3s binary of a release for this host, checks it against the release's
@@ -22,6 +22,7 @@
 #        O3S_INSTALL_DIR             where the binary goes (default: ~/.local/bin)
 #        O3S_RELEASE_URL             where the release's files come from (default: GitHub releases)
 #        O3S_RELEASES_FEED           the releases feed --rc reads (default: GitHub's releases.atom)
+#        O3S_PREVIEW                 the previews to turn on, 1 for all or a list naming vm, as o3s reads it
 #        O3S_LIMA_URL                where Lima's archive comes from, still checked against its pin (default: GitHub releases)
 #        XDG_DATA_HOME               the data folder o3s keeps its devcontainer CLI and Lima in (default: ~/.local/share)
 set -eu
@@ -72,6 +73,7 @@ version=""
 channel="latest"
 devcontainer="yes"
 lima="yes"
+preview="no"
 # Read every option
 while [ $# -gt 0 ]; do
 	# Take each option the script knows, and name any other
@@ -94,8 +96,12 @@ while [ $# -gt 0 ]; do
 		lima="no"
 		shift
 		;;
+	--preview)
+		preview="yes"
+		shift
+		;;
 	-h | --help)
-		say "Usage: sh install.sh [--rc | --version <X.Y.Z[-rc.N]>] [--no-devcontainer] [--no-lima]"
+		say "Usage: sh install.sh [--rc | --version <X.Y.Z[-rc.N]>] [--no-devcontainer] [--preview] [--no-lima]"
 		exit 0
 		;;
 	*)
@@ -103,6 +109,16 @@ while [ $# -gt 0 ]; do
 		;;
 	esac
 done
+
+previews=$(printf '%s' "${O3S_PREVIEW:-}" | tr -d ' ')
+# Take the VM preview from the environment the way o3s reads it, 1 for every preview or a list naming vm
+case "${previews}" in
+1 | vm | vm,* | *,vm | *,vm,*) preview="yes" ;;
+esac
+# Leave Lima to the VM preview, which runs the home inside its VM
+if [ "${preview}" = "no" ]; then
+	lima="no"
+fi
 
 kernel=$(uname -s)
 arch=$(uname -m)

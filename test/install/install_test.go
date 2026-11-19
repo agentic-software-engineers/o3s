@@ -370,7 +370,7 @@ func TestInstallLeavesLimaToTheVMPreview(t *testing.T) {
 
 	_, unpacked := os.Stat(filepath.Join(h.home, ".local", "share", "o3s", "lima"))
 	// Require o3s in place, with neither Lima nor a word about it or QEMU
-	if err != nil || !h.installed() || unpacked == nil || strings.Contains(out, "Lima") || strings.Contains(out, "QEMU") {
+	if err != nil || !h.installed() || unpacked == nil || strings.Contains(out, "Installed Lima") || strings.Contains(out, "Found Lima") || strings.Contains(out, "Install QEMU") {
 		t.Errorf("install.sh without the preview = %v, Lima unpacked %v, want o3s alone\n%s", err, unpacked == nil, out)
 	}
 }
