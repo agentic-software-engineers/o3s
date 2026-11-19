@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.1](https://github.com/hansehart/o3s/compare/v0.8.0...v0.8.1) (2026-11-19)
+
+
+### Bug Fixes
+
+* **cli:** make init and the home's VM read clearly, and label the views ([#297](https://github.com/hansehart/o3s/issues/297)) ([43fccd5](https://github.com/hansehart/o3s/commit/43fccd5354cd6d28c89b7fd9422fceb65bc241d6))
+
 ## [0.8.0](https://github.com/hansehart/o3s/compare/v0.8.0-rc.1...v0.8.0) (2026-11-19)
 
 
