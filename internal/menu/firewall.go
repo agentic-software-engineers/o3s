@@ -128,7 +128,7 @@ func portsQuestion(_ Home, a Answers) (Question, bool) {
 	}
 	// Ask for the ports the user types
 	if a.get("ports") == typed && !a.has("portsTyped") {
-		return Question{Key: "portsTyped", Kind: Input, Title: "Ports", About: "Ports from 1 to 65535, separated by commas.", Example: "22, 443, 8443", Check: checkPorts}, true
+		return Question{Key: "portsTyped", Completes: "ports", Kind: Input, Title: "Ports", About: "Ports from 1 to 65535, separated by commas.", Example: "22, 443, 8443", Check: checkPorts}, true
 	}
 	return Question{}, false
 }
@@ -149,7 +149,7 @@ func forQuestion(forGood bool) func(Home, Answers) (Question, bool) {
 		}
 		// Ask for the time the user types
 		if a.get("for") == typed && !a.has("forTyped") {
-			return Question{Key: "forTyped", Kind: Input, Title: "For how long", About: "Seconds alone, or a duration.", Example: "90s  20m  1h  1h30m", Check: checkFor}, true
+			return Question{Key: "forTyped", Completes: "for", Kind: Input, Title: "For how long", About: "Seconds alone, or a duration.", Example: "90s  20m  1h  1h30m", Check: checkFor}, true
 		}
 		return Question{}, false
 	}
@@ -175,7 +175,7 @@ func secretQuestion(withNone bool) func(Home, Answers) (Question, bool) {
 		}
 		// Ask for the name of a new secret
 		if a.get("secret") == fresh && !a.has("secretName") {
-			return Question{Key: "secretName", Kind: Input, Title: "Secret name", About: "An uppercase env name, the way the proxy reads it.", Example: "GH_TOKEN", Check: checkSecretName}, true
+			return Question{Key: "secretName", Completes: "secret", Kind: Input, Title: "Secret name", About: "An uppercase env name, the way the proxy reads it.", Example: "GH_TOKEN", Check: checkSecretName}, true
 		}
 		// Ask the value of a new secret, so the hosts carry it from the start
 		if name := chosenSecret(a); a.get("secret") == fresh && !a.has(valueKey(name)) {

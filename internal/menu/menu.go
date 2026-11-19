@@ -129,6 +129,9 @@ type Question struct {
 	Facts []Fact
 	// Example shows the form a line of text takes.
 	Example string
+	// Completes names the earlier question whose answer this one finishes, as a typed value finishes the choice to
+	// type one.
+	Completes string
 	// Suggestions are values a line of text completes to from what the user typed.
 	Suggestions []string
 	// Check reads a line of text as the user types it, in plain words where it holds, and names the rule it breaks

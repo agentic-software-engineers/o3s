@@ -242,10 +242,14 @@ func markAnswers(t menu.Tab) [][]string {
 // Line reads a path the way the trail shows it, then where it ends: the commands it runs, what it notes, nothing, or
 // the question it is stuck at.
 func Line(p Path) string {
-	parts := make([]string, len(p.Answers))
-	// Show every answer by how it shows
+	var parts []string
+	// Show every answer by how it shows, an answer a later one finishes left out for the one that finishes it
 	for i, a := range p.Answers {
-		parts[i] = Label(p.Asked[i], a.Values)
+		// Leave out an answer a later one finishes
+		if slices.ContainsFunc(p.Asked[i+1:len(p.Answers)], func(q menu.Question) bool { return q.Completes == a.Key }) {
+			continue
+		}
+		parts = append(parts, Label(p.Asked[i], a.Values))
 	}
 	return strings.Join(parts, " / ") + " → " + End(p)
 }

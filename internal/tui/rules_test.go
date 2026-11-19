@@ -72,7 +72,7 @@ func breaks(t *testing.T) map[string]bool {
 // the screen, and a question that offers nothing to pick.
 func screenBreaks(m model) []string {
 	var out []string
-	trail := strings.Join(m.crumbs, " / ")
+	trail := strings.Join(m.crumbs(), " / ")
 	// Check every part of the trail, a view's tab and row each apart
 	for c := range strings.SplitSeq(trail, " / ") {
 		// Note a part that shows an inner value or a label's note

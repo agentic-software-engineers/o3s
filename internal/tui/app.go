@@ -60,8 +60,7 @@ type model struct {
 	cfg     Config
 	home    menu.Home
 	answers menu.Answers
-	crumbs  []string
-	kinds   []menu.Kind
+	steps   []step
 	carry   []string
 	state   state
 	q       menu.Question
@@ -132,21 +131,20 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.out.size(m.width, m.paneHeight())
 		return m, nil
 	case homeMsg:
-		start, crumbs, kinds := m.cfg.Start, m.crumbs, m.kinds
+		start, steps := m.cfg.Start, m.steps
 		// Open at the view a change came from, where it asks to
 		if m.resume != nil {
 			start, m.resume = m.resume, nil
 		}
-		m.home, m.answers, m.crumbs, m.kinds = menu.Home(msg), nil, nil, nil
-		// Open at the answers the menu starts with, each shown and kept as the dialog gave it where it gave it before
+		m.home, m.answers, m.steps = menu.Home(msg), nil, nil
+		// Open at the answers the menu starts with, each kept as the dialog gave it where it gave it before
 		for i, a := range start {
-			crumb, kind := strings.Join(a.Values, ", "), menu.Select
-			// Keep how the dialog showed an answer it gave before
-			if i < len(kinds) && i < len(crumbs) {
-				crumb, kind = crumbs[i], kinds[i]
+			s := step{crumb: strings.Join(a.Values, ", "), kind: menu.Select}
+			// Keep the step the dialog took for an answer it gave before
+			if i < len(steps) {
+				s = steps[i]
 			}
-			m.answers = m.answers.With(a.Key, a.Values)
-			m.crumbs, m.kinds = append(m.crumbs, crumb), append(m.kinds, kind)
+			m.answers, m.steps = m.answers.With(a.Key, a.Values), append(m.steps, s)
 		}
 		m.state = loading
 		return m, m.ask()
@@ -288,7 +286,7 @@ func (m model) follow(r result, cmd tea.Cmd) (tea.Model, tea.Cmd) {
 	switch r.outcome {
 	case answered:
 		m.answers = m.answers.With(m.q.Key, r.values)
-		m.crumbs, m.kinds = append(m.crumbs, crumb(m.q, r.values)), append(m.kinds, m.q.Kind)
+		m.steps = append(m.steps, step{crumb: crumb(m.q, r.values), kind: m.q.Kind, completes: m.q.Completes})
 		m.state = loading
 		return m, m.ask()
 	case back:
@@ -297,8 +295,8 @@ func (m model) follow(r result, cmd tea.Cmd) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 		n := len(m.answers) - 1
-		last, kind := m.answers[n], m.kinds[n]
-		m.answers, m.crumbs, m.kinds = m.answers[:n], m.crumbs[:n], m.kinds[:n]
+		last, kind := m.answers[n], m.steps[n].kind
+		m.answers, m.steps = m.answers[:n], m.steps[:n]
 		// Carry a shown answer back into its question, and leave a hidden one out
 		if kind != menu.Hidden {
 			m.carry = last.Values
@@ -420,9 +418,9 @@ func (m model) place() []string {
 // lastView is where the last answer a view took stands among the answers, and -1 where no view took one.
 func (m model) lastView() int {
 	// Look back from the last answer for one a view took
-	for i, kind := range slices.Backward(m.kinds) {
+	for i, s := range slices.Backward(m.steps) {
 		// Take an answer a view took
-		if kind == menu.View {
+		if s.kind == menu.View {
 			return i
 		}
 	}
@@ -615,10 +613,33 @@ func (m model) question() string {
 	return strings.Join(append(out, m.fieldView()), "\n")
 }
 
+// step is how the dialog took one answer: its crumb in the trail, the kind of question it answered, and the earlier
+// question that answer finishes, where it finishes one.
+type step struct {
+	crumb     string
+	kind      menu.Kind
+	completes string
+}
+
+// crumbs are the crumbs of the trail, each answer once, an answer a later one finishes left out for the one that
+// finishes it.
+func (m model) crumbs() []string {
+	var out []string
+	// Take every step a later step leaves standing
+	for i, s := range m.steps {
+		// Leave out a step a later answer finishes
+		if slices.ContainsFunc(m.steps[i+1:], func(later step) bool { return later.completes == m.answers[i].Key }) {
+			continue
+		}
+		out = append(out, s.crumb)
+	}
+	return out
+}
+
 // trail is the path of the dialog so far, cut at its start where it runs wider than the screen, so its end stays in
 // view.
 func (m model) trail() string {
-	line := strings.Join(m.crumbs, separator)
+	line := strings.Join(m.crumbs(), separator)
 	// Keep the end of a trail wider than the screen
 	if over := ansi.StringWidth(line) - m.width; m.width > 0 && over > 0 {
 		return ansi.TruncateLeft(line, over+1, "…")

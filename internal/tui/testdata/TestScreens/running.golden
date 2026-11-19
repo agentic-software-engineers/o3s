@@ -448,7 +448,7 @@ enter continue · esc cancel
 
 ──── value:NEW_TOKEN
 o3s  /home/ubuntu/o3s
-… host / new.example.net *.example.org / 443 / For good / New secret / NEW_TOKEN
+…wed / Allow a host / new.example.net *.example.org / 443 / For good / NEW_TOKEN
 
 Value for NEW_TOKEN
 Empty leaves it waiting, echo "$TOKEN" | o3s secret add NEW_TOKEN sets it later.
@@ -458,7 +458,7 @@ enter continue · esc cancel
 
 ──── inject
 o3s  /home/ubuntu/o3s
-…/ new.example.net *.example.org / 443 / For good / New secret / NEW_TOKEN / ***
+…Allow a host / new.example.net *.example.org / 443 / For good / NEW_TOKEN / ***
 
 Where the secret goes
 ❯ [x] header
@@ -469,7 +469,7 @@ Where the secret goes
 
 ──── apply
 o3s  /home/ubuntu/o3s
-…mple.net *.example.org / 443 / For good / New secret / NEW_TOKEN / *** / header
+…ost / new.example.net *.example.org / 443 / For good / NEW_TOKEN / *** / header
 
 + new.example.net:443   NEW_TOKEN in header
 + *.example.org:443     NEW_TOKEN in header
@@ -572,7 +572,7 @@ enter continue · esc cancel
 
 ──── secret
 o3s  /home/ubuntu/o3s
-…ed / Allow a host / new.example.net *.example.org / 443 / Type a duration / 90m
+firewall / Allowed / Allow a host / new.example.net *.example.org / 443 / 90m
 
 Secret the proxy injects
 ❯ 1. None
@@ -584,7 +584,7 @@ Secret the proxy injects
 
 ──── apply
 o3s  /home/ubuntu/o3s
-…low a host / new.example.net *.example.org / 443 / Type a duration / 90m / None
+…all / Allowed / Allow a host / new.example.net *.example.org / 443 / 90m / None
 
 + new.example.net:443   closes at 16:34
 + *.example.org:443     closes at 16:34
@@ -645,45 +645,6 @@ e.g. 22, 443, 8443
 ❯
 
 enter continue · esc cancel
-
-──── for
-o3s  /home/ubuntu/o3s
-…/ Allowed / Allow a host / new.example.net *.example.org / Type ports / 22, 443
-
-For how long
-❯ 1. For good
-  2. 1 hour
-  3. 8 hours
-  4. 1 day
-  5. Type a duration…   e.g. 90m, 2h30m
-
-↑/↓ navigate · 1-5 choose · enter select · esc back
-
-──── secret
-o3s  /home/ubuntu/o3s
-… Allow a host / new.example.net *.example.org / Type ports / 22, 443 / For good
-
-Secret the proxy injects
-❯ 1. None
-  2. EXAMPLE_TOKEN   empty
-  3. OTHER_TOKEN     set
-  4. New secret…
-
-↑/↓ navigate · 1-4 choose · enter select · esc back
-
-──── apply
-o3s  /home/ubuntu/o3s
-…a host / new.example.net *.example.org / Type ports / 22, 443 / For good / None
-
-+ new.example.net:22,443
-+ *.example.org:22,443
-
-Allows new.example.net and every name below example.org for good
-Apply?
-❯ 1. Yes
-  2. No
-
-↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
 
 ──── action
 o3s  /home/ubuntu/o3s
@@ -753,19 +714,6 @@ e.g. 22, 443, 8443
 ❯
 
 enter continue · esc cancel
-
-──── apply
-o3s  /home/ubuntu/o3s
-firewall / Allowed / example.com / Change ports / Type ports / 22, 443
-
-~ example.com:22,443
-
-Changes example.com
-Apply?
-❯ 1. Yes
-  2. No
-
-↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
 
 ──── for
 o3s  /home/ubuntu/o3s
@@ -845,7 +793,7 @@ enter continue · esc cancel
 
 ──── apply
 o3s  /home/ubuntu/o3s
-firewall / Allowed / example.com / Set an end time / Type a duration / 90m
+firewall / Allowed / example.com / Set an end time / 90m
 
 ~ example.com:22,443   closes at 16:34
 
@@ -981,7 +929,7 @@ enter continue · esc cancel
 
 ──── value:NEW_TOKEN
 o3s  /home/ubuntu/o3s
-firewall / Allowed / example.com / Change secret / New secret / NEW_TOKEN
+firewall / Allowed / example.com / Change secret / NEW_TOKEN
 
 Value for NEW_TOKEN
 Empty leaves it waiting, echo "$TOKEN" | o3s secret add NEW_TOKEN sets it later.
@@ -991,7 +939,7 @@ enter continue · esc cancel
 
 ──── inject
 o3s  /home/ubuntu/o3s
-firewall / Allowed / example.com / Change secret / New secret / NEW_TOKEN / ***
+firewall / Allowed / example.com / Change secret / NEW_TOKEN / ***
 
 Where the secret goes
 ❯ [x] header
@@ -1002,7 +950,7 @@ Where the secret goes
 
 ──── apply
 o3s  /home/ubuntu/o3s
-…/ Allowed / example.com / Change secret / New secret / NEW_TOKEN / *** / header
+firewall / Allowed / example.com / Change secret / NEW_TOKEN / *** / header
 
 ~ example.com:22,443   NEW_TOKEN in header
 
@@ -1095,19 +1043,6 @@ e.g. 22, 443, 8443
 
 enter continue · esc cancel
 
-──── apply
-o3s  /home/ubuntu/o3s
-firewall / Allowed / api.example.com / Change ports / Type ports / 22, 443
-
-~ api.example.com:22,443
-
-Changes api.example.com
-Apply?
-❯ 1. Yes
-  2. No
-
-↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
-
 ──── for
 o3s  /home/ubuntu/o3s
 firewall / Allowed / api.example.com / Set an end time
@@ -1186,7 +1121,7 @@ enter continue · esc cancel
 
 ──── apply
 o3s  /home/ubuntu/o3s
-firewall / Allowed / api.example.com / Set an end time / Type a duration / 90m
+firewall / Allowed / api.example.com / Set an end time / 90m
 
 ~ api.example.com:443   closes at 16:34
 
@@ -1322,7 +1257,7 @@ enter continue · esc cancel
 
 ──── value:NEW_TOKEN
 o3s  /home/ubuntu/o3s
-firewall / Allowed / api.example.com / Change secret / New secret / NEW_TOKEN
+firewall / Allowed / api.example.com / Change secret / NEW_TOKEN
 
 Value for NEW_TOKEN
 Empty leaves it waiting, echo "$TOKEN" | o3s secret add NEW_TOKEN sets it later.
@@ -1332,7 +1267,7 @@ enter continue · esc cancel
 
 ──── inject
 o3s  /home/ubuntu/o3s
-…wall / Allowed / api.example.com / Change secret / New secret / NEW_TOKEN / ***
+firewall / Allowed / api.example.com / Change secret / NEW_TOKEN / ***
 
 Where the secret goes
 ❯ [x] header
@@ -1343,7 +1278,7 @@ Where the secret goes
 
 ──── apply
 o3s  /home/ubuntu/o3s
-…lowed / api.example.com / Change secret / New secret / NEW_TOKEN / *** / header
+firewall / Allowed / api.example.com / Change secret / NEW_TOKEN / *** / header
 
 ~ api.example.com:443   NEW_TOKEN in header
 
@@ -1436,19 +1371,6 @@ e.g. 22, 443, 8443
 
 enter continue · esc cancel
 
-──── apply
-o3s  /home/ubuntu/o3s
-firewall / Allowed / example.net / Change ports / Type ports / 22, 443
-
-~ example.net:22,443
-
-Changes example.net
-Apply?
-❯ 1. Yes
-  2. No
-
-↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
-
 ──── for
 o3s  /home/ubuntu/o3s
 firewall / Allowed / example.net / Set an end time
@@ -1527,7 +1449,7 @@ enter continue · esc cancel
 
 ──── apply
 o3s  /home/ubuntu/o3s
-firewall / Allowed / example.net / Set an end time / Type a duration / 90m
+firewall / Allowed / example.net / Set an end time / 90m
 
 ~ example.net:443   closes at 16:34
 
@@ -1663,7 +1585,7 @@ enter continue · esc cancel
 
 ──── value:NEW_TOKEN
 o3s  /home/ubuntu/o3s
-firewall / Allowed / example.net / Change secret / New secret / NEW_TOKEN
+firewall / Allowed / example.net / Change secret / NEW_TOKEN
 
 Value for NEW_TOKEN
 Empty leaves it waiting, echo "$TOKEN" | o3s secret add NEW_TOKEN sets it later.
@@ -1673,7 +1595,7 @@ enter continue · esc cancel
 
 ──── inject
 o3s  /home/ubuntu/o3s
-firewall / Allowed / example.net / Change secret / New secret / NEW_TOKEN / ***
+firewall / Allowed / example.net / Change secret / NEW_TOKEN / ***
 
 Where the secret goes
 ❯ [x] header
@@ -1684,7 +1606,7 @@ Where the secret goes
 
 ──── apply
 o3s  /home/ubuntu/o3s
-…/ Allowed / example.net / Change secret / New secret / NEW_TOKEN / *** / header
+firewall / Allowed / example.net / Change secret / NEW_TOKEN / *** / header
 
 ~ example.net:443   NEW_TOKEN in header
 
@@ -1776,19 +1698,6 @@ e.g. 22, 443, 8443
 
 enter continue · esc cancel
 
-──── apply
-o3s  /home/ubuntu/o3s
-firewall / Allowed / example.org / Change ports / Type ports / 22, 443
-
-~ example.org:22,443
-
-Changes example.org
-Apply?
-❯ 1. Yes
-  2. No
-
-↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
-
 ──── for
 o3s  /home/ubuntu/o3s
 firewall / Allowed / example.org / Set an end time
@@ -1867,7 +1776,7 @@ enter continue · esc cancel
 
 ──── apply
 o3s  /home/ubuntu/o3s
-firewall / Allowed / example.org / Set an end time / Type a duration / 90m
+firewall / Allowed / example.org / Set an end time / 90m
 
 ~ example.org:443   closes at 16:34
 
@@ -2003,7 +1912,7 @@ enter continue · esc cancel
 
 ──── value:NEW_TOKEN
 o3s  /home/ubuntu/o3s
-firewall / Allowed / example.org / Change secret / New secret / NEW_TOKEN
+firewall / Allowed / example.org / Change secret / NEW_TOKEN
 
 Value for NEW_TOKEN
 Empty leaves it waiting, echo "$TOKEN" | o3s secret add NEW_TOKEN sets it later.
@@ -2013,7 +1922,7 @@ enter continue · esc cancel
 
 ──── inject
 o3s  /home/ubuntu/o3s
-firewall / Allowed / example.org / Change secret / New secret / NEW_TOKEN / ***
+firewall / Allowed / example.org / Change secret / NEW_TOKEN / ***
 
 Where the secret goes
 ❯ [x] header
@@ -2024,7 +1933,7 @@ Where the secret goes
 
 ──── apply
 o3s  /home/ubuntu/o3s
-…/ Allowed / example.org / Change secret / New secret / NEW_TOKEN / *** / header
+firewall / Allowed / example.org / Change secret / NEW_TOKEN / *** / header
 
 ~ example.org:443   NEW_TOKEN in header
 
@@ -2184,7 +2093,7 @@ enter continue · esc cancel
 
 ──── value:NEW_TOKEN
 o3s  /home/ubuntu/o3s
-firewall / Blocked / 1 marked / 443 / For good / New secret / NEW_TOKEN
+firewall / Blocked / 1 marked / 443 / For good / NEW_TOKEN
 
 Value for NEW_TOKEN
 Empty leaves it waiting, echo "$TOKEN" | o3s secret add NEW_TOKEN sets it later.
@@ -2194,7 +2103,7 @@ enter continue · esc cancel
 
 ──── inject
 o3s  /home/ubuntu/o3s
-firewall / Blocked / 1 marked / 443 / For good / New secret / NEW_TOKEN / ***
+firewall / Blocked / 1 marked / 443 / For good / NEW_TOKEN / ***
 
 Where the secret goes
 ❯ [x] header
@@ -2205,7 +2114,7 @@ Where the secret goes
 
 ──── apply
 o3s  /home/ubuntu/o3s
-…l / Blocked / 1 marked / 443 / For good / New secret / NEW_TOKEN / *** / header
+firewall / Blocked / 1 marked / 443 / For good / NEW_TOKEN / *** / header
 
 + blocked.example:443   NEW_TOKEN in header
 
@@ -2304,7 +2213,7 @@ enter continue · esc cancel
 
 ──── secret
 o3s  /home/ubuntu/o3s
-firewall / Blocked / 1 marked / 443 / Type a duration / 90m
+firewall / Blocked / 1 marked / 443 / 90m
 
 Secret the proxy injects
 ❯ 1. None
@@ -2316,7 +2225,7 @@ Secret the proxy injects
 
 ──── apply
 o3s  /home/ubuntu/o3s
-firewall / Blocked / 1 marked / 443 / Type a duration / 90m / None
+firewall / Blocked / 1 marked / 443 / 90m / None
 
 + blocked.example:443   closes at 16:34
 
@@ -2375,44 +2284,6 @@ e.g. 22, 443, 8443
 ❯
 
 enter continue · esc cancel
-
-──── for
-o3s  /home/ubuntu/o3s
-firewall / Blocked / 1 marked / Type ports / 22, 443
-
-For how long
-❯ 1. For good
-  2. 1 hour
-  3. 8 hours
-  4. 1 day
-  5. Type a duration…   e.g. 90m, 2h30m
-
-↑/↓ navigate · 1-5 choose · enter select · esc back
-
-──── secret
-o3s  /home/ubuntu/o3s
-firewall / Blocked / 1 marked / Type ports / 22, 443 / For good
-
-Secret the proxy injects
-❯ 1. None
-  2. EXAMPLE_TOKEN   empty
-  3. OTHER_TOKEN     set
-  4. New secret…
-
-↑/↓ navigate · 1-4 choose · enter select · esc back
-
-──── apply
-o3s  /home/ubuntu/o3s
-firewall / Blocked / 1 marked / Type ports / 22, 443 / For good / None
-
-+ blocked.example:22,443
-
-Allows blocked.example for good
-Apply?
-❯ 1. Yes
-  2. No
-
-↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
 
 ──── view
 o3s  /home/ubuntu/o3s

@@ -129,8 +129,8 @@ func TestAppStepsBackWithTheAnswer(t *testing.T) {
 		t.Errorf("after esc = %q, view:\n%s", m.q.Key, view)
 	}
 	// Require the trail without the host
-	if strings.Join(m.crumbs, " / ") != "firewall / Allowed / Allow a host" {
-		t.Errorf("trail = %q, want firewall / Allowed / Allow a host", strings.Join(m.crumbs, " / "))
+	if strings.Join(m.crumbs(), " / ") != "firewall / Allowed / Allow a host" {
+		t.Errorf("trail = %q, want firewall / Allowed / Allow a host", strings.Join(m.crumbs(), " / "))
 	}
 }
 
@@ -514,7 +514,11 @@ func TestAppReopensTheViewAChangeCameFrom(t *testing.T) {
 	}
 	// Check every change
 	for _, tt := range tests {
-		m := model{answers: tt.answers, kinds: tt.kinds}
+		m := model{answers: tt.answers}
+		// Take every kind as the step the dialog took
+		for _, k := range tt.kinds {
+			m.steps = append(m.steps, step{kind: k})
+		}
 
 		group, place := m.group(), m.place()
 
@@ -550,5 +554,23 @@ func TestCrumbNamesWhatMarksChange(t *testing.T) {
 		if got != tt.want {
 			t.Errorf("crumb(%v from %v) = %q, want %q", tt.values, tt.marked, got, tt.want)
 		}
+	}
+}
+
+// A typed answer shows in the trail in place of the choice that asked for it, and stepping back shows the choice again.
+func TestTrailShowsATypedAnswerInPlaceOfItsChoice(t *testing.T) {
+	m, _ := anApp(t, nil)
+	m, _ = drive(m, keys("fir", enter, enter, fixture.Host, enter, "1", "5", fixture.Duration, enter)...)
+
+	typed := strings.Join(m.crumbs(), " / ")
+	back, _ := drive(m, esc)
+
+	// Require the duration in place of its choice, and the choice back on a step back
+	if want := "firewall / Allowed / Allow a host / " + fixture.Host + " / " + port + " / " + fixture.Duration; typed != want {
+		t.Errorf("trail = %q, want %q", typed, want)
+	}
+	// Require the choice in the trail once the step back leaves the typed answer
+	if got, want := strings.Join(back.crumbs(), " / "), "firewall / Allowed / Allow a host / "+fixture.Host+" / "+port+" / Type a duration"; got != want {
+		t.Errorf("trail after esc = %q, want %q", got, want)
 	}
 }
