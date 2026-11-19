@@ -30,8 +30,6 @@ services:
       context: ${O3S_IMAGES:?name the checkout's images folder}/cage
     image: o3s-cage:dev
     pull_policy: build
-    environment:
-      GATEWAY_IP: *gateway_ip
     volumes:
       # The home, writable while o3s is under development
       - ../:/home/ubuntu/o3s

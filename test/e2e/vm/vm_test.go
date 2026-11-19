@@ -88,6 +88,17 @@ func TestTheHomesVM(t *testing.T) {
 		if err != nil || strings.TrimSpace(out) != "o3s-cage (enforce)" {
 			t.Errorf("cage confinement = %v, %q, want o3s-cage (enforce)", err, out)
 		}
+		out, err = stacktest.O3sIn(t, dir, "cage", "shell", "--vm", "--", "docker", "exec", id[1], "cat", "/proc/1/status")
+		held, capErr := stacktest.Holds(out, stacktest.CapNetAdmin)
+		// Require the cage to have dropped NET_ADMIN, which leaves its routes to the network it sits on
+		if err != nil || capErr != nil || held {
+			t.Errorf("cage holds CAP_NET_ADMIN = %t, %v, %v, want it dropped", held, err, capErr)
+		}
+		out, err = stacktest.O3sIn(t, dir, "cage", "shell", "--vm", "--", "docker", "exec", id[1], "sh", "-c", `ip route replace default via "$(ip route show default | awk '{print $3}')"`)
+		// Require the kernel to refuse the cage a change of its default route
+		if err == nil {
+			t.Errorf("ip route replace default in the cage succeeded\n%s\nwant it refused", out)
+		}
 		out, err = stacktest.O3sIn(t, dir, "cage", "shell", "--vm", "--", "docker", "ps", "--format", "{{.Names}}")
 		// Require the gateway and the proxy beside the cage
 		if err != nil || !strings.Contains(out, "gateway") || !strings.Contains(out, "proxy") {
