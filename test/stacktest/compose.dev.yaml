@@ -21,6 +21,7 @@ name: o3s-dev
 # Cage network identity, a subnet away from the o3s in daily use
 x-cage-subnet: &cage_subnet 10.11.0.0/24
 x-gateway-ip: &gateway_ip 10.11.0.2
+x-cage-route: &cage_route 10.11.0.1
 
 services:
   cage:
@@ -46,6 +47,7 @@ services:
     pull_policy: build
     environment:
       GW_CAGE_IP: *gateway_ip
+      GW_CAGE_ROUTE: *cage_route
     networks:
       cage:
         ipv4_address: *gateway_ip
@@ -80,5 +82,6 @@ networks:
     ipam:
       config:
         - subnet: *cage_subnet
+          gateway: *cage_route
   egress:
     name: o3s-dev-egress

@@ -21,6 +21,8 @@ name: o3s
 # Cage network identity
 x-cage-subnet: &cage_subnet 10.10.0.0/24
 x-gateway-ip: &gateway_ip 10.10.0.2
+# The address Docker routes the cage through, which the gateway answers on
+x-cage-route: &cage_route 10.10.0.1
 
 # Apps deployed by stack
 services:
@@ -104,6 +106,8 @@ services:
     # Cage identity: the gateway locates its cage/egress interfaces from this
     environment:
       GW_CAGE_IP: *gateway_ip
+      # The cage network's route address, which the gateway takes on so Docker's default route leads to it
+      GW_CAGE_ROUTE: *cage_route
       # How often the traffic record is written, in seconds
       O3S_TRAFFIC_INTERVAL: ${O3S_TRAFFIC_INTERVAL:-60}
     volumes:
@@ -196,6 +200,8 @@ networks:
     ipam:
       config:
         - subnet: *cage_subnet
+          # The route address Docker hands the cage, answered by the gateway
+          gateway: *cage_route
   # Gateway's own path to the internet
   egress:
     name: o3s-egress

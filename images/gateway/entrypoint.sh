@@ -89,6 +89,13 @@ locate_interfaces() {
   log "egress=$EGRESS_IF (gw $EGRESS_GW)  cage=$CAGE_IF ($CAGE_SUBNET, gw $GW_CAGE_IP)"
 }
 
+# Answer on the cage network's route address, so the default route Docker hands the cage leads here.
+answer_route() {
+  [ -n "${GW_CAGE_ROUTE:-}" ] || die "GW_CAGE_ROUTE not set (expected from docker-compose environment)"
+  ip addr replace "$GW_CAGE_ROUTE/32" dev "$CAGE_IF"
+  log "answering the cage's route address $GW_CAGE_ROUTE on $CAGE_IF"
+}
+
 # One set per distinct port, with static addresses seeding theirs directly and domains on resolve.
 parse_allowlist() {
   # Read each host's ports, end time and optional secret, failing on malformed config
@@ -308,6 +315,7 @@ write_resolver_conf() {
 
 fail_closed
 locate_interfaces
+answer_route
 parse_allowlist
 create_sets
 require_forwarding
