@@ -167,15 +167,16 @@ func TestAppOpenedAtAGroupStaysThere(t *testing.T) {
 	}
 }
 
-// A declined change says that nothing changed, and goes back to the group's view.
-func TestAppNamesADeclinedChange(t *testing.T) {
+// A declined change goes straight back to the view it came from, with nothing run, the way a declined confirmation
+// prints nothing.
+func TestAppGoesBackOnADeclinedChange(t *testing.T) {
 	m, _ := anApp(t, nil)
 
 	m, _ = drive(m, append(allowing(), typed("n")...)...)
 
-	// Require the note and the way back, with nothing run
-	if view := stripped(m.View().Content); m.state != done || !strings.Contains(view, "Nothing changed.") || strings.Contains(view, "$ o3s") {
-		t.Errorf("state %v, view:\n%s", m.state, view)
+	// Require the firewall's view again, with nothing run
+	if view := stripped(m.View().Content); m.state != asking || m.q.Key != "view" || strings.Contains(view, "$ o3s") {
+		t.Errorf("state %v on %q, view:\n%s", m.state, m.q.Key, view)
 	}
 }
 
@@ -250,9 +251,9 @@ func TestAppHandsTheTerminalToTheShell(t *testing.T) {
 
 	m, _ = drive(m, keys("cage", enter, "shell", enter)...)
 
-	// Require the shell handed the terminal, and the dialog done
-	if len(*handed) != 1 || !strings.HasSuffix((*handed)[0], "cage shell") || m.state != done {
-		t.Errorf("handed %v, state %v, want cage shell and done", *handed, m.state)
+	// Require the shell handed the terminal, and the cage's view again once it ends
+	if len(*handed) != 1 || !strings.HasSuffix((*handed)[0], "cage shell") || m.state != asking || m.q.Key != "action" {
+		t.Errorf("handed %v, state %v on %q, want cage shell and the cage's view", *handed, m.state, m.q.Key)
 	}
 }
 

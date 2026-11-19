@@ -137,7 +137,7 @@ func TestEveryFeatureDialogEndsInItsCommand(t *testing.T) {
 			"marks that change nothing",
 			[][]string{{"feature"}, {discoverTab, toolPkg}},
 			[]string{"do", "view"},
-			[]Command{{Note: nothingChanged}},
+			nil,
 		},
 		{
 			"adding a store",

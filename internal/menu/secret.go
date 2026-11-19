@@ -143,7 +143,7 @@ func secretPlan(a Answers) []Command {
 	}
 	// Leave the value as it was where the user declines
 	if !confirmed(a) {
-		return declined()
+		return nil
 	}
 	return []Command{{Args: []string{"secret", "rm", picked[0], "--yes"}}}
 }

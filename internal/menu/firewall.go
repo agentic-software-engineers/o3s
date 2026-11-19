@@ -198,7 +198,7 @@ func firewallPlan(_ Home, a Answers) []Command {
 	}
 	// Leave everything as it was where the user declines
 	if !confirmed(a) {
-		return declined()
+		return nil
 	}
 	var cmds []Command
 	// Store the value of a new secret first, so the hosts find it in place

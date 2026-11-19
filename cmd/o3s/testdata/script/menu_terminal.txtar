@@ -8,8 +8,6 @@ screen '❯ Open in VS Code'
 keys down enter
 screen 'press enter to go back to the menu'
 keys enter
-screen '✓ done'
-keys enter
 screen '❯ Open a shell'
 keys esc
 ptywait

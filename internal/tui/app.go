@@ -70,8 +70,9 @@ type model struct {
 	queue      []menu.Command
 	// resume are the answers the next reading of the home opens at, such as the view a change came from.
 	resume menu.Answers
-	// quiet marks commands whose success shows as the view they changed.
-	quiet bool
+	// shown marks a run that left something to read on the screen: a note, or the output of a command neither quiet
+	// nor handed the real terminal.
+	shown bool
 	// restart marks commands that replace the binary the menu runs, and reopen is the group whose view the new binary
 	// opens at once they succeeded.
 	restart bool
@@ -153,19 +154,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case refreshMsg:
 		return m.refreshed()
 	case plannedMsg:
-		m.queue, m.failed, m.ran, m.quiet, m.restart = msg, false, 0, len(msg) > 0, false
+		m.queue, m.failed, m.ran, m.shown = msg, false, 0, false
+		m.restart = slices.ContainsFunc(m.queue, func(c menu.Command) bool { return c.Restart })
 		m.out = pane{}
 		m.out.size(m.width, m.paneHeight())
-		// Go straight back to the group's view where the dialog runs nothing
-		if len(m.queue) == 0 {
-			m.resume, m.carry = m.group(), m.place()
-			return m, m.reload()
-		}
-		// Show the output of any command that is not quiet, and restart after one that replaces the binary
-		for _, c := range m.queue {
-			m.quiet = m.quiet && c.Quiet
-			m.restart = m.restart || c.Restart
-		}
 		m.state = running
 		return m.runNext()
 	case lineMsg:
@@ -313,30 +305,15 @@ func (m model) runNext() (tea.Model, tea.Cmd) {
 	// Show every note before the next command
 	for len(m.queue) > 0 && m.queue[0].Note != "" && len(m.queue[0].Args) == 0 {
 		m.out.add(m.queue[0].Note)
-		m.queue = m.queue[1:]
+		m.queue, m.shown = m.queue[1:], true
 	}
-	// End once every command ran, naming that they all succeeded
+	// End once every command ran
 	if len(m.queue) == 0 {
-		// Leave for the new binary, which opens at the group's view, where the commands replaced this one
-		if m.restart {
-			m.reopen = m.path()
-			return m, tea.Quit
-		}
-		// Go straight back to the view that quiet commands changed
-		if m.quiet {
-			m.resume, m.carry = m.group(), m.place()
-			return m, m.reload()
-		}
-		// Confirm a dialog whose commands all ran
-		if m.ran > 0 {
-			m.out.add("")
-			m.out.add(added.Render("✓ done"))
-		}
-		m.state = done
-		return m, nil
+		return m.finish()
 	}
 	c := m.queue[0]
 	m.queue, m.ran = m.queue[1:], m.ran+1
+	m.shown = m.shown || !c.Quiet && !c.Terminal
 	m.out.add(dim.Render("$ o3s " + echoed(c.Args)))
 	cmd := m.cfg.Command(c.Args)
 	// Hand the terminal to a command that needs it, and come back when it ends
@@ -350,6 +327,29 @@ func (m model) runNext() (tea.Model, tea.Cmd) {
 	}
 	m.stream = capture(cmd, stdin)
 	return m, m.stream.next()
+}
+
+// finish ends a run whose commands all succeeded: the new binary takes over where a command replaced this one, the
+// result stays on the screen where the run left something to read, and the menu goes straight back to where the change
+// came from otherwise, as a quiet change, a declined one and a command on the real terminal leave nothing more to read.
+func (m model) finish() (tea.Model, tea.Cmd) {
+	// Leave for the new binary, which opens at the group's view
+	if m.restart {
+		m.reopen = m.path()
+		return m, tea.Quit
+	}
+	// Keep a result to read on the screen, naming that every command succeeded
+	if m.shown {
+		// Name the success of commands that ran
+		if m.ran > 0 {
+			m.out.add("")
+			m.out.add(added.Render("✓ done"))
+		}
+		m.state = done
+		return m, nil
+	}
+	m.resume, m.carry = m.group(), m.place()
+	return m, m.reload()
 }
 
 // ended takes the end of a command: the next one runs, or the dialog stops at a failure.

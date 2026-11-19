@@ -265,9 +265,6 @@ const (
 	always = "always"
 )
 
-// nothingChanged is the note a declined change ends in.
-const nothingChanged = "Nothing changed."
-
 // Next hands back the question a dialog asks next, or reports that it asks nothing more.
 func Next(h Home, a Answers) (Question, bool) {
 	return next(h, a)
@@ -405,11 +402,6 @@ func pickedIn(a Answers, key string) (string, []string) {
 		return "", nil
 	}
 	return v[0], v[1:]
-}
-
-// declined is the note a change ends in where the user says no.
-func declined() []Command {
-	return []Command{{Note: nothingChanged}}
 }
 
 // confirmed reports whether the user said yes to the change.
