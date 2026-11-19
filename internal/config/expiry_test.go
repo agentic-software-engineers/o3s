@@ -133,7 +133,7 @@ func TestAllowTurnsAwayAMalformedEndTime(t *testing.T) {
 // The time left reads in its largest whole unit, expired once the end has come, and empty without an end.
 func TestUntilWritesTheTimeLeft(t *testing.T) {
 	after := func(d time.Duration) string { return fixture.Now.Add(d).Format(time.RFC3339) }
-	tests := map[string]string{"": "", after(-time.Hour): "expired", after(30 * time.Second): "in 30s", after(52 * time.Minute): "in 52m", after(3 * time.Hour): "in 3h", after(72 * time.Hour): "in 3d"}
+	tests := map[string]string{"": "", after(-time.Hour): "expired", after(30 * time.Second): "in 30s", after(52 * time.Minute): "in 52m", after(3 * time.Hour): "in 3h", after(72 * time.Hour): "in 3d", after(2*time.Hour - time.Second): "in 2h", after(time.Hour - 30*time.Second): "in 1h"}
 	// Write every end
 	for end, want := range tests {
 		// Report an end written wrong

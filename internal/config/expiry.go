@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"math"
 	"slices"
 	"strconv"
 	"time"
@@ -101,16 +102,19 @@ func Until(end string, now time.Time) string {
 	}
 	left := t.Sub(now)
 	// Name a host whose end has come
-	switch {
-	case left <= 0:
+	if left <= 0 {
 		return "expired"
-	case left < time.Minute:
-		return fmt.Sprintf("in %ds", int(left.Seconds()))
-	case left < time.Hour:
-		return fmt.Sprintf("in %dm", int(left.Minutes()))
-	case left < 24*time.Hour:
-		return fmt.Sprintf("in %dh", int(left.Hours()))
-	default:
-		return fmt.Sprintf("in %dd", int(left.Hours()/24))
 	}
+	// Name the time left in the largest unit that holds it, counting a part of a unit as a whole one
+	for _, u := range []struct {
+		size  time.Duration
+		limit int
+		name  string
+	}{{time.Second, 60, "s"}, {time.Minute, 60, "m"}, {time.Hour, 24, "h"}} {
+		// Name a time that stays below the next unit
+		if n := int(math.Ceil(float64(left) / float64(u.size))); n < u.limit {
+			return fmt.Sprintf("in %d%s", n, u.name)
+		}
+	}
+	return fmt.Sprintf("in %dd", int(math.Ceil(float64(left)/float64(24*time.Hour))))
 }
