@@ -6,36 +6,76 @@
     ":configMigration",
     "helpers:pinGitHubActionDigestsToSemver"
   ],
-  "timezone": "Europe/Berlin",
   "labels": ["dependencies"],
   "semanticCommits": "enabled",
   "semanticCommitScope": "deps",
+  "separateMinorPatch": true,
   "pinDigests": true,
+  "prConcurrentLimit": 0,
+  "prHourlyLimit": 0,
   "minimumReleaseAge": "3 days",
-  "prBodyColumns": ["Package", "Type", "Update", "Change", "Age"],
-  "prBodyDefinitions": {
-    "Age": "{{#if newVersion}}{{{newVersionAgeInDays}}} days{{/if}}"
-  },
+  "minimumReleaseAgeBehaviour": "timestamp-optional",
   "osvVulnerabilityAlerts": true,
   "vulnerabilityAlerts": {
     "addLabels": ["security"],
     "semanticCommitType": "fix"
   },
-  "packageRules": [
+  "customManagers": [
     {
-      "description": "Tooling bumps change how the repo is built.",
-      "matchPackageNames": ["*"],
-      "semanticCommitType": "build"
+      "description": "Node, pinned in the workflow that lints commit messages.",
+      "customType": "regex",
+      "managerFilePatterns": ["/^\\.github/workflows/commitlint\\.yaml$/"],
+      "matchStrings": ["node-version: (?<currentValue>\\S+)"],
+      "depNameTemplate": "node",
+      "datasourceTemplate": "node-version"
     },
     {
-      "description": "Workflow bumps change the pipeline.",
-      "matchManagers": ["github-actions"],
+      "description": "Lima, pinned in the workflow that raises a VM.",
+      "customType": "regex",
+      "managerFilePatterns": ["/^\\.github/workflows/test\\.yaml$/"],
+      "matchStrings": ["LIMA_VERSION: (?<currentValue>\\S+)"],
+      "depNameTemplate": "lima-vm/lima",
+      "datasourceTemplate": "github-releases",
+      "extractVersion": "^v(?<version>.+)$"
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "Bumps of the binary, the images and the stack ship to users, so they release. Anything new lands here too, which is the safer default: it shows up rather than passing unseen.",
+      "matchPackageNames": ["*"],
+      "semanticCommitType": "fix"
+    },
+    {
+      "description": "Except the pipeline, which no user ever runs.",
+      "matchFileNames": [".github/**"],
       "semanticCommitType": "ci"
     },
     {
-      "description": "Bumps of the binary, the images and the stack ship to users, so they release.",
-      "matchManagers": ["docker-compose", "dockerfile", "gomod"],
-      "semanticCommitType": "fix"
+      "description": "Go modules are reviewed as one batch, so the split into minor and patch is lifted for them.",
+      "matchManagers": ["gomod"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "groupName": "go modules"
+    },
+    {
+      "description": "Bundle the digest refreshes that ship, which carry no version to review.",
+      "matchUpdateTypes": ["pin", "pinDigest", "digest"],
+      "groupName": "digests"
+    },
+    {
+      "description": "The same for the pipeline, kept apart so each group carries one commit type.",
+      "matchFileNames": [".github/**"],
+      "matchUpdateTypes": ["pin", "pinDigest", "digest"],
+      "groupName": "workflow digests"
+    },
+    {
+      "description": "A digest names a build, not a release, so it has no date an age check could measure.",
+      "matchUpdateTypes": ["digest"],
+      "minimumReleaseAge": "0 days"
+    },
+    {
+      "description": "A minor is compatible by the rules, but a new minor of a base image or the toolchain can still change behaviour.",
+      "matchUpdateTypes": ["minor"],
+      "addLabels": ["review"]
     },
     {
       "description": "Images tracking a rolling tag do not need a digest pin.",
@@ -49,6 +89,12 @@
       "description": "Label major updates so they get a deliberate review.",
       "matchUpdateTypes": ["major"],
       "addLabels": ["breaking"]
+    },
+    {
+      "description": "Renovate updates itself through the renovate-version line, which the github-actions manager reads as an image but which takes no digest. It also deserves a read of its notes.",
+      "matchPackageNames": ["ghcr.io/renovatebot/renovate"],
+      "pinDigests": false,
+      "addLabels": ["review"]
     }
   ]
 }
