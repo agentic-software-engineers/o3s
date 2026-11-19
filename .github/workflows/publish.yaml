@@ -133,20 +133,20 @@ jobs:
       - name: Check the version
         run: test "$("${HOME}/.local/bin/o3s-${TAG#v}" --version)" = "o3s version ${TAG#v}"
 
-      # require a fresh home to start the exact images this release pushed
+      # require a fresh home on this runner to start the exact images this release pushed, the stack's files being the same in a VM
       - name: Check the pinned images
         run: |
           cd "$(mktemp -d)"
-          "${HOME}/.local/bin/o3s-${TAG#v}" init >/dev/null
+          "${HOME}/.local/bin/o3s-${TAG#v}" init --dangerously-skip-vm >/dev/null
           for image in cage gateway; do
             digest="$(docker buildx imagetools inspect "ghcr.io/hansehart/o3s-${image}:${TAG#v}" --format '{{.Manifest.Digest}}')"
             grep -q "image: ghcr.io/hansehart/o3s-${image}:${TAG#v}@${digest}$" .devcontainer/compose.yaml
           done
 
-      # require a fresh home on the latest release to need nothing, which reads the real latest release
+      # require a fresh home on this runner on the latest release to need nothing, which reads the real latest release
       - name: Check the update
         run: |
           cd "$(mktemp -d)"
-          "${HOME}/.local/bin/o3s-${TAG#v}" init >/dev/null
+          "${HOME}/.local/bin/o3s-${TAG#v}" init --dangerously-skip-vm >/dev/null
           "${HOME}/.local/bin/o3s-${TAG#v}" update --yes | tee update.log
           grep -q '^Up to date$' update.log
