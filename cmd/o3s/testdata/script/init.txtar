@@ -26,12 +26,12 @@ exists .devcontainer/cage/check-egress.sh
 exists .devcontainer/.env
 grep '^O3S_PROXY_DIR='$WORK'/.local/state/o3s/proxy$' .devcontainer/.env
 grep '^O3S_SECRETS_DIR='$WORK'/.config/o3s$' .devcontainer/.env
-grep '^O3S_SOCKET_DIR='$WORK'/.local/state/o3s/[0-9a-f]{12}/docker-host$' .devcontainer/.env
+! grep '^O3S_SOCKET_DIR=' .devcontainer/.env
 exists $WORK/.local/state/o3s/proxy/mitmproxy-ca.crt
 ! exists $WORK/.config/o3s/mitmproxy-ca.crt
 exists $WORK/.config/o3s/secrets.env
 exec sh -c 'grep -q "\"path\": \"$WORK/home\"" "$WORK"/.local/state/o3s/*/home.json'
-exec sh -c 'test -d "$WORK"/.local/state/o3s/*/docker-host'
+exec sh -c '! test -e "$WORK"/.local/state/o3s/*/docker-host'
 grep '"initializeCommand": "o3s init"' .devcontainer/devcontainer.json
 
 # The new home works with every command

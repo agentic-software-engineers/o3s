@@ -37,7 +37,7 @@ func Env(home, appArmorProfile string) error {
 	fmt.Fprintln(&buf, "# Generated on every start. Put your own variables in devcontainer.json.")
 	fmt.Fprintln(&buf)
 	fmt.Fprintf(&buf, "O3S_MARKER=%s\nO3S_UID=%d\nO3S_GID=%d\n", marker, os.Getuid(), os.Getgid())
-	fmt.Fprintf(&buf, "O3S_PROXY_DIR=%s\nO3S_SECRETS_DIR=%s\nO3S_SOCKET_DIR=%s\n", paths.Proxy(), filepath.Dir(secretsFile), filepath.Join(paths.Home(home), "docker-host"))
+	fmt.Fprintf(&buf, "O3S_PROXY_DIR=%s\nO3S_SECRETS_DIR=%s\n", paths.Proxy(), filepath.Dir(secretsFile))
 	fmt.Fprintf(&buf, "O3S_APPARMOR_PROFILE=%s\n", appArmorProfile)
 	return atomicfile.Write(path, buf.Bytes(), 0o644)
 }
