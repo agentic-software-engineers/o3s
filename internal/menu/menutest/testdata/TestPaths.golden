@@ -12,7 +12,7 @@ secret / Secrets OTHER_TOKEN / Remove / yes → o3s secret rm OTHER_TOKEN --yes
 secret / Secrets OTHER_TOKEN / Remove / no → (Nothing changed.)
 secret / Secrets OTHER_TOKEN / Back → back
 
-# running, 168 paths
+# running, 169 paths
 cage / Open in VS Code → o3s cage ide
 cage / Open a shell → o3s cage shell [terminal]
 cage / Stop → o3s cage stop
@@ -154,7 +154,8 @@ firewall / Blocked [blocked.example] / 443 / 1 day / None / yes → o3s firewall
 firewall / Blocked [blocked.example] / 443 / Type a duration… / 90m / None / yes → o3s firewall add blocked.example --port 443 --for 90m --yes
 firewall / Blocked [blocked.example] / 22, 443 / For good / None / yes → o3s firewall add blocked.example --port 22,443 --yes
 firewall / Blocked [blocked.example] / Type ports… / 22, 443 / For good / None / yes → o3s firewall add blocked.example --port 22,443 --yes
-project / Projects + Add a project… / example/app → o3s project add example/app
+project / Projects + Add a project… / example/app / yes → o3s firewall add github.com --port 22 --yes; o3s project add example/app
+project / Projects + Add a project… / example/app / no → (Nothing changed.)
 project / Projects + Create a project… / example/app → o3s project create example/app
 project / Projects example/app / Remove / example/app → o3s project rm github.com/example/app --yes
 project / Projects example/app / Back → back
@@ -182,7 +183,7 @@ update / Update [cli, tool] / yes → o3s update cli registry.example.com/featur
 update / Update [cli, stack] / yes → o3s update cli stack --yes [restart]
 update / Update [] → (Everything is up to date.)
 
-# stopped, 168 paths
+# stopped, 169 paths
 cage / Open in VS Code → o3s cage ide
 cage / Open a shell → o3s cage shell [terminal]
 cage / Start → o3s cage start
@@ -324,7 +325,8 @@ firewall / Blocked [blocked.example] / 443 / 1 day / None / yes → o3s firewall
 firewall / Blocked [blocked.example] / 443 / Type a duration… / 90m / None / yes → o3s firewall add blocked.example --port 443 --for 90m --yes
 firewall / Blocked [blocked.example] / 22, 443 / For good / None / yes → o3s firewall add blocked.example --port 22,443 --yes
 firewall / Blocked [blocked.example] / Type ports… / 22, 443 / For good / None / yes → o3s firewall add blocked.example --port 22,443 --yes
-project / Projects + Add a project… / example/app → o3s project add example/app
+project / Projects + Add a project… / example/app / yes → o3s firewall add github.com --port 22 --yes; o3s project add example/app
+project / Projects + Add a project… / example/app / no → (Nothing changed.)
 project / Projects + Create a project… / example/app → o3s project create example/app
 project / Projects example/app / Remove / example/app → o3s project rm github.com/example/app --yes
 project / Projects example/app / Back → back
@@ -352,7 +354,7 @@ update / Update [cli, tool] / yes → o3s update cli registry.example.com/featur
 update / Update [cli, stack] / yes → o3s update cli stack --yes [restart]
 update / Update [] → (Everything is up to date.)
 
-# empty, 30 paths
+# empty, 31 paths
 cage / Open in VS Code → o3s cage ide
 cage / Open a shell → o3s cage shell [terminal]
 cage / Start → o3s cage start
@@ -373,7 +375,8 @@ firewall / Allowed + Allow a host… / new.example.net *.example.org / 443 / Typ
 firewall / Allowed + Allow a host… / new.example.net *.example.org / 22, 443 / For good / None / yes → o3s firewall add new.example.net *.example.org --port 22,443 --yes
 firewall / Allowed + Allow a host… / new.example.net *.example.org / Type ports… / 22, 443 / For good / None / yes → o3s firewall add new.example.net *.example.org --port 22,443 --yes
 firewall / Blocked [] → back
-project / Projects + Add a project… / example/app → o3s project add example/app
+project / Projects + Add a project… / example/app / yes → o3s firewall add github.com --port 22 --yes; o3s project add example/app
+project / Projects + Add a project… / example/app / no → (Nothing changed.)
 project / Projects + Create a project… / example/app → o3s project create example/app
 secret / Secrets + Add a secret… / NEW_TOKEN / *** → o3s secret add NEW_TOKEN --no-bind-hint
 update / Update [cli, stack, tool] / yes → o3s update cli stack registry.example.com/features/tool --yes [restart]

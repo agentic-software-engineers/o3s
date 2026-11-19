@@ -379,7 +379,7 @@ func plan(h Home, a Answers) []Command {
 	case "firewall":
 		return firewallPlan(h, a)
 	case "project":
-		return projectPlan(a)
+		return projectPlan(h, a)
 	case "secret":
 		return secretPlan(a)
 	case "update":

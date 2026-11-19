@@ -1,9 +1,12 @@
 package menu
 
 import (
+	"slices"
 	"strings"
 
+	"github.com/hansehart/o3s/internal/config"
 	"github.com/hansehart/o3s/internal/project"
+	"github.com/hansehart/o3s/internal/words"
 )
 
 // create is the value the project view's create row answers with.
@@ -36,8 +39,10 @@ func projectDialog(h Home, a Answers) (Question, bool) {
 	switch {
 	case len(picked) == 0:
 		return Question{}, true
+	case picked[0] == add && !a.has("repos"):
+		return Question{Key: "repos", Kind: Input, Title: "Repositories", About: "owner/repo, host/owner/repo or a git URL. Several, separated by spaces.", Example: "hansehart/o3s  gitlab.com/group/app", Check: checkRepos}, false
 	case picked[0] == add:
-		return ask(a, Question{Key: "repos", Kind: Input, Title: "Repositories", About: "owner/repo, host/owner/repo or a git URL. Several, separated by spaces.", Example: "hansehart/o3s  gitlab.com/group/app", Check: checkRepos})
+		return openFirst(h, a)
 	case picked[0] == create:
 		return ask(a, Question{Key: "repos", Kind: Input, Title: "Repository", About: "owner/repo or host/owner/repo for the new, empty repository.", Example: "example/scratch", Check: checkRepos})
 	}
@@ -53,8 +58,70 @@ func projectDialog(h Home, a Answers) (Question, bool) {
 	return Question{}, true
 }
 
+// openFirst asks to open the firewall for the hosts the new projects clone from where it blocks them, and asks
+// nothing where it lets every clone through.
+func openFirst(h Home, a Answers) (Question, bool) {
+	opens := opening(h, a, add)
+	// Ask nothing where the firewall lets every clone through
+	if len(opens) == 0 {
+		return Question{}, true
+	}
+	var lines, hosts []string
+	// Show every host the firewall opens, with the ports it keeps
+	for _, o := range opens {
+		sign := "+"
+		// Mark a host the allowlist holds already
+		if o.known {
+			sign = "~"
+		}
+		lines, hosts = append(lines, sign+" "+o.host+":"+o.ports), append(hosts, o.host)
+	}
+	return ask(a, apply(lines, "Opens "+words.JoinAnd(hosts)+" so the clone reaches it", false))
+}
+
+// open is a host the firewall opens for a clone, with the ports it keeps open and whether the allowlist holds it.
+type open struct {
+	host, ports string
+	known       bool
+}
+
+// opening lists the hosts the firewall blocks for the projects the user clones, each with the ports it already opens
+// beside the one the clone needs, since a change of ports replaces them, and none for a new project, which clones
+// nothing.
+func opening(h Home, a Answers, picked string) []open {
+	// Open nothing for a project the user creates
+	if picked != add {
+		return nil
+	}
+	c := config.Config{Hosts: h.Hosts}
+	needs := map[string][]int{}
+	var order []string
+	// Note every host and port a clone needs that the firewall blocks
+	for arg := range strings.FieldsSeq(a.get("repos")) {
+		r, err := project.Parse(arg)
+		// Pass over a repository the firewall lets through, or one o3s cannot read
+		if err != nil || c.Allows(r.Host, r.Port) {
+			continue
+		}
+		// Keep the hosts in the order the user named them
+		if _, seen := needs[r.Host]; !seen {
+			order = append(order, r.Host)
+		}
+		needs[r.Host] = append(needs[r.Host], r.Port)
+	}
+	out := make([]open, len(order))
+	// Join every host's ports with the ones it opens already
+	for i, host := range order {
+		current, known := c.Find(host)
+		ports := append(slices.Clone(current.Ports), needs[host]...)
+		slices.Sort(ports)
+		out[i] = open{host: host, ports: config.JoinPorts(slices.Compact(ports)), known: known}
+	}
+	return out
+}
+
 // projectPlan builds the commands the project view's dialogs lead to.
-func projectPlan(a Answers) []Command {
+func projectPlan(h Home, a Answers) []Command {
 	_, picked := view(a)
 	// Go back to the view where the user picked nothing or stepped back
 	if len(picked) == 0 || a.get("action") == back {
@@ -67,7 +134,16 @@ func projectPlan(a Answers) []Command {
 		if picked[0] == create {
 			verb = "create"
 		}
-		return []Command{{Args: append([]string{"project", verb}, strings.Fields(a.get("repos"))...)}}
+		var cmds []Command
+		// Open the firewall first for every host a clone needs and it blocks, where the user agreed
+		for _, o := range opening(h, a, picked[0]) {
+			// Leave everything as it was where the user declines
+			if !confirmed(a) {
+				return declined()
+			}
+			cmds = append(cmds, Command{Args: []string{"firewall", "add", o.host, "--port", o.ports, "--yes"}})
+		}
+		return append(cmds, Command{Args: append([]string{"project", verb}, strings.Fields(a.get("repos"))...)})
 	}
 	// Leave the project where the typed name differs
 	if strings.TrimSpace(a.get("typed")) != fullName(picked[0]) {

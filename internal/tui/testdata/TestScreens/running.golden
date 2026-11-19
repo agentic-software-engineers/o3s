@@ -2440,6 +2440,19 @@ e.g. hansehart/o3s  gitlab.com/group/app
 
 enter continue · esc cancel
 
+──── apply
+o3s  /home/ubuntu/o3s
+project / Add a project / example/app
+
++ github.com:22
+
+Opens github.com so the clone reaches it
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
 ──── repos
 o3s  /home/ubuntu/o3s
 project / Create a project

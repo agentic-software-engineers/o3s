@@ -321,10 +321,22 @@ func TestEveryOtherDialogEndsInItsCommand(t *testing.T) {
 			[]Command{{Args: []string{"secret", "rm", fixture.OtherSecret, "--yes"}}},
 		},
 		{
-			"two projects",
-			[][]string{{"project"}, {"Projects", add}, {fixture.Repo + " " + fixture.NestedRepo}},
+			"two projects, the firewall opened first for the one it blocks",
+			[][]string{{"project"}, {"Projects", add}, {fixture.Repo + " " + fixture.NestedRepo}, {yes}},
+			[]string{"do", "view", "repos", "apply"},
+			[]Command{{Args: []string{"firewall", "add", "github.com", "--port", strconv.Itoa(fixture.OtherPort), "--yes"}}, {Args: []string{"project", "add", fixture.Repo, fixture.NestedRepo}}},
+		},
+		{
+			"a project the firewall blocks, its opening declined",
+			[][]string{{"project"}, {"Projects", add}, {fixture.Repo}, {"no"}},
+			[]string{"do", "view", "repos", "apply"},
+			[]Command{{Note: nothingChanged}},
+		},
+		{
+			"a project the firewall lets through",
+			[][]string{{"project"}, {"Projects", add}, {fixture.NestedRepo}},
 			[]string{"do", "view", "repos"},
-			[]Command{{Args: []string{"project", "add", fixture.Repo, fixture.NestedRepo}}},
+			[]Command{{Args: []string{"project", "add", fixture.NestedRepo}}},
 		},
 		{
 			"a new project",
