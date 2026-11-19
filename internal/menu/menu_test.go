@@ -161,6 +161,8 @@ func TestTheFirewallViewShowsTheHostsAndTheRefusedNames(t *testing.T) {
 
 // Every firewall dialog ends in the command line the CLI runs for it, asking for --yes where the menu asked already.
 func TestEveryFirewallDialogEndsInItsCommand(t *testing.T) {
+	value := fixture.SecretValue
+
 	dialogs{
 		{
 			"a new host on the HTTPS port for good",
@@ -169,10 +171,19 @@ func TestEveryFirewallDialogEndsInItsCommand(t *testing.T) {
 			[]Command{{Args: []string{"firewall", "add", fixture.NewHost, "--port", port, "--yes"}}},
 		},
 		{
-			"two hosts on typed ports for a typed time with a new secret in two sites",
-			[][]string{{"firewall"}, {"Allowed", add}, {fixture.NewHost + " " + fixture.NextHost}, {typed}, {strconv.Itoa(fixture.OtherPort) + ", " + port}, {typed}, {fixture.Duration}, {fresh}, {fixture.NewSecret}, {"header", "body"}, {yes}},
-			[]string{"do", "view", "hosts", "ports", "portsTyped", "for", "forTyped", "secret", "secretName", "inject", "apply"},
-			[]Command{{Args: []string{"firewall", "add", fixture.NewHost, fixture.NextHost, "--port", bothPorts, "--for", fixture.Duration, "--secret", fixture.NewSecret, "--inject", "header,body", "--yes"}}},
+			"two hosts on typed ports for a typed time with a new secret, its value given, in two sites",
+			[][]string{{"firewall"}, {"Allowed", add}, {fixture.NewHost + " " + fixture.NextHost}, {typed}, {strconv.Itoa(fixture.OtherPort) + ", " + port}, {typed}, {fixture.Duration}, {fresh}, {fixture.NewSecret}, {value}, {"header", "body"}, {yes}},
+			[]string{"do", "view", "hosts", "ports", "portsTyped", "for", "forTyped", "secret", "secretName", "value:" + fixture.NewSecret, "inject", "apply"},
+			[]Command{
+				{Args: []string{"secret", "add", fixture.NewSecret, "--no-bind-hint"}, Stdin: &value},
+				{Args: []string{"firewall", "add", fixture.NewHost, fixture.NextHost, "--port", bothPorts, "--for", fixture.Duration, "--secret", fixture.NewSecret, "--inject", "header,body", "--yes"}},
+			},
+		},
+		{
+			"a host with a new secret left waiting",
+			[][]string{{"firewall"}, {"Allowed", add}, {fixture.NewHost}, {port}, {always}, {fresh}, {fixture.NewSecret}, {""}, {"header"}, {yes}},
+			[]string{"do", "view", "hosts", "ports", "for", "secret", "secretName", "value:" + fixture.NewSecret, "inject", "apply"},
+			[]Command{{Args: []string{"firewall", "add", fixture.NewHost, "--port", port, "--secret", fixture.NewSecret, "--inject", "header", "--yes"}}},
 		},
 		{
 			"two refused names for an hour",

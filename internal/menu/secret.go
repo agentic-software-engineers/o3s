@@ -137,3 +137,23 @@ func carrying(h Home, name string) []string {
 	}
 	return out
 }
+
+// valueKey names the answer that holds a secret's value.
+func valueKey(name string) string {
+	return "value:" + name
+}
+
+// valueQuestion asks a secret's value, an empty line leaving the secret waiting for one.
+func valueQuestion(name string) Question {
+	return Question{Key: valueKey(name), Kind: Hidden, Title: "Value for " + name, About: "Empty leaves it waiting, echo \"$TOKEN\" | o3s secret add " + name + " sets it later."}
+}
+
+// storeValue stores the value the user gave a secret, and nothing where the user left the secret waiting.
+func storeValue(a Answers, name string) []Command {
+	value := a.get(valueKey(name))
+	// Leave a skipped secret waiting
+	if value == "" {
+		return nil
+	}
+	return []Command{{Args: []string{"secret", "add", name, "--no-bind-hint"}, Stdin: &value}}
+}

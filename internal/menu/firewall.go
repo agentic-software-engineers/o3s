@@ -177,6 +177,10 @@ func secretQuestion(withNone bool) func(Home, Answers) (Question, bool) {
 		if a.get("secret") == fresh && !a.has("secretName") {
 			return Question{Key: "secretName", Kind: Input, Title: "Secret name", About: "An uppercase env name, the way the proxy reads it.", Example: "GH_TOKEN", Check: checkSecretName}, true
 		}
+		// Ask the value of a new secret, so the hosts carry it from the start
+		if name := chosenSecret(a); a.get("secret") == fresh && !a.has(valueKey(name)) {
+			return valueQuestion(name), true
+		}
 		// Ask where the secret goes
 		if chosenSecret(a) != "" && !a.has("inject") {
 			return Question{Key: "inject", Kind: Multi, Title: "Where the secret goes", Options: []Option{{Value: "header"}, {Value: "query"}, {Value: "body"}}, Default: []string{"header"}}, true
@@ -196,18 +200,23 @@ func firewallPlan(_ Home, a Answers) []Command {
 	if !confirmed(a) {
 		return declined()
 	}
+	var cmds []Command
+	// Store the value of a new secret first, so the hosts find it in place
+	if a.get("secret") == fresh {
+		cmds = storeValue(a, chosenSecret(a))
+	}
 	// Build the command of what the user picked
 	switch {
 	case tab == "Blocked":
-		return []Command{{Args: allowArgs(a, picked)}}
+		return append(cmds, Command{Args: allowArgs(a, picked)})
 	case picked[0] == add:
-		return []Command{{Args: allowArgs(a, strings.Fields(a.get("hosts")))}}
+		return append(cmds, Command{Args: allowArgs(a, strings.Fields(a.get("hosts")))})
 	case picked[0] == prune:
 		return []Command{{Args: []string{"firewall", "prune", "--yes"}}}
 	case a.get("action") == remove:
 		return []Command{{Args: []string{"firewall", "rm", picked[0], "--yes"}}}
 	}
-	return []Command{{Args: allowArgs(a, picked[:1])}}
+	return append(cmds, Command{Args: allowArgs(a, picked[:1])})
 }
 
 // allowArgs builds the command line that allows hosts with what the dialog asked: ports, time and secret.

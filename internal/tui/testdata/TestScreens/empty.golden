@@ -51,7 +51,7 @@ Secret the proxy injects
 
 ──── apply
 o3s  /home/ubuntu/o3s
-…new.example.net *.example.org / 443 / For good / New secret / NEW_TOKEN / query
+…ample.net *.example.org / 443 / For good / New secret / NEW_TOKEN / *** / query
 
 + new.example.net:443   NEW_TOKEN in query
 + *.example.org:443   NEW_TOKEN in query
@@ -65,7 +65,7 @@ Apply?
 
 ──── apply
 o3s  /home/ubuntu/o3s
-… new.example.net *.example.org / 443 / For good / New secret / NEW_TOKEN / body
+…xample.net *.example.org / 443 / For good / New secret / NEW_TOKEN / *** / body
 
 + new.example.net:443   NEW_TOKEN in body
 + *.example.org:443   NEW_TOKEN in body
@@ -79,7 +79,7 @@ Apply?
 
 ──── apply
 o3s  /home/ubuntu/o3s
-…t *.example.org / 443 / For good / New secret / NEW_TOKEN / header, query, body
+…ample.org / 443 / For good / New secret / NEW_TOKEN / *** / header, query, body
 
 + new.example.net:443   NEW_TOKEN in header, query, body
 + *.example.org:443   NEW_TOKEN in header, query, body
