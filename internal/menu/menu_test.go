@@ -391,6 +391,27 @@ func TestHostRowShowsAHostTheSameEverywhere(t *testing.T) {
 	}
 }
 
+// An installed feature shows the same row piped and in its view: its tag without a colon, its store, and the hosts
+// that name it among their reasons.
+func TestInstalledRowShowsAFeatureTheSameEverywhere(t *testing.T) {
+	pkg := fixture.Store + "/" + fixture.Feature
+	hosts := []config.Host{{Name: fixture.Host, By: []string{pkg}}, {Name: fixture.OtherHost, By: []string{"user"}}, {Name: fixture.ThirdHost, By: []string{pkg, "user"}}}
+	tests := []struct {
+		hosts []config.Host
+		want  []string
+	}{
+		{hosts, []string{fixture.Major, fixture.Store, fixture.Host + ", " + fixture.ThirdHost}},
+		{nil, []string{fixture.Major, fixture.Store, ""}},
+	}
+	// Check every set of hosts
+	for _, tt := range tests {
+		// Report a row that differs
+		if diff := cmp.Diff(tt.want, InstalledRow(Installed{Package: pkg, Tag: fixture.Major}, tt.hosts)); diff != "" {
+			t.Errorf("InstalledRow(%d hosts) (-want +got):\n%s", len(tt.hosts), diff)
+		}
+	}
+}
+
 // A secret's value reads as set or empty, piped and in its view alike.
 func TestSecretStateReadsSetOrEmpty(t *testing.T) {
 	// Report a state that reads otherwise

@@ -4,7 +4,7 @@ cmpenv .devcontainer/devcontainer.json want-added.jsonc
 
 # Piped, the features list in the order they install
 exec o3s feature
-stdout '(?s)^FEATURE +VERSION +HOSTS\n.*/features/tool +2 +example\.com\n.*/features/node +latest *\n.*/features/go +1 *\n$'
+stdout '(?s)^FEATURE +TAG +STORE +HOSTS\ntool +2 +\S+/features +example\.com\nnode +latest +\S+/features *\ngo +1 +\S+/features *\n$'
 
 # Features named first install first, in that order, and the rest keep theirs
 exec o3s feature order $REGISTRY/features/tool

@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/hansehart/o3s/internal/config"
 	"github.com/hansehart/o3s/internal/words"
 )
 
@@ -26,10 +27,10 @@ const (
 // featureView shows the installed features in the order they install, every feature the stores offer, and the
 // stores.
 func featureView(h Home, a Answers) Question {
-	installed := Tab{Name: installedTab, About: "Installed in this order on every rebuild. Move one with ctrl+↑/↓.", Empty: "No features yet. Mark the ones you want on the Discover tab.", Header: []string{"FEATURE", "TAG", "STORE"}, Reorder: true}
-	// Show every installed feature with its tag and its store
+	installed := Tab{Name: installedTab, About: "Installed in this order on every rebuild. Move one with ctrl+↑/↓.", Empty: "No features yet. Mark the ones you want on the Discover tab.", Header: InstalledHeader, Reorder: true}
+	// Show every installed feature as its row
 	for _, f := range h.Installed {
-		installed.Options = append(installed.Options, Option{Value: f.Package, Label: path.Base(f.Package), Columns: []string{":" + f.Tag, path.Dir(f.Package)}})
+		installed.Options = append(installed.Options, Option{Value: f.Package, Label: path.Base(f.Package), Columns: InstalledRow(f, h.Hosts)})
 	}
 	rows, loading := offers(h)
 	discover := Tab{Name: discoverTab, About: "Every feature the stores offer. Mark the ones the cage installs.", Empty: "No store offers a feature. Add one on the Stores tab.", Header: []string{"FEATURE", "STORE"}, Multi: true, Options: rows, Marked: packages(h), Loading: loading}
@@ -511,4 +512,21 @@ func capitalized(line string) string {
 		return line
 	}
 	return strings.ToUpper(line[:1]) + line[1:]
+}
+
+// InstalledHeader labels an installed feature's row, piped and in the feature view.
+var InstalledHeader = []string{"FEATURE", "TAG", "STORE", "HOSTS"}
+
+// InstalledRow is how an installed feature shows in a row after its name, piped or in the feature view: its tag, its
+// store and the hosts it needs.
+func InstalledRow(f Installed, hosts []config.Host) []string {
+	var needs []string
+	// Take every host that names the feature among its reasons
+	for _, h := range hosts {
+		// Take a host the feature needs
+		if slices.Contains(h.By, f.Package) {
+			needs = append(needs, h.Name)
+		}
+	}
+	return []string{f.Tag, path.Dir(f.Package), strings.Join(needs, ", ")}
 }
