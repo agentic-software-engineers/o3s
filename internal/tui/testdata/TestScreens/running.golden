@@ -226,10 +226,14 @@ o3s  /home/ubuntu/o3s
 feature / Stores / registry.example.com/features
 
 registry.example.com/features
+
+  Features            2
+  Installed from it   2
+
 ❯ Remove
   Back
 
-↑/↓ navigate · type to search · enter select · esc back
+↑/↓ navigate · enter select · esc back
 
 ──── apply
 o3s  /home/ubuntu/o3s

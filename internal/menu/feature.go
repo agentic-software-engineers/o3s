@@ -5,6 +5,7 @@ import (
 	"maps"
 	"path"
 	"slices"
+	"strconv"
 	"strings"
 
 	"github.com/hansehart/o3s/internal/config"
@@ -122,7 +123,7 @@ func featureDialog(h Home, a Answers) (Question, bool) {
 	case discoverTab:
 		return discoverDialog(h, a, picked)
 	case storesTab:
-		return storeDialog(a, picked)
+		return storeDialog(h, a, picked)
 	}
 	return Question{}, true
 }
@@ -207,7 +208,7 @@ func discoverDialog(h Home, a Answers, marked []string) (Question, bool) {
 }
 
 // storeDialog asks the store to add, or what to do with a store, then the confirmation of its removal.
-func storeDialog(a Answers, picked []string) (Question, bool) {
+func storeDialog(h Home, a Answers, picked []string) (Question, bool) {
 	// End an empty pick
 	if len(picked) == 0 {
 		return Question{}, true
@@ -218,7 +219,7 @@ func storeDialog(a Answers, picked []string) (Question, bool) {
 	}
 	// Ask what to do with the store
 	if !a.has("action") {
-		return detail(picked[0], nil, Option{Value: remove, Label: "Remove"}), false
+		return detail(picked[0], storeFacts(h, picked[0]), Option{Value: remove, Label: "Remove"}), false
 	}
 	// Confirm the removal, the features installed from the store staying
 	if a.get("action") == remove {
@@ -546,4 +547,23 @@ var OptionHeader = []string{"OPTION", "VALUE", "DEFAULT"}
 // feature sets, a dash where it sets none, and the one the option falls back to.
 func OptionRow(o FeatureOption, value string) []string {
 	return []string{words.Or(value, "–"), o.Default}
+}
+
+// storeFacts name how many features a store offers, a dash while its catalog is on its way, and how many of them the
+// cage installs.
+func storeFacts(h Home, store string) []Fact {
+	offered := "–"
+	// Count the features of a catalog read already
+	if catalog, read, err := h.Lookup.Peek(store); read && err == nil {
+		offered = strconv.Itoa(len(catalog))
+	}
+	installed := 0
+	// Count every installed feature the store offers
+	for _, f := range h.Installed {
+		// Count a feature from the store
+		if path.Dir(f.Package) == store {
+			installed++
+		}
+	}
+	return []Fact{{Label: "Features", Value: offered}, {Label: "Installed from it", Value: strconv.Itoa(installed)}}
 }

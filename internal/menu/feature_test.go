@@ -251,3 +251,13 @@ func TestTheFeatureViewOpensBeforeTheStoresAnswer(t *testing.T) {
 		t.Errorf("view = %+v, pending %v", q.Tabs, q.Pending())
 	}
 }
+
+// A store's row names how many features it offers and how many of them the cage installs.
+func TestAStoresRowShowsItsFeatures(t *testing.T) {
+	q, _ := Next(aHomeWithTheTool(), Answers{}.With("do", []string{"feature"}).With("view", []string{storesTab, fixture.Store}))
+
+	// Require the store's facts
+	if diff := cmp.Diff([]Fact{{Label: "Features", Value: "2"}, {Label: "Installed from it", Value: "1"}}, q.Facts); diff != "" {
+		t.Errorf("store facts (-want +got):\n%s", diff)
+	}
+}
