@@ -4,9 +4,11 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"path"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/hansehart/o3s/internal/config"
@@ -25,29 +27,51 @@ import (
 // runMenu shows the menu in its own screen, running each dialog's commands as this binary, until the user leaves.
 func runMenu(ctx context.Context, s Streams) int {
 	// Report a menu that fails to run
-	if err := openMenu(ctx); err != nil {
+	if err := openMenu(ctx, menuAt(), nil); err != nil {
 		fmt.Fprintf(s.Err, "error: %v\n", err)
 		return 1
 	}
 	return 0
 }
 
-// openMenu shows the menu in its own screen, opened at the view of the group a command path names, until the user
-// leaves.
-func openMenu(ctx context.Context, path ...string) error {
+// openMenu shows the menu in its own screen, opened at the view of the group a command path names, or at the view a
+// binary that replaced itself was at with the main menu behind it, until the user leaves.
+func openMenu(ctx context.Context, resume, path []string) error {
 	self, err := executable()
 	// Hand back a binary that fails to find itself
 	if err != nil {
 		return err
 	}
 	cats := newCatalogs(ctx)
-	return tui.Run(ctx, tui.Config{
-		Home:  func() menu.Home { return menuHome(ctx, cats) },
-		Start: menu.Open(path...),
+	reopen, err := tui.Run(ctx, tui.Config{
+		Home:   func() menu.Home { return menuHome(ctx, cats) },
+		Start:  menu.Open(path...),
+		Resume: menu.Open(resume...),
 		Command: func(args []string) *exec.Cmd {
 			return exec.CommandContext(ctx, self, args...)
 		},
 	})
+	// End where the user left the menu
+	if err != nil || reopen == nil {
+		return err
+	}
+	// Hand back a place the new binary fails to learn
+	if err := os.Setenv(menuAtEnv, strings.Join(reopen, " ")); err != nil {
+		return err
+	}
+	return restartAs(self, []string{self})
+}
+
+// menuAtEnv names the group whose view a new binary's menu opens at, which the old one leaves for it when it replaced
+// itself.
+const menuAtEnv = "O3S_MENU_AT"
+
+// menuAt takes the group whose view the menu opens at from an old binary that replaced itself, so no later menu
+// reads it.
+func menuAt() []string {
+	at := os.Getenv(menuAtEnv)
+	_ = os.Unsetenv(menuAtEnv)
+	return strings.Fields(at)
 }
 
 // menuLookup answers the menu's questions to the stores, reading each store once.
@@ -69,12 +93,12 @@ func (l menuLookup) Peek(store string) ([]menu.Offer, bool, error) {
 	return l.cats.peek(store)
 }
 
-// Updates lists every part with a newer version, as update would bring it: o3s, the stack and each feature.
+// Updates lists every part with a newer version, as update would bring it: the cli, the stack and each feature.
 func (l menuLookup) Updates() ([]menu.Update, error) {
 	var out []menu.Update
 	// Name the newer release of the binary's channel
 	if target, current, ok := newerRelease(l.ctx); ok {
-		out = append(out, menu.Update{Target: "o3s", Name: "o3s", Change: current + " -> " + target})
+		out = append(out, menu.Update{Target: menu.CLI, Name: menu.CLI, Change: current + " -> " + target})
 	}
 	dir, err := workingHome()
 	// Hand back a working folder that stays unknown

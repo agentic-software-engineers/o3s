@@ -10,6 +10,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
+	"github.com/google/go-cmp/cmp"
 
 	"github.com/hansehart/o3s/internal/fixture"
 	"github.com/hansehart/o3s/internal/menu"
@@ -432,5 +433,46 @@ func TestAppFillsInAViewAsItsRowsComeIn(t *testing.T) {
 	// Require the feature on the Discover tab the user stayed on
 	if view := stripped(m.View().Content); !strings.Contains(view, fixture.Feature) || !strings.Contains(view, "Every feature the stores offer") {
 		t.Errorf("view after the store answered:\n%s", view)
+	}
+}
+
+// Commands that replace the binary end the menu once they succeed, naming the group whose view the new binary opens
+// at, and a failing one keeps the menu with its failure.
+func TestAppLeavesForTheNewBinary(t *testing.T) {
+	updating := func(script string) (model, bool) {
+		m, _ := anApp(t, map[string]string{"update": script})
+		m.cfg.Home = func() menu.Home { return menu.Home{Dir: "/home/ubuntu/o3s", Exists: true} }
+		m.answers = menu.Answers{}.With("do", []string{"update"})
+		next, cmd := m.Update(plannedMsg{{Args: []string{"update"}, Restart: true}})
+		return settle(next.(model), cmd)
+	}
+
+	m, quit := updating("true")
+
+	// Require the app gone, opening the update's view again
+	if !quit || !cmp.Equal([]string{"update"}, m.reopen) {
+		t.Errorf("quit %v, reopen %v, want the update's view", quit, m.reopen)
+	}
+
+	m, quit = updating("exit 3")
+
+	// Require the failure in the menu, and nothing to open again
+	if quit || m.reopen != nil || !strings.Contains(stripped(m.View().Content), "✗ failed") {
+		t.Errorf("quit %v, reopen %v, view:\n%s", quit, m.reopen, stripped(m.View().Content))
+	}
+}
+
+// A menu resumed at a group's view keeps the main menu behind it, so Esc steps back instead of leaving.
+func TestAppResumesWithTheMainMenuBehind(t *testing.T) {
+	m, _ := anApp(t, nil)
+	m.cfg.Resume = menu.Open("firewall")
+	m.resume = m.cfg.Resume
+	m, _ = settle(m, m.Init())
+
+	back, quit := drive(m, esc)
+
+	// Require the group's view first, then the main menu on Esc
+	if m.q.Key != "view" || quit || back.q.Key != "do" {
+		t.Errorf("opened on %q, after esc quit %v on %q, want the view then the main menu", m.q.Key, quit, back.q.Key)
 	}
 }

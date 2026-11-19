@@ -20,7 +20,7 @@ var (
 )
 
 // fakeLookup is a store that offers the tool and another feature, the tool needing two secrets still waiting for
-// values, and newer versions of o3s, the stack and the tool.
+// values, and newer versions of the cli, the stack and the tool.
 type fakeLookup struct{}
 
 // Catalog lists the features the store offers, and fails for any other store.
@@ -57,9 +57,9 @@ func (fakeLookup) Remove(pkg string) (Preview, error) {
 	return Preview{Lines: []string{pkg, goneLine}, Features: 1, Hosts: 1}, nil
 }
 
-// Updates lists newer versions of o3s, the stack and the tool.
+// Updates lists newer versions of the cli, the stack and the tool.
 func (fakeLookup) Updates() ([]Update, error) {
-	return []Update{{Target: "o3s", Name: "o3s", Change: fixture.Version + " -> " + fixture.NewerVersion}, {Target: "stack", Name: "stack", Change: "1 file, 2 images"}, {Target: toolPkg, Name: fixture.Feature, Change: fixture.Major + " -> " + fixture.NewerMajor}}, nil
+	return []Update{{Target: CLI, Name: CLI, Change: fixture.Version + " -> " + fixture.NewerVersion}, {Target: "stack", Name: "stack", Change: "1 file, 2 images"}, {Target: toolPkg, Name: fixture.Feature, Change: fixture.Major + " -> " + fixture.NewerMajor}}, nil
 }
 
 // aHomeWithTheTool is aHome holding the tool with its mode set.

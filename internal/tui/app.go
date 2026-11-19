@@ -40,6 +40,9 @@ type Config struct {
 	Exec func(cmd *exec.Cmd, fn tea.ExecCallback) tea.Cmd
 	// Start are the answers the menu opens with, such as the group whose view a command named.
 	Start menu.Answers
+	// Resume are the answers of a view the menu opens at with the main menu behind it, as the view a binary that
+	// replaced itself was at.
+	Resume menu.Answers
 }
 
 // Messages the app's own commands send.
@@ -69,23 +72,29 @@ type model struct {
 	// resume are the answers the next reading of the home opens at, such as the view a change came from.
 	resume menu.Answers
 	// quiet marks commands whose success shows as the view they changed.
-	quiet  bool
-	out    pane
-	stream stream
-	ran    int
-	failed bool
-	width  int
-	height int
+	quiet bool
+	// restart marks commands that replace the binary the menu runs, and reopen is the group whose view the new binary
+	// opens at once they succeeded.
+	restart bool
+	reopen  []string
+	out     pane
+	stream  stream
+	ran     int
+	failed  bool
+	width   int
+	height  int
 }
 
-// Run shows the menu until the user leaves.
-func Run(ctx context.Context, cfg Config) error {
+// Run shows the menu until the user leaves, or until commands replaced the binary it runs, where it hands back the path
+// of the group whose view the new binary opens at.
+func Run(ctx context.Context, cfg Config) ([]string, error) {
 	// Hand the terminal to a command by default, unless the caller does it otherwise
 	if cfg.Exec == nil {
 		cfg.Exec = tea.ExecProcess
 	}
-	_, err := tea.NewProgram(model{cfg: cfg}, tea.WithContext(ctx)).Run()
-	return err
+	final, err := tea.NewProgram(model{cfg: cfg, resume: cfg.Resume}, tea.WithContext(ctx)).Run()
+	m, _ := final.(model)
+	return m.reopen, err
 }
 
 // Init reads the home for the first dialog.
@@ -141,7 +150,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case refreshMsg:
 		return m.refreshed()
 	case plannedMsg:
-		m.queue, m.failed, m.ran, m.quiet = msg, false, 0, len(msg) > 0
+		m.queue, m.failed, m.ran, m.quiet, m.restart = msg, false, 0, len(msg) > 0, false
 		m.out = pane{}
 		m.out.size(m.width, m.paneHeight())
 		// Go straight back to the group's view where the dialog runs nothing
@@ -149,9 +158,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.resume, m.carry = m.group(), m.place()
 			return m, m.reload()
 		}
-		// Show the output of any command that is not quiet
+		// Show the output of any command that is not quiet, and restart after one that replaces the binary
 		for _, c := range m.queue {
 			m.quiet = m.quiet && c.Quiet
+			m.restart = m.restart || c.Restart
 		}
 		m.state = running
 		return m.runNext()
@@ -304,6 +314,11 @@ func (m model) runNext() (tea.Model, tea.Cmd) {
 	}
 	// End once every command ran, naming that they all succeeded
 	if len(m.queue) == 0 {
+		// Leave for the new binary, which opens at the group's view, where the commands replaced this one
+		if m.restart {
+			m.reopen = m.path()
+			return m, tea.Quit
+		}
 		// Go straight back to the view that quiet commands changed
 		if m.quiet {
 			m.resume, m.carry = m.group(), m.place()
@@ -351,6 +366,16 @@ func (m model) ended(end endMsg) (tea.Model, tea.Cmd) {
 	m.out.add(warning.Render("✗ failed"))
 	m.queue, m.failed, m.state = nil, true, done
 	return m, nil
+}
+
+// path is the group the dialog runs in, as the menu opens at it, and none at the main menu.
+func (m model) path() []string {
+	g := m.group()
+	// Name no group at the main menu
+	if len(g) == 0 || len(g[0].Values) == 0 {
+		return []string{}
+	}
+	return g[0].Values[:1]
 }
 
 // group is the answers that open the view of the group the dialog runs in, the answers the menu started with where they

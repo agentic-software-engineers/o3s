@@ -58,7 +58,7 @@ type Lookup interface {
 	Add(id string) (Preview, error)
 	// Remove shows what leaves with a feature.
 	Remove(pkg string) (Preview, error)
-	// Updates lists every part with a newer version: o3s, the stack and each feature.
+	// Updates lists every part with a newer version: the cli, the stack and each feature.
 	Updates() ([]Update, error)
 }
 
@@ -241,6 +241,9 @@ type Command struct {
 	Terminal bool
 	// Quiet marks a command whose success shows as the view it changed, without its output.
 	Quiet bool
+	// Restart marks a command that replaces the binary the menu runs, which opens the menu again at the group's view
+	// once the command succeeds.
+	Restart bool
 }
 
 // Values a dialog answers with beside the rows it shows.
@@ -292,7 +295,7 @@ func mainMenu(h Home) Question {
 		{Value: "firewall", Note: fmt.Sprintf("hosts the cage reaches · %d allowed · %d blocked", len(h.Hosts), len(h.Blocked))},
 		{Value: "project", Note: fmt.Sprintf("repositories in the workspace · %d", len(h.Projects))},
 		{Value: "secret", Note: fmt.Sprintf("values the proxy injects · %d", len(h.Secrets))},
-		{Value: "update", Note: "o3s, the stack and the features"},
+		{Value: "update", Note: "the cli, the stack and the features"},
 	}
 	q := Question{Key: "do", Kind: Select, Title: "What do you want to do?"}
 	// Offer every group that works here

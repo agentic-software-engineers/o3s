@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/hansehart/o3s/internal/config"
+	"github.com/hansehart/o3s/internal/menu"
 	"github.com/hansehart/o3s/internal/rebuild"
 	"github.com/hansehart/o3s/internal/registry"
 	"github.com/hansehart/o3s/internal/update"
@@ -19,8 +20,8 @@ import (
 func newUpdate() *cobra.Command {
 	var yes bool
 	cmd := &cobra.Command{
-		Use:   "update [o3s|stack|<feature>...]",
-		Short: "Bring o3s, the home's stack and its features up to date, all of them or the ones named",
+		Use:   "update [cli|stack|<feature>...]",
+		Short: "Bring the cli, the home's stack and its features up to date, all of them or the ones named",
 		Args:  usage(cobra.ArbitraryArgs),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			t := readTargets(args)
@@ -117,7 +118,7 @@ func readTargets(args []string) targets {
 	for _, arg := range args {
 		// Take the part the word names
 		switch arg {
-		case "o3s":
+		case menu.CLI, "o3s":
 			t.binary = true
 		case "stack":
 			t.stack = true

@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"syscall"
 
+	"github.com/hansehart/o3s/internal/menu"
 	"github.com/hansehart/o3s/internal/release"
 )
 
@@ -57,7 +58,7 @@ func selfUpdate(ctx context.Context, in io.Reader, out, errOut io.Writer, yes bo
 	if !release.Newer(target, current) {
 		return false, nil
 	}
-	fmt.Fprintf(out, "%-14s %s -> %s\n", "o3s", current, target)
+	fmt.Fprintf(out, "%-14s %s -> %s\n", menu.CLI, current, target)
 	ok, err := confirm(in, out, isTerminal(in), yes, "update")
 	// Hand back an answer that fails to arrive, or go on with this binary when the user declines
 	if err != nil || !ok {

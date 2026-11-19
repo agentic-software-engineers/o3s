@@ -1,10 +1,14 @@
 package menu
 
 import (
+	"slices"
 	"strings"
 
 	"github.com/hansehart/o3s/internal/words"
 )
+
+// CLI is the part of an update that names o3s's own binary.
+const CLI = "cli"
 
 // updateDialog shows every part with a newer version, all of them marked, then the confirmation of the marked ones.
 func updateDialog(h Home, a Answers) (Question, bool) {
@@ -39,7 +43,8 @@ func updateDialog(h Home, a Answers) (Question, bool) {
 	return ask(a, apply(lines, "Updates "+words.Count(len(lines), "part", "parts"), false))
 }
 
-// updatePlan brings the marked parts up to date.
+// updatePlan brings the marked parts up to date, and opens the menu again on the new binary where the cli is among
+// them.
 func updatePlan(_ Home, a Answers) []Command {
 	_, marked := view(a)
 	// Go back where the user marked nothing
@@ -50,5 +55,5 @@ func updatePlan(_ Home, a Answers) []Command {
 	if !confirmed(a) {
 		return declined()
 	}
-	return []Command{{Args: append(append([]string{"update"}, marked...), "--yes")}}
+	return []Command{{Args: append(append([]string{"update"}, marked...), "--yes"), Restart: slices.Contains(marked, CLI)}}
 }
