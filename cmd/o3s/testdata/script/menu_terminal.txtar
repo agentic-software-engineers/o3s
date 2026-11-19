@@ -10,7 +10,7 @@ screen 'press enter to go back to the menu'
 keys enter
 screen '✓ done'
 keys enter
-screen '❯ Open in VS Code'
+screen '❯ Open a shell'
 keys esc
 ptywait
 grep '^exec ' $WORK/devcontainer.log

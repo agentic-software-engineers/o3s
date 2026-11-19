@@ -399,15 +399,19 @@ func (m model) group() menu.Answers {
 	return m.answers[:1]
 }
 
-// place is where the view a change came from opens again: the tab the user picked in and the row, the one a new
-// order names.
+// place is where the question the menu reopens at starts: the answer it took when the change began, a view's tab and
+// row, the row a new order names, or the choice a group's own question took.
 func (m model) place() []string {
-	i := m.lastView()
-	// Name no place where the dialog answered no view
-	if i < 0 || len(m.answers[i].Values) == 0 {
+	i := len(m.group())
+	// Name no place where the dialog answered nothing past the group
+	if i >= len(m.answers) || i >= len(m.steps) || len(m.answers[i].Values) == 0 {
 		return nil
 	}
 	v := m.answers[i].Values
+	// Read a choice as it was taken
+	if m.steps[i].kind != menu.View {
+		return v
+	}
 	// Read the row a new order names
 	if len(v) > 2 && v[1] == menu.Order {
 		return []string{v[0], v[2]}

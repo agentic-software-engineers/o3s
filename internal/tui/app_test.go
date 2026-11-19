@@ -505,6 +505,13 @@ func TestAppReopensTheViewAChangeCameFrom(t *testing.T) {
 			[]string{"Options", "debug"},
 		},
 		{
+			"a group's action",
+			menu.Answers{}.With("do", []string{"cage"}).With("action", []string{"stop"}),
+			[]menu.Kind{menu.Select, menu.Select},
+			menu.Answers{}.With("do", []string{"cage"}),
+			[]string{"stop"},
+		},
+		{
 			"a new order",
 			menu.Answers{}.With("do", []string{"feature"}).With("view", []string{"Installed", menu.Order, pkg, pkg}),
 			[]menu.Kind{menu.Select, menu.View},
