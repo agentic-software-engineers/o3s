@@ -244,3 +244,83 @@ func TestTheGatewayLeavesOutAnExpiredHost(t *testing.T) {
 		t.Errorf("resolver still names %s after its end time:\n%s", fixture.OtherHost, conf)
 	}
 }
+
+// The gateway answers on the route address Docker hands the cage network.
+func TestTheGatewayAnswersOnTheCageNetworksRouteAddress(t *testing.T) {
+	stacktest.AnEmptyPolicy(t)
+	// Stop when the gateway fails to come up
+	if err := stacktest.Up(t, "gateway"); err != nil {
+		t.Fatalf("Setup: Up(gateway): %v", err)
+	}
+	route, err := stacktest.CageRoute(t)
+	// Stop when the cage network names no route address
+	if err != nil || route == "" {
+		t.Fatalf("Setup: CageRoute() = %q, %v", route, err)
+	}
+
+	out, err := stacktest.Exec(t, "gateway", "ip", "-o", "-4", "addr", "show")
+
+	// Stop when reading the addresses fails
+	if err != nil {
+		t.Fatalf("Exec(gateway, ip -o -4 addr show) = %v", err)
+	}
+	// Report a gateway that leaves the route address unanswered
+	if !strings.Contains(out, " "+route+"/32 ") {
+		t.Errorf("gateway addresses = %q, want %s/32 among them", out, route)
+	}
+}
+
+// A container on the cage network gets the route address as its default route.
+func TestACageNetworkContainerRoutesThroughTheRouteAddress(t *testing.T) {
+	stacktest.AnEmptyPolicy(t)
+	// Stop when the gateway fails to come up
+	if err := stacktest.Up(t, "gateway"); err != nil {
+		t.Fatalf("Setup: Up(gateway): %v", err)
+	}
+	route, err := stacktest.CageRoute(t)
+	// Stop when the cage network names no route address
+	if err != nil || route == "" {
+		t.Fatalf("Setup: CageRoute() = %q, %v", route, err)
+	}
+
+	out, err := stacktest.OnTheCageNetwork(t, "ip route show default")
+
+	// Stop when the container fails to run
+	if err != nil {
+		t.Fatalf("OnTheCageNetwork(ip route show default) = %v", err)
+	}
+	// Report a default route that leads elsewhere
+	if got, want := strings.TrimSpace(out), "default via "+route; !strings.HasPrefix(got, want) {
+		t.Errorf("default route = %q, want it to start with %q", got, want)
+	}
+}
+
+// The route address of the cage network resolves to the gateway's own interface.
+func TestTheCageNetworksRouteAddressResolvesToTheGateway(t *testing.T) {
+	stacktest.AnEmptyPolicy(t)
+	// Stop when the gateway fails to come up
+	if err := stacktest.Up(t, "gateway"); err != nil {
+		t.Fatalf("Setup: Up(gateway): %v", err)
+	}
+	route, err := stacktest.CageRoute(t)
+	// Stop when the cage network names no route address
+	if err != nil || route == "" {
+		t.Fatalf("Setup: CageRoute() = %q, %v", route, err)
+	}
+	mac, err := stacktest.Exec(t, "gateway", "sh", "-c", `cat "/sys/class/net/$(ip -o -4 addr show to "$GW_CAGE_ROUTE" | awk '{print $2}')/address"`)
+	// Stop when the gateway's interface stays unread
+	if err != nil {
+		t.Fatalf("Setup: read the gateway's cage interface address: %v", err)
+	}
+
+	out, err := stacktest.OnTheCageNetwork(t, fmt.Sprintf("timeout 3 bash -c ': </dev/tcp/%s/443'; ip neigh show %s", fixture.Address, route))
+
+	// Stop when the container fails to run
+	if err != nil {
+		t.Fatalf("OnTheCageNetwork(reach %s, ip neigh show %s) = %v", fixture.Address, route, err)
+	}
+	// Report a route address that some other interface answers
+	if want := "lladdr " + strings.TrimSpace(mac); !strings.Contains(out, want) {
+		t.Errorf("neighbor of %s = %q, want %q", route, out, want)
+	}
+}
