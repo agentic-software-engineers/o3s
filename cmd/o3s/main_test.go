@@ -177,7 +177,9 @@ func TestScripts(t *testing.T) {
 				}
 			}
 			env.Setenv("PATH", bin+string(os.PathListSeparator)+env.Getenv("PATH"))
+			ptySetup(env)
 			return nil
 		},
+		Cmds: ptyCmds,
 	})
 }

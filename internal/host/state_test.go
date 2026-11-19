@@ -31,17 +31,19 @@ func TestHomeStateRecordsTheHome(t *testing.T) {
 	if err := json.Unmarshal(data, &record); err != nil || record.Path != home {
 		t.Errorf("home.json = %s, %v, want the path %s", data, err, home)
 	}
-	// Check every folder the state holds for its owner alone
-	for _, dir := range []string{paths.Home(home), filepath.Join(paths.Home(home), "docker-host")} {
-		info, err := os.Stat(dir)
-		// Report a folder missing or open to others
-		if err != nil || info.Mode().Perm() != 0o700 {
-			t.Errorf("%s: %v, want a folder at 0700", dir, err)
-		}
+	info, err := os.Stat(paths.Home(home))
+	// Require the home's folder for its owner alone
+	if err != nil || info.Mode().Perm() != 0o700 {
+		t.Errorf("%s: %v, want a folder at 0700", paths.Home(home), err)
+	}
+	entries, _ := os.ReadDir(paths.Home(home))
+	// Require the folder to hold the home's record alone
+	if len(entries) != 1 || entries[0].Name() != "home.json" {
+		t.Errorf("%s holds %v, want home.json alone", paths.Home(home), entries)
 	}
 }
 
-// The values compose reads name the proxy's folder, the secrets' folder and the home's socket folder.
+// The values compose reads name the proxy's folder and the secrets' folder.
 func TestEnvNamesTheFoldersComposeMounts(t *testing.T) {
 	state, secrets, home := t.TempDir(), t.TempDir(), t.TempDir()
 	t.Setenv("XDG_STATE_HOME", state)
@@ -61,7 +63,6 @@ func TestEnvNamesTheFoldersComposeMounts(t *testing.T) {
 	want := []string{
 		"O3S_PROXY_DIR=" + paths.Proxy() + "\n",
 		"O3S_SECRETS_DIR=" + secrets + "\n",
-		"O3S_SOCKET_DIR=" + filepath.Join(paths.Home(home), "docker-host") + "\n",
 	}
 	// Require every folder named
 	for _, line := range want {
@@ -69,6 +70,10 @@ func TestEnvNamesTheFoldersComposeMounts(t *testing.T) {
 		if !strings.Contains(string(data), line) {
 			t.Errorf(".env lacks %q:\n%s", line, data)
 		}
+	}
+	// Require those two folders to be every folder the file names
+	if got := strings.Count(string(data), "_DIR="); got != len(want) {
+		t.Errorf(".env names %d folders, want %d:\n%s", got, len(want), data)
 	}
 }
 
