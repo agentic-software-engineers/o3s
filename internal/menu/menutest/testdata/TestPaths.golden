@@ -35,8 +35,8 @@ feature / Discover [tool] / yes → o3s feature rm registry.example.com/features
 feature / Discover [tool] / no → (Nothing changed.)
 feature / Discover [other] / yes → o3s feature rm registry.example.com/features/tool --no-preview --yes
 feature / Discover [other] / no → (Nothing changed.)
-feature / Discover [] / yes → back
-feature / Discover [] / no → back
+feature / Discover [] / yes → o3s feature rm registry.example.com/features/tool registry.example.com/features/other --no-preview --yes
+feature / Discover [] / no → (Nothing changed.)
 feature / Stores + Add a store… / registry.example.org/features → o3s feature store add registry.example.org/features
 feature / Stores registry.example.com/features / Remove / yes → o3s feature store rm registry.example.com/features --yes
 feature / Stores registry.example.com/features / Remove / no → (Nothing changed.)
@@ -205,8 +205,8 @@ feature / Discover [tool] / yes → o3s feature rm registry.example.com/features
 feature / Discover [tool] / no → (Nothing changed.)
 feature / Discover [other] / yes → o3s feature rm registry.example.com/features/tool --no-preview --yes
 feature / Discover [other] / no → (Nothing changed.)
-feature / Discover [] / yes → back
-feature / Discover [] / no → back
+feature / Discover [] / yes → o3s feature rm registry.example.com/features/tool registry.example.com/features/other --no-preview --yes
+feature / Discover [] / no → (Nothing changed.)
 feature / Stores + Add a store… / registry.example.org/features → o3s feature store add registry.example.org/features
 feature / Stores registry.example.com/features / Remove / yes → o3s feature store rm registry.example.com/features --yes
 feature / Stores registry.example.com/features / Remove / no → (Nothing changed.)
@@ -358,7 +358,7 @@ cage / Open a shell → o3s cage shell [terminal]
 cage / Start → o3s cage start
 cage / Remove / yes → o3s cage rm --yes
 cage / Remove / no → (Nothing changed.)
-feature / Discover [] → back
+feature / Discover [] → (Nothing changed.)
 feature / Stores + Add a store… / registry.example.org/features → o3s feature store add registry.example.org/features
 firewall / Allowed + Allow a host… / new.example.net *.example.org / 443 / For good / None / yes → o3s firewall add new.example.net *.example.org --port 443 --yes
 firewall / Allowed + Allow a host… / new.example.net *.example.org / 443 / For good / None / no → (Nothing changed.)

@@ -230,8 +230,8 @@ func storeDialog(a Answers, picked []string) (Question, bool) {
 // featurePlan builds the commands the feature view's dialogs lead to.
 func featurePlan(h Home, a Answers) []Command {
 	tab, picked := view(a)
-	// Go back to the view where the user picked nothing or stepped back
-	if len(picked) == 0 || a.get("action") == back {
+	// Go back to the view where the user picked nothing or stepped back, an empty Discover tab taking every mark off
+	if len(picked) == 0 && tab != discoverTab || a.get("action") == back {
 		return nil
 	}
 	// Order the features without asking, since moving them back undoes it

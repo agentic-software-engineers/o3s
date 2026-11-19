@@ -128,6 +128,12 @@ func TestEveryFeatureDialogEndsInItsCommand(t *testing.T) {
 			},
 		},
 		{
+			"every mark taken off, removing the installed feature",
+			[][]string{{"feature"}, {discoverTab}, {yes}},
+			[]string{"do", "view", "apply"},
+			[]Command{{Args: []string{"feature", "rm", toolPkg, "--no-preview", "--yes"}}},
+		},
+		{
 			"marks that change nothing",
 			[][]string{{"feature"}, {discoverTab, toolPkg}},
 			[]string{"do", "view"},
