@@ -3,6 +3,8 @@ package menu
 import (
 	"slices"
 	"strings"
+
+	"github.com/hansehart/o3s/internal/words"
 )
 
 // Values a secret's detail and its binding answer with.
@@ -16,7 +18,7 @@ func secretView(h Home) Question {
 	t := Tab{Name: "Secrets", About: "Values the proxy injects. The cage never sees them.", Options: []Option{{Value: add, Label: "+ Add a secret…"}}}
 	// Show every secret with its state and its hosts
 	for _, s := range h.Secrets {
-		t.Options = append(t.Options, Option{Value: s.Name, Columns: []string{secretState(s), strings.Join(carrying(h, s.Name), ", ")}})
+		t.Options = append(t.Options, Option{Value: s.Name, Columns: []string{SecretState(s.Set), strings.Join(carrying(h, s.Name), ", ")}})
 	}
 	return Question{Key: "view", Kind: View, Title: "Secret", Tabs: []Tab{t}}
 }
@@ -52,7 +54,7 @@ func secretDialog(h Home, a Answers) (Question, bool) {
 		if slices.ContainsFunc(h.Secrets, func(s Secret) bool { return s.Name == name && s.Set }) {
 			actions = append(actions, Option{Value: remove, Label: "Remove"})
 		}
-		facts := []Fact{{Label: "Value", Value: secretState(Secret{Name: name, Set: slices.ContainsFunc(h.Secrets, func(s Secret) bool { return s.Name == name && s.Set })})}, {Label: "Hosts", Value: orDefault(strings.Join(carrying(h, name), ", "), "none")}}
+		facts := []Fact{{Label: "Value", Value: SecretState(!waits(h, name))}, {Label: "Hosts", Value: words.Or(strings.Join(carrying(h, name), ", "), "none")}}
 		return detail(name, facts, actions...), false
 	}
 	// Follow what the user chose
@@ -63,7 +65,7 @@ func secretDialog(h Home, a Answers) (Question, bool) {
 		line := "- " + name
 		// Name the hosts that stop receiving the value
 		if hosts := carrying(h, name); len(hosts) > 0 {
-			line += ", " + joinAnd(hosts) + " stop receiving it"
+			line += ", " + words.JoinAnd(hosts) + " stop receiving it"
 		}
 		return ask(a, apply([]string{line}, "Removes the value of "+name, true))
 	}
@@ -86,7 +88,7 @@ func bindDialog(h Home, a Answers) (Question, bool) {
 		q := Question{Key: "host", Kind: Select, Title: "Host"}
 		// Offer every allowed host
 		for _, host := range h.Hosts {
-			q.Options = append(q.Options, Option{Value: host.Name, Note: orDefault(host.Secret, "")})
+			q.Options = append(q.Options, Option{Value: host.Name, Note: words.Or(host.Secret, "")})
 		}
 		return q, false
 	}

@@ -6,6 +6,8 @@ import (
 	"path"
 	"slices"
 	"strings"
+
+	"github.com/hansehart/o3s/internal/words"
 )
 
 // The tabs of the feature view.
@@ -50,7 +52,7 @@ func offers(h Home) []Option {
 		}
 		// Show every feature by its id, with what it does and its store
 		for _, f := range catalog {
-			o := Option{Value: s + "/" + f.ID, Label: f.ID, Detail: orDefault(f.Description, f.Name), Columns: []string{path.Base(path.Dir(s))}}
+			o := Option{Value: s + "/" + f.ID, Label: f.ID, Detail: words.Or(f.Description, f.Name), Columns: []string{path.Base(path.Dir(s))}}
 			// Note a feature the cage installs already
 			if slices.Contains(packages(h), o.Value) {
 				o.Note = "installed"
@@ -167,7 +169,7 @@ func discoverDialog(h Home, a Answers, marked []string) (Question, bool) {
 	}
 	// Name the features that leave
 	if len(removed) > 0 {
-		parts = append(parts, "removes "+count(len(removed), "feature", "features"))
+		parts = append(parts, "removes "+words.Count(len(removed), "feature", "features"))
 	}
 	return ask(a, apply(lines, capitalized(strings.Join(parts, ", ")), len(removed) > 0))
 }
@@ -358,7 +360,7 @@ func configureLines(h Home, a Answers, pkg string, options []FeatureOption) []st
 	for _, o := range options {
 		// Take an option whose value changes
 		if v, was := a.get(optionKey(o)), current(h, pkg, o); v != was {
-			lines = append(lines, fmt.Sprintf("~ %s %s -> %s", o.Name, orDefault(was, "none"), v))
+			lines = append(lines, fmt.Sprintf("~ %s %s -> %s", o.Name, words.Or(was, "none"), v))
 		}
 	}
 	// Name that nothing changes
@@ -444,12 +446,12 @@ func summary(verb, name string, pv Preview) string {
 	line := verb + " " + name
 	// Count the features where several change at once
 	if pv.Features > 1 {
-		line = fmt.Sprintf("%s %s", verb, count(pv.Features, "feature", "features"))
+		line = fmt.Sprintf("%s %s", verb, words.Count(pv.Features, "feature", "features"))
 	}
 	line += summaryTail(pv)
 	// Name the secrets still waiting for a value
 	if n := len(pv.Waiting); n > 0 {
-		line += ", " + count(n, "secret waits", "secrets wait") + " for a value"
+		line += ", " + words.Count(n, "secret waits", "secrets wait") + " for a value"
 	}
 	return line
 }
@@ -459,11 +461,11 @@ func summaryTail(pv Preview) string {
 	var parts []string
 	// Name the hosts the change carries
 	if pv.Hosts > 0 {
-		parts = append(parts, count(pv.Hosts, "host", "hosts"))
+		parts = append(parts, words.Count(pv.Hosts, "host", "hosts"))
 	}
 	// Name the env values the change carries
 	if pv.Env > 0 {
-		parts = append(parts, count(pv.Env, "env value", "env values"))
+		parts = append(parts, words.Count(pv.Env, "env value", "env values"))
 	}
 	// Leave out what the change carries none of
 	if len(parts) == 0 {

@@ -230,7 +230,7 @@ func TestAHostsDetailShowsItsFacts(t *testing.T) {
 
 	got := asked[2]
 	// Require the facts of the host
-	if diff := cmp.Diff([]Fact{{"Ports", "22, 443"}, {"Data", "1.2 GB"}, {"Last seen", "2m ago"}, {"Closes", "for good"}, {"Secret", "none"}, {"Needed by", "user"}}, got.Facts); diff != "" {
+	if diff := cmp.Diff([]Fact{{"Ports", bothPorts}, {"Data", "1.2 GB"}, {"Last seen", "2m ago"}, {"Closes", "for good"}, {"Secret", "none"}, {"Needed by", "user"}}, got.Facts); diff != "" {
 		t.Errorf("facts (-want +got):\n%s", diff)
 	}
 	// Require the removal among the actions, and Back last
@@ -346,5 +346,36 @@ func TestAProjectsRemovalChecksTheTypedName(t *testing.T) {
 	// Require nothing deleted for a name that differs
 	if diff := cmp.Diff([]Command{{Note: nothingChanged}}, cmds); diff != "" {
 		t.Errorf("commands (-want +got):\n%s", diff)
+	}
+}
+
+// A host shows the same row piped and in its view: ports, traffic, when it closes, its secret marked while it waits,
+// and who needs it.
+func TestHostRowShowsAHostTheSameEverywhere(t *testing.T) {
+	tests := []struct {
+		host    config.Host
+		traffic Traffic
+		waiting bool
+		want    []string
+	}{
+		{aHome.Hosts[0], aHome.Traffic[fixture.Host], false, []string{bothPorts, "1.2 GB", "2m ago", "for good", "", "user"}},
+		{aHome.Hosts[1], Traffic{}, true, []string{port, "–", "–", "for good", fixture.Secret + " !", "user"}},
+		{aHome.Hosts[2], Traffic{}, false, []string{port, "–", "–", "expired", "", "user"}},
+		{config.Host{Name: fixture.Host, Ports: []int{fixture.Port}, Expires: fixture.InAnHourText, By: []string{"user"}}, Traffic{}, false, []string{port, "–", "–", "in 1h", "", "user"}},
+	}
+	// Check every host
+	for _, tt := range tests {
+		// Report a row that differs
+		if diff := cmp.Diff(tt.want, HostRow(tt.host, tt.traffic, tt.waiting, fixture.Now)); diff != "" {
+			t.Errorf("HostRow(%s) (-want +got):\n%s", tt.host.Name, diff)
+		}
+	}
+}
+
+// A secret's value reads as set or empty, piped and in its view alike.
+func TestSecretStateReadsSetOrEmpty(t *testing.T) {
+	// Report a state that reads otherwise
+	if SecretState(true) != "set" || SecretState(false) != "empty" {
+		t.Errorf("SecretState() = %q, %q, want set and empty", SecretState(true), SecretState(false))
 	}
 }

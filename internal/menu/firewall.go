@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/hansehart/o3s/internal/config"
+	"github.com/hansehart/o3s/internal/words"
 )
 
 // Values the firewall's view and its host's detail answer with.
@@ -26,7 +27,7 @@ func firewallView(h Home) Question {
 	// Show every host with its ports, its traffic, when it closes, its secret and who needs it
 	for _, host := range h.Hosts {
 		t := h.Traffic[host.Name]
-		allowed.Options = append(allowed.Options, Option{Value: host.Name, Columns: []string{joinInts(host.Ports), orDash(t.Data), orDash(t.Seen), closes(host, h.Now), host.Secret, strings.Join(host.By, ", ")}})
+		allowed.Options = append(allowed.Options, Option{Value: host.Name, Columns: HostRow(host, t, waits(h, host.Secret), h.Now)})
 		expired = expired || host.Expired(h.Now)
 	}
 	// Offer to prune where a host has expired
@@ -62,7 +63,7 @@ func firewallDialog(h Home, a Answers) (Question, bool) {
 		}
 		return allowDialog(h, a, strings.Fields(a.get("hosts")))
 	case picked[0] == prune:
-		return ask(a, apply(pruneLines(h), "Removes "+count(len(expiredHosts(h)), "expired host", "expired hosts"), true))
+		return ask(a, apply(pruneLines(h), "Removes "+words.Count(len(expiredHosts(h)), "expired host", "expired hosts"), true))
 	}
 	return hostDialog(h, a, picked[0])
 }
@@ -167,7 +168,7 @@ func secretQuestion(withNone bool) func(Home, Answers) (Question, bool) {
 			}
 			// Offer every secret the home knows
 			for _, s := range h.Secrets {
-				q.Options = append(q.Options, Option{Value: s.Name, Note: secretState(s)})
+				q.Options = append(q.Options, Option{Value: s.Name, Note: SecretState(s.Set)})
 			}
 			q.Options = append(q.Options, Option{Value: fresh, Label: "New secret…"})
 			return q, true
@@ -271,13 +272,13 @@ func allowLines(h Home, a Answers, hosts []string) []string {
 			sign = "~"
 			// Keep the ports the host opens where the change leaves them
 			if ports == "" {
-				ports = joinInts(current.Ports)
+				ports = config.JoinPorts(current.Ports)
 			}
 		}
-		line := fmt.Sprintf("%s %s:%s", sign, name, strings.ReplaceAll(orDefault(ports, "443"), ",", ", "))
+		line := fmt.Sprintf("%s %s:%s", sign, name, words.Or(ports, "443"))
 		// Name when the host closes
 		if d, err := config.ParseFor(chosenFor(a)); err == nil {
-			line += "   closes at " + h.Now.Add(d).Local().Format("15:04")
+			line += "   closes at " + config.ClosesAt(config.EndTime(h.Now.Add(d)), h.Now)
 		}
 		// Name the secret the host carries
 		if s := chosenSecret(a); s != "" {
@@ -290,7 +291,7 @@ func allowLines(h Home, a Answers, hosts []string) []string {
 
 // allowSummary sums up in one line how many hosts the change allows and for how long.
 func allowSummary(a Answers, hosts []string) string {
-	line := "Allows " + count(len(hosts), "host", "hosts")
+	line := "Allows " + words.Count(len(hosts), "host", "hosts")
 	// Name how long the hosts stay open
 	if d, err := config.ParseFor(chosenFor(a)); err == nil {
 		return line + " for " + spoken(d)
@@ -304,9 +305,9 @@ func removeLines(h Home, name string) []string {
 	others := slices.DeleteFunc(slices.Clone(host.By), func(b string) bool { return b == "user" })
 	// Name the features that keep the host open
 	if len(others) > 0 {
-		return []string{fmt.Sprintf("~ %s stays open, still needed by %s", name, joinAnd(others))}
+		return []string{fmt.Sprintf("~ %s stays open, still needed by %s", name, words.JoinAnd(others))}
 	}
-	line := fmt.Sprintf("- %s:%s", name, strings.ReplaceAll(joinInts(host.Ports), ",", ", "))
+	line := fmt.Sprintf("- %s:%s", name, config.JoinPorts(host.Ports))
 	// Name the secret that stops being injected
 	if host.Secret != "" {
 		line += ", " + host.Secret + " stops being injected"
@@ -319,7 +320,7 @@ func pruneLines(h Home) []string {
 	var lines []string
 	// Name every expired host
 	for _, host := range expiredHosts(h) {
-		lines = append(lines, "- "+host.Name+"   expired "+endsAt(host.Expires))
+		lines = append(lines, "- "+host.Name+"   expired "+config.ClosesAt(host.Expires, h.Now))
 	}
 	return lines
 }
@@ -338,37 +339,13 @@ func hostFacts(h Home, host config.Host) []Fact {
 		secret = host.Secret + ", in the " + strings.Join(host.Inject, ", ")
 	}
 	return []Fact{
-		{Label: "Ports", Value: strings.ReplaceAll(joinInts(host.Ports), ",", ", ")},
-		{Label: "Data", Value: orDash(t.Data)},
-		{Label: "Last seen", Value: orDash(t.Seen)},
-		{Label: "Closes", Value: closes(host, h.Now)},
+		{Label: "Ports", Value: config.JoinPorts(host.Ports)},
+		{Label: "Data", Value: words.Or(t.Data, "–")},
+		{Label: "Last seen", Value: words.Or(t.Seen, "–")},
+		{Label: "Closes", Value: words.Or(config.Until(host.Expires, h.Now), "for good")},
 		{Label: "Secret", Value: secret},
-		{Label: "Needed by", Value: joinAnd(host.By)},
+		{Label: "Needed by", Value: words.JoinAnd(host.By)},
 	}
-}
-
-// closes names when a host closes: for good, expired, or how long from now.
-func closes(host config.Host, now time.Time) string {
-	end, err := time.Parse(config.EndTimeLayout, host.Expires)
-	// Name a host that stays open
-	if host.Expires == "" || err != nil {
-		return "for good"
-	}
-	// Name a host whose end has come
-	if !end.After(now) {
-		return "expired"
-	}
-	return "in " + spoken(end.Sub(now).Round(time.Minute))
-}
-
-// endsAt writes the local date an end time falls on.
-func endsAt(end string) string {
-	t, err := time.Parse(config.EndTimeLayout, end)
-	// Show an end time that fails to read as it stands
-	if err != nil {
-		return end
-	}
-	return t.Local().Format("Jan 2")
 }
 
 // spoken writes a duration the way a sentence says it, in its largest whole unit.
@@ -376,44 +353,36 @@ func spoken(d time.Duration) string {
 	// Name the largest whole unit the duration fills
 	switch {
 	case d >= 24*time.Hour && d%(24*time.Hour) == 0:
-		return count(int(d/(24*time.Hour)), "day", "days")
+		return words.Count(int(d/(24*time.Hour)), "day", "days")
 	case d >= time.Hour && d%time.Hour == 0:
-		return count(int(d/time.Hour), "hour", "hours")
+		return words.Count(int(d/time.Hour), "hour", "hours")
 	case d >= time.Minute && d%time.Minute == 0:
-		return count(int(d/time.Minute), "minute", "minutes")
+		return words.Count(int(d/time.Minute), "minute", "minutes")
 	}
 	return d.String()
 }
 
-// secretState notes whether a secret holds a value.
-func secretState(s Secret) string {
-	// Note a secret with a value
-	if s.Set {
+// HostRow is how a host shows in a row of the firewall, piped or in its view: its ports, the data it moved, when it
+// last moved any, when it closes, its secret marked while it waits for a value, and who needs it.
+func HostRow(host config.Host, t Traffic, waiting bool, now time.Time) []string {
+	secret := host.Secret
+	// Mark a secret that waits for its value
+	if waiting {
+		secret += " !"
+	}
+	return []string{config.JoinPorts(host.Ports), words.Or(t.Data, "–"), words.Or(t.Seen, "–"), words.Or(config.Until(host.Expires, now), "for good"), secret, strings.Join(host.By, ", ")}
+}
+
+// SecretState is how a secret's value shows: set, or empty while it waits for one.
+func SecretState(set bool) string {
+	// Name a secret that holds a value
+	if set {
 		return "set"
 	}
-	return "waits for a value"
+	return "empty"
 }
 
-// joinInts writes numbers as one comma-separated value.
-func joinInts(ns []int) string {
-	parts := make([]string, len(ns))
-	// Write every number
-	for i, n := range ns {
-		parts[i] = strconv.Itoa(n)
-	}
-	return strings.Join(parts, ",")
-}
-
-// orDash shows an empty value as a dash.
-func orDash(v string) string {
-	return orDefault(v, "–")
-}
-
-// orDefault shows an empty value as the one given.
-func orDefault(v, fallback string) string {
-	// Take the fallback for an empty value
-	if v == "" {
-		return fallback
-	}
-	return v
+// waits reports whether a host's secret waits for its value.
+func waits(h Home, secret string) bool {
+	return secret != "" && !slices.ContainsFunc(h.Secrets, func(s Secret) bool { return s.Name == secret && s.Set })
 }

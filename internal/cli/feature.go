@@ -14,6 +14,7 @@ import (
 	"github.com/hansehart/o3s/internal/devcontainer"
 	"github.com/hansehart/o3s/internal/registry"
 	"github.com/hansehart/o3s/internal/secrets"
+	"github.com/hansehart/o3s/internal/words"
 )
 
 // newFeature builds the commands that show, add, configure, order and remove the features the cage installs,
@@ -459,7 +460,7 @@ func valueOrDefault(had map[string]any, name string, offered []registry.Option) 
 	}
 	// Take the option's own fallback
 	if i := slices.IndexFunc(offered, func(o registry.Option) bool { return o.Name == name }); i >= 0 {
-		return orNone(offered[i].Default)
+		return words.Or(offered[i].Default, "none")
 	}
 	return "none"
 }
@@ -470,7 +471,7 @@ func addLines(s registry.Setup, store secrets.Store) ([]string, []string) {
 	var waiting []string
 	// Show every host the feature opens, and the secret it carries
 	for _, h := range s.Hosts {
-		line := fmt.Sprintf("  + %s:%s", h.Name, joinPorts(registry.PortsOf(h)))
+		line := fmt.Sprintf("  + %s:%s", h.Name, config.JoinPorts(registry.PortsOf(h)))
 		// Name the secret, and warn while it waits for its value
 		if h.Secret != "" {
 			line += "  " + h.Secret
@@ -507,7 +508,7 @@ func removal(c config.Config, dc *devcontainer.Config, s registry.Setup) removal
 	var r removalOf
 	// Name every host nothing else needs, with its ports
 	for _, name := range after.Release(s.Ref.Package()) {
-		r.hosts = append(r.hosts, name+":"+joinPorts(ports[name]))
+		r.hosts = append(r.hosts, name+":"+config.JoinPorts(ports[name]))
 	}
 	// Take every variable of the feature the config sets
 	for _, e := range s.Env {

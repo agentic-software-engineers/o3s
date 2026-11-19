@@ -13,7 +13,9 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/hansehart/o3s/internal/config"
+	"github.com/hansehart/o3s/internal/menu"
 	"github.com/hansehart/o3s/internal/secrets"
+	"github.com/hansehart/o3s/internal/words"
 )
 
 // newSecret builds the commands that show, store and remove the values the proxy injects.
@@ -97,7 +99,7 @@ func newSecretRm() *cobra.Command {
 				line := "  - " + name
 				// Name the hosts that stop receiving the value
 				if hosts := hostsNaming(name); len(hosts) > 0 {
-					line += ", " + joinAnd(hosts) + " stop receiving it"
+					line += ", " + words.JoinAnd(hosts) + " stop receiving it"
 				}
 				fmt.Fprintln(out, line)
 			}
@@ -151,12 +153,8 @@ func showSecrets(cmd *cobra.Command) error {
 	fmt.Fprintln(w, "NAME\tVALUE\tHOSTS")
 	// Write a row per name
 	for _, name := range names {
-		state := "empty"
-		// Show that a value is stored, never the value
-		if _, ok := store.Value(name); ok {
-			state = "set"
-		}
-		fmt.Fprintf(w, "%s\t%s\t%s\n", name, state, strings.Join(hostsNaming(name), ", "))
+		_, set := store.Value(name)
+		fmt.Fprintf(w, "%s\t%s\t%s\n", name, menu.SecretState(set), strings.Join(hostsNaming(name), ", "))
 	}
 	return w.Flush()
 }

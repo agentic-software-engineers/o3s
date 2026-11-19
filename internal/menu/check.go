@@ -8,6 +8,7 @@ import (
 
 	"github.com/hansehart/o3s/internal/config"
 	"github.com/hansehart/o3s/internal/project"
+	"github.com/hansehart/o3s/internal/words"
 )
 
 // errEmpty marks a line the user has yet to type.
@@ -27,7 +28,7 @@ func checkHosts(line string) (string, error) {
 			return "", fmt.Errorf("%q is not a host name", h)
 		}
 	}
-	return count(len(hosts), "host", "hosts"), nil
+	return words.Count(len(hosts), "host", "hosts"), nil
 }
 
 // checkPorts reads ports separated by commas, naming the first one outside the TCP range.

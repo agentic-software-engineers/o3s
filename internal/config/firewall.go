@@ -85,7 +85,7 @@ func update(h Host, ch Change) (Host, []Diff) {
 	h.By = slices.Clone(h.By)
 	// Replace the ports the change names
 	if len(ch.Ports) > 0 && !slices.Equal(h.Ports, ch.Ports) {
-		diffs = append(diffs, Diff{Field: "ports", Old: joinInts(h.Ports), New: joinInts(ch.Ports)})
+		diffs = append(diffs, Diff{Field: "ports", Old: JoinPorts(h.Ports), New: JoinPorts(ch.Ports)})
 		h.Ports = ch.Ports
 	}
 	// Replace the secret the change names
@@ -137,8 +137,8 @@ func normalInject(sites []string) []string {
 	return out
 }
 
-// joinInts writes numbers as one comma-separated value.
-func joinInts(ns []int) string {
+// JoinPorts writes ports as one comma-separated value, the way the allowlist names them.
+func JoinPorts(ns []int) string {
 	parts := make([]string, len(ns))
 	// Write every number
 	for i, n := range ns {

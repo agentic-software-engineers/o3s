@@ -4,7 +4,6 @@ package menu
 import (
 	"fmt"
 	"slices"
-	"strings"
 	"time"
 
 	"github.com/hansehart/o3s/internal/config"
@@ -397,22 +396,4 @@ func ask(a Answers, q Question) (Question, bool) {
 		return Question{}, true
 	}
 	return q, false
-}
-
-// count writes a number with the word that fits it.
-func count(n int, one, many string) string {
-	// Take the singular for a single one
-	if n == 1 {
-		return "1 " + one
-	}
-	return fmt.Sprintf("%d %s", n, many)
-}
-
-// joinAnd joins names the way a sentence lists them.
-func joinAnd(names []string) string {
-	// Join a single name as it stands, and the last of several with and
-	if len(names) < 2 {
-		return strings.Join(names, "")
-	}
-	return strings.Join(names[:len(names)-1], ", ") + " and " + names[len(names)-1]
 }
