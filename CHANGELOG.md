@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.8.0](https://github.com/hansehart/o3s/compare/v0.8.0-rc.1...v0.8.0) (2026-11-19)
+
+
+### ⚠ BREAKING CHANGES
+
+* **cli:** make the home inside its VM by default and run it from cage ([#294](https://github.com/hansehart/o3s/issues/294))
+
+### Features
+
+* **cli:** make the home inside its VM by default and run it from cage ([#294](https://github.com/hansehart/o3s/issues/294)) ([e536e7e](https://github.com/hansehart/o3s/commit/e536e7e59847938791f2865254d4740110cc8e22))
+
 ## [0.8.0-rc.1](https://github.com/hansehart/o3s/compare/v0.7.6-rc.2...v0.8.0-rc.1) (2026-11-19)
 
 
