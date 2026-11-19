@@ -143,14 +143,16 @@ func installedDialog(h Home, a Answers, pkg string) (Question, bool) {
 	// Follow what the user chose
 	switch a.get("action") {
 	case configure:
-		// Ask every option in turn, starting from the value it holds
-		for _, o := range pv.Options {
-			// Ask an option not yet answered
-			if !a.has(optionKey(o)) {
-				return optionQuestion(o, current(h, pkg, o)), false
-			}
+		// Show every option first, each with the value it holds
+		if !a.has(optionsKey) {
+			return optionsView(h, pkg, pv.Options), false
 		}
-		return ask(a, apply(configureLines(h, a, pkg, pv.Options), "Configures "+path.Base(pkg)+", rebuild the cage to apply it", false))
+		o, ok := pickedOption(a, pv.Options)
+		// End where the user picked no option
+		if !ok {
+			return Question{}, true
+		}
+		return ask(a, optionQuestion(o, current(h, pkg, o)))
 	case remove:
 		rm, err := h.Lookup.Remove(pkg)
 		// End the dialog where the change stays unknown
@@ -244,6 +246,10 @@ func featurePlan(h Home, a Answers) []Command {
 	if added, removed := changes(h, picked); tab == discoverTab && len(added) == 0 && len(removed) == 0 {
 		return declined()
 	}
+	// Set an option without asking, since editing it back undoes it
+	if tab == installedTab && a.get("action") == configure {
+		return configurePlan(h, a, picked[0])
+	}
 	// Leave everything as it was where the user declines
 	if !confirmed(a) {
 		return declined()
@@ -251,37 +257,33 @@ func featurePlan(h Home, a Answers) []Command {
 	// Build the commands of the tab
 	switch tab {
 	case installedTab:
-		return installedPlan(h, a, picked[0])
+		return installedPlan(picked[0])
 	case discoverTab:
 		return discoverPlan(h, a, picked)
 	}
 	return []Command{{Args: []string{"feature", "store", "rm", picked[0], "--yes"}}}
 }
 
-// installedPlan builds the configuration or the removal of an installed feature.
-func installedPlan(h Home, a Answers, pkg string) []Command {
-	// Remove the feature the user confirmed
-	if a.get("action") == remove {
-		return []Command{{Args: []string{"feature", "rm", pkg, "--no-preview", "--yes"}}}
-	}
+// installedPlan builds the removal of an installed feature.
+func installedPlan(pkg string) []Command {
+	return []Command{{Args: []string{"feature", "rm", pkg, "--no-preview", "--yes"}}}
+}
+
+// configurePlan sets the option the user edited at once and quietly, since editing it back undoes it, and runs nothing
+// where its value stays.
+func configurePlan(h Home, a Answers, pkg string) []Command {
 	pv, err := h.Lookup.Add(pkg)
 	// Name a change that stays unknown
 	if err != nil {
 		return []Command{{Note: "error: " + err.Error()}}
 	}
-	args := []string{"feature", "configure", pkg}
-	// Hand on every option whose value the user changed
-	for _, o := range pv.Options {
-		// Take an option that changes
-		if v := a.get(optionKey(o)); v != current(h, pkg, o) {
-			args = append(args, "--option", o.Name+"="+v)
-		}
+	o, ok := pickedOption(a, pv.Options)
+	v := a.get(optionKey(o))
+	// Run nothing where the user picked no option or kept its value
+	if !ok || !a.has(optionKey(o)) || v == current(h, pkg, o) {
+		return nil
 	}
-	// Run nothing where no option changes
-	if len(args) == 3 {
-		return declined()
-	}
-	return []Command{{Args: args}}
+	return []Command{{Args: []string{"feature", "configure", pkg, "--option", o.Name + "=" + v}, Quiet: true}}
 }
 
 // discoverPlan stores the values the user gave, then adds the marked features and removes the unmarked ones.
@@ -376,33 +378,51 @@ func featureFacts(h Home, pkg string) []Fact {
 	return facts
 }
 
-// configureLines shows every option the user changed, with its value before and after.
-func configureLines(h Home, a Answers, pkg string, options []FeatureOption) []string {
-	var lines []string
-	// Show every option that changes
+// optionsKey names the answer of a feature's options view.
+const optionsKey = "options"
+
+// optionsView shows every option a feature offers as a row, with the value the feature sets and the one it falls back
+// to, and what the highlighted one does.
+func optionsView(h Home, pkg string, options []FeatureOption) Question {
+	tab := Tab{Name: "Options", About: "Changes apply on the next rebuild.", Header: OptionHeader}
+	// Show every option as its row
 	for _, o := range options {
-		// Take an option whose value changes
-		if v, was := a.get(optionKey(o)), current(h, pkg, o); v != was {
-			lines = append(lines, fmt.Sprintf("~ %s %s -> %s", o.Name, words.Or(was, "none"), v))
-		}
+		value, _ := holds(h, pkg, o.Name)
+		tab.Options = append(tab.Options, Option{Value: o.Name, Columns: OptionRow(o, value), Detail: o.Description})
 	}
-	// Name that nothing changes
-	if len(lines) == 0 {
-		return []string{"Every option keeps its value"}
+	return Question{Key: optionsKey, Kind: View, Title: path.Base(pkg), Tabs: []Tab{tab}}
+}
+
+// pickedOption hands back the option the user picked in the options view, and whether it names one.
+func pickedOption(a Answers, options []FeatureOption) (FeatureOption, bool) {
+	_, picked := pickedIn(a, optionsKey)
+	i := slices.IndexFunc(options, func(o FeatureOption) bool { return len(picked) > 0 && o.Name == picked[0] })
+	// Report a pick that names no option
+	if i < 0 {
+		return FeatureOption{}, false
 	}
-	return lines
+	return options[i], true
 }
 
 // current hands back the value an installed feature gives an option, or the one the option falls back to.
 func current(h Home, pkg string, o FeatureOption) string {
 	// Take the value the feature sets
-	for _, f := range h.Installed {
-		// Read the option of the matching feature
-		if v, ok := f.Options[o.Name]; f.Package == pkg && ok {
-			return v
-		}
+	if v, ok := holds(h, pkg, o.Name); ok {
+		return v
 	}
 	return o.Default
+}
+
+// holds hands back the value an installed feature sets for an option, and whether it sets one.
+func holds(h Home, pkg, name string) (string, bool) {
+	// Read the options of the matching feature
+	for _, f := range h.Installed {
+		// Take the value of the option the feature sets
+		if v, ok := f.Options[name]; f.Package == pkg && ok {
+			return v, true
+		}
+	}
+	return "", false
 }
 
 // optionKey names the answer to one option.

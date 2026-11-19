@@ -384,9 +384,15 @@ func plan(h Home, a Answers) []Command {
 	return nil
 }
 
-// view hands back what the user picked in a view: the tab and the values the row or the key answered with.
+// view hands back what the user picked in a group's view: the tab and the values the row or the key answered with.
 func view(a Answers) (string, []string) {
-	v := a.all("view")
+	return pickedIn(a, "view")
+}
+
+// pickedIn hands back what the user picked in the view a key names: the tab and the values the row or the key
+// answered with.
+func pickedIn(a Answers, key string) (string, []string) {
+	v := a.all(key)
 	// Read a view not yet answered as empty
 	if len(v) == 0 {
 		return "", nil
