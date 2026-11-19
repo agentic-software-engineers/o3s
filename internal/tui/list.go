@@ -145,8 +145,8 @@ func (l list) marked() []string {
 	return out
 }
 
-// view draws the options in reach of the cursor, each on a line cut to the width with its columns lined up and the
-// line that says what it is below it, within the height given.
+// view draws the options in reach of the cursor, each on a line cut to the width with its columns lined up, and the
+// line that says what the highlighted one is below it, within the height given.
 func (l list) view(width, height int) []string {
 	shown := l.shown()
 	// Name a filter that matches nothing
@@ -154,14 +154,10 @@ func (l list) view(width, height int) []string {
 		return []string{dim.Render("  No match for \"" + l.filter + "\"")}
 	}
 	label, columns := widths(shown, l.header)
-	per := 1
-	// Give every option a second line where any says what it is
-	for _, o := range shown {
-		// Take the extra line of an option with a detail
-		if o.Detail != "" {
-			per = 2
-			break
-		}
+	detail := 0
+	// Keep a line for the highlighted option to say what it is, where any option says it
+	if slices.ContainsFunc(shown, func(o menu.Option) bool { return o.Detail != "" }) {
+		detail = 1
 	}
 	var lines []string
 	// Label the columns above the rows
@@ -172,8 +168,8 @@ func (l list) view(width, height int) []string {
 	fit := len(shown)
 	// Fit the options into the height, keeping a line for the ones below, and into the usual rows without a height
 	switch {
-	case height > 0 && fit*per > height:
-		fit = max((height-1)/per, 1)
+	case height > 0 && fit+detail > height:
+		fit = max(height-1-detail, 1)
 	case height <= 0 && fit > rows:
 		fit = rows
 	}
@@ -228,8 +224,8 @@ func (l list) row(o menu.Option, i int, current bool, label int, columns []int, 
 		b.WriteString(dim.Render(o.Note))
 	}
 	lines := []string{cut(strings.TrimRight(b.String(), " "), width)}
-	// Say below the option what it is
-	if o.Detail != "" {
+	// Say below the highlighted option what it is
+	if current && o.Detail != "" {
 		indent := "    "
 		// Indent the detail under the label of a numbered or markable option
 		if l.numbered {

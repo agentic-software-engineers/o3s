@@ -319,6 +319,22 @@ func TestViewShowsTheTabsAndTheRows(t *testing.T) {
 	}
 }
 
+// A list says what the highlighted option is below it alone, so every other option takes one line.
+func TestListSaysWhatTheHighlightedOptionIs(t *testing.T) {
+	q := menu.Question{Key: "feature", Kind: menu.Select, Title: "Features", Options: []menu.Option{
+		{Value: fixture.Feature, Detail: "Installs the tool"},
+		{Value: fixture.OtherFeature, Detail: "Installs another tool"},
+		{Value: fixture.ThirdFeature, Detail: "Installs Go"},
+	}}
+
+	f, _ := press(newChoice(q), down)
+
+	// Require the detail of the highlighted option alone, below it
+	if view := stripped(f.View(usualWidth, usualHeight)); !strings.Contains(view, fixture.OtherFeature+"\n    Installs another tool") || strings.Contains(view, "Installs the tool") || strings.Contains(view, "Installs Go") {
+		t.Errorf("view:\n%s", view)
+	}
+}
+
 // A row longer than the screen ends in an ellipsis within the width.
 func TestListCutsALongRow(t *testing.T) {
 	q := menu.Question{Key: "feature", Kind: menu.Select, Title: "Features", Options: []menu.Option{{Value: "tool", Detail: strings.Repeat("does a lot ", 20)}}}
