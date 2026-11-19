@@ -27,7 +27,9 @@ func TestTheFirewallShowsTrafficAndBlockedNames(t *testing.T) {
 	}
 	// Stop when the cage fails to reach the allowed host
 	if _, err := stacktest.ContainerExec(t, raised.ContainerID, "curl", "-fsS", "-o", "/dev/null", "https://github.com"); err != nil {
-		t.Fatalf("curl https://github.com in the cage = %v", err)
+		cage, _ := stacktest.ContainerExec(t, raised.ContainerID, "sh", "-c", "ip -4 addr; ip route; ip neigh; cat /etc/resolv.conf; getent hosts github.com; curl -v --max-time 5 -o /dev/null https://github.com 2>&1 | tail -15")
+		gateway, _ := stacktest.Exec(t, "gateway", "sh", "-c", "ip -4 addr; ip route; iptables-save; cat /etc/dnsmasq.conf; ss -ltnp")
+		t.Fatalf("curl https://github.com in the cage = %v\n--- cage:\n%s\n--- gateway:\n%s", err, cage, gateway)
 	}
 	// Ask for a name the policy leaves out, which the gateway refuses
 	_, _ = stacktest.ContainerExec(t, raised.ContainerID, "getent", "hosts", fixture.RefusedName)
