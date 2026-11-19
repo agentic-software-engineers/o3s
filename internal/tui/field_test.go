@@ -335,6 +335,18 @@ func TestListSaysWhatTheHighlightedOptionIs(t *testing.T) {
 	}
 }
 
+// A line of text completes what the user typed to a value the question suggests on Tab.
+func TestTextCompletesToASuggestion(t *testing.T) {
+	q := menu.Question{Key: "option:version", Kind: menu.Input, Title: "version", Suggestions: []string{fixture.MinorTag, fixture.FloatingTag}}
+
+	_, r := press(newText(q), append(typed(fixture.FloatingTag[:2]), tea.KeyPressMsg{Code: tea.KeyTab}, enter)...)
+
+	// Require the whole value the start completed to
+	if !cmp.Equal([]string{fixture.FloatingTag}, r.values) {
+		t.Errorf("answer = %v, want %s", r.values, fixture.FloatingTag)
+	}
+}
+
 // A row longer than the screen ends in an ellipsis within the width.
 func TestListCutsALongRow(t *testing.T) {
 	q := menu.Question{Key: "feature", Kind: menu.Select, Title: "Features", Options: []menu.Option{{Value: "tool", Detail: strings.Repeat("does a lot ", 20)}}}

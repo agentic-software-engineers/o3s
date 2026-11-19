@@ -201,8 +201,8 @@ func TestOptionsAskFromTheValueTheyHold(t *testing.T) {
 	if mode.Kind != Select || mode.Default[0] != "loose" || mode.Options[1].Note != "current" {
 		t.Errorf("mode = %+v", mode)
 	}
-	// Require a line of text with its proposals as the example
-	if version.Kind != Input || version.Example != fixture.FloatingTag+"  lts" {
+	// Require a line of text with its proposals as the example and the values it completes to
+	if version.Kind != Input || version.Example != fixture.FloatingTag+"  lts" || !cmp.Equal([]string{fixture.FloatingTag, "lts"}, version.Suggestions) {
 		t.Errorf("version = %+v", version)
 	}
 }

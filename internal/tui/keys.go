@@ -25,6 +25,7 @@ var (
 	keySelect   = bind("enter", "select", "enter")
 	keyApply    = bind("enter", "apply", "enter")
 	keyContinue = bind("enter", "continue", "enter")
+	keyComplete = bind("tab", "complete", "tab")
 	keyBack     = bind("esc", "back", "esc")
 	keyClear    = bind("esc", "clear", "esc")
 	keyCancel   = bind("esc", "cancel", "esc")

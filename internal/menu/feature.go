@@ -445,9 +445,9 @@ func optionQuestion(o FeatureOption, value string) Question {
 		}
 	default:
 		q.Kind = Input
-		// Show the values the option suggests
+		// Show the values the option suggests, and complete to them
 		if len(o.Proposals) > 0 {
-			q.Example = strings.Join(o.Proposals, "  ")
+			q.Example, q.Suggestions = strings.Join(o.Proposals, "  "), o.Proposals
 		}
 	}
 	// Mark the value the option holds now
