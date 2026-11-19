@@ -279,10 +279,16 @@ func TestEveryOtherDialogEndsInItsCommand(t *testing.T) {
 	value := fixture.SecretValue
 	dialogs{
 		{
-			"a new secret bound to a host",
-			[][]string{{"secret"}, {"Secrets", add}, {fixture.NewSecret}, {value}, {yes}, {fixture.Host}},
-			[]string{"do", "view", "name", "value", "bind", "host"},
-			[]Command{{Args: []string{"secret", "add", fixture.NewSecret, "--no-bind-hint"}, Stdin: &value}, {Args: []string{"firewall", "add", fixture.Host, "--secret", fixture.NewSecret, "--yes"}}},
+			"a new secret bound to a host, into the sites chosen",
+			[][]string{{"secret"}, {"Secrets", add}, {fixture.NewSecret}, {value}, {yes}, {fixture.Host}, {"header", "body"}, {yes}},
+			[]string{"do", "view", "name", "value", "bind", "host", "inject", "apply"},
+			[]Command{{Args: []string{"secret", "add", fixture.NewSecret, "--no-bind-hint"}, Stdin: &value}, {Args: []string{"firewall", "add", fixture.Host, "--secret", fixture.NewSecret, "--inject", "header,body", "--yes"}}},
+		},
+		{
+			"a new secret stored and its binding declined",
+			[][]string{{"secret"}, {"Secrets", add}, {fixture.NewSecret}, {value}, {yes}, {fixture.Subdomain}, {"header"}, {"no"}},
+			[]string{"do", "view", "name", "value", "bind", "host", "inject", "apply"},
+			[]Command{{Args: []string{"secret", "add", fixture.NewSecret, "--no-bind-hint"}, Stdin: &value}},
 		},
 		{
 			"a new secret bound later",

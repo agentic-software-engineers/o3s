@@ -10,7 +10,6 @@ import (
 	"github.com/charmbracelet/x/ansi"
 	"github.com/google/go-cmp/cmp"
 
-	"github.com/hansehart/o3s/internal/fixture"
 	"github.com/hansehart/o3s/internal/menu"
 	"github.com/hansehart/o3s/internal/menu/menutest"
 )
@@ -36,11 +35,7 @@ var instant = map[string]string{
 var knownBreaks = map[string]string{
 	"crumb: On (recommended)": "F21: a crumb carries its label's note",
 	"crumb: VM (recommended)": "F21: a crumb carries its label's note",
-	"unconfirmed: o3s firewall add " + fixture.Subdomain + " --secret " + fixture.NewSecret + " --yes": "F17: binding a secret replaces a host's own unasked",
-	"unconfirmed: o3s firewall add " + fixture.Host + " --secret " + fixture.NewSecret + " --yes":      "F17: binding a secret to a host runs unasked",
-	"unconfirmed: o3s firewall add " + fixture.ThirdHost + " --secret " + fixture.NewSecret + " --yes": "F17: binding a secret to an expired host runs unasked",
-	"unconfirmed: o3s firewall add " + fixture.OtherHost + " --secret " + fixture.NewSecret + " --yes": "F17: binding a secret to a host runs unasked",
-	"wider than 60: feature": "F25: the footer overflows, upstream charmbracelet/bubbles#1066",
+	"wider than 60: feature":  "F25: the footer overflows, upstream charmbracelet/bubbles#1066",
 }
 
 // breaks are every break of the rules on the screens and in the plans of every path of every home, at the sizes

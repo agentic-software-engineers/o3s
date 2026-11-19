@@ -183,7 +183,7 @@ func secretQuestion(withNone bool) func(Home, Answers) (Question, bool) {
 		}
 		// Ask where the secret goes
 		if chosenSecret(a) != "" && !a.has("inject") {
-			return Question{Key: "inject", Kind: Multi, Title: "Where the secret goes", Options: []Option{{Value: "header"}, {Value: "query"}, {Value: "body"}}, Default: []string{"header"}}, true
+			return injectQuestion(), true
 		}
 		return Question{}, false
 	}
@@ -444,4 +444,9 @@ func SecretState(set bool) string {
 // waits reports whether a host's secret waits for its value.
 func waits(h Home, secret string) bool {
 	return secret != "" && !slices.ContainsFunc(h.Secrets, func(s Secret) bool { return s.Name == secret && s.Set })
+}
+
+// injectQuestion asks where the proxy puts a secret in a host's requests, the header from the start.
+func injectQuestion() Question {
+	return Question{Key: "inject", Kind: Multi, Title: "Where the secret goes", Options: []Option{{Value: "header"}, {Value: "query"}, {Value: "body"}}, Default: []string{"header"}}
 }

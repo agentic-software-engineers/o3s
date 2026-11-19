@@ -4,6 +4,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/hansehart/o3s/internal/config"
 	"github.com/hansehart/o3s/internal/words"
 )
 
@@ -92,16 +93,30 @@ func bindDialog(h Home, a Answers) (Question, bool) {
 	if !a.has("bind") {
 		return Question{Key: "bind", Kind: Select, Title: "Bind " + name + " to a host?", Numbered: true, Options: []Option{{Value: yes, Label: "Yes, choose a host…"}, {Value: notNow, Label: "Not now"}}}, false
 	}
-	// Ask which host where the user binds it now
-	if a.get("bind") == yes && !a.has("host") {
+	// Leave the binding where the user binds the secret later
+	if a.get("bind") != yes {
+		return Question{}, true
+	}
+	// Ask which host, each with the secret it carries and when it closes
+	if !a.has("host") {
 		q := Question{Key: "host", Kind: Select, Title: "Host"}
 		// Offer every allowed host
 		for _, host := range h.Hosts {
-			q.Options = append(q.Options, Option{Value: host.Name, Note: words.Or(host.Secret, "")})
+			q.Options = append(q.Options, Option{Value: host.Name, Note: strings.TrimSpace(host.Secret + "   " + config.Until(host.Expires, h.Now))})
 		}
 		return q, false
 	}
-	return Question{}, true
+	// Ask where the secret goes
+	if !a.has("inject") {
+		return injectQuestion(), false
+	}
+	host, _ := (&config.Config{Hosts: h.Hosts}).Find(a.get("host"))
+	line := "~ " + host.Name + ": " + name + " in " + strings.Join(a.all("inject"), ", ")
+	// Name a secret the binding replaces
+	if host.Secret != "" && host.Secret != name {
+		line += ", replacing " + host.Secret
+	}
+	return ask(a, apply([]string{line}, "Binds "+name+" to "+host.Name, false))
 }
 
 // secretPlan builds the commands the secret view's dialogs lead to.
@@ -116,9 +131,9 @@ func secretPlan(a Answers) []Command {
 	if picked[0] == add {
 		name := strings.TrimSpace(a.get("name"))
 		cmds := []Command{{Args: []string{"secret", "add", name, "--no-bind-hint"}, Stdin: &value}}
-		// Bind the secret to the host the user chose
-		if a.get("bind") == yes && a.has("host") {
-			cmds = append(cmds, Command{Args: []string{"firewall", "add", a.get("host"), "--secret", name, "--yes"}})
+		// Bind the secret to the host the user chose, where the user agreed
+		if a.get("bind") == yes && confirmed(a) {
+			cmds = append(cmds, Command{Args: []string{"firewall", "add", a.get("host"), "--secret", name, "--inject", strings.Join(a.all("inject"), ","), "--yes"}})
 		}
 		return cmds
 	}

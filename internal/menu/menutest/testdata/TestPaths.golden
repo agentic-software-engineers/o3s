@@ -12,7 +12,7 @@ secret / Secrets OTHER_TOKEN / Remove / yes → o3s secret rm OTHER_TOKEN --yes
 secret / Secrets OTHER_TOKEN / Remove / no → (Nothing changed.)
 secret / Secrets OTHER_TOKEN / Back → back
 
-# running, 164 paths
+# running, 168 paths
 cage / Open in VS Code → o3s cage ide
 cage / Open a shell → o3s cage shell [terminal]
 cage / Stop → o3s cage stop
@@ -158,10 +158,14 @@ project / Projects + Add a project… / example/app → o3s project add example/
 project / Projects + Create a project… / example/app → o3s project create example/app
 project / Projects example/app / Remove / example/app → o3s project rm github.com/example/app --yes
 project / Projects example/app / Back → back
-secret / Secrets + Add a secret… / NEW_TOKEN / *** / Yes, choose a host… / example.com → o3s secret add NEW_TOKEN --no-bind-hint; o3s firewall add example.com --secret NEW_TOKEN --yes
-secret / Secrets + Add a secret… / NEW_TOKEN / *** / Yes, choose a host… / api.example.com → o3s secret add NEW_TOKEN --no-bind-hint; o3s firewall add api.example.com --secret NEW_TOKEN --yes
-secret / Secrets + Add a secret… / NEW_TOKEN / *** / Yes, choose a host… / example.net → o3s secret add NEW_TOKEN --no-bind-hint; o3s firewall add example.net --secret NEW_TOKEN --yes
-secret / Secrets + Add a secret… / NEW_TOKEN / *** / Yes, choose a host… / example.org → o3s secret add NEW_TOKEN --no-bind-hint; o3s firewall add example.org --secret NEW_TOKEN --yes
+secret / Secrets + Add a secret… / NEW_TOKEN / *** / Yes, choose a host… / example.com / header / yes → o3s secret add NEW_TOKEN --no-bind-hint; o3s firewall add example.com --secret NEW_TOKEN --inject header --yes
+secret / Secrets + Add a secret… / NEW_TOKEN / *** / Yes, choose a host… / example.com / header / no → o3s secret add NEW_TOKEN --no-bind-hint
+secret / Secrets + Add a secret… / NEW_TOKEN / *** / Yes, choose a host… / example.com / query / yes → o3s secret add NEW_TOKEN --no-bind-hint; o3s firewall add example.com --secret NEW_TOKEN --inject query --yes
+secret / Secrets + Add a secret… / NEW_TOKEN / *** / Yes, choose a host… / example.com / body / yes → o3s secret add NEW_TOKEN --no-bind-hint; o3s firewall add example.com --secret NEW_TOKEN --inject body --yes
+secret / Secrets + Add a secret… / NEW_TOKEN / *** / Yes, choose a host… / example.com / header, query, body / yes → o3s secret add NEW_TOKEN --no-bind-hint; o3s firewall add example.com --secret NEW_TOKEN --inject header,query,body --yes
+secret / Secrets + Add a secret… / NEW_TOKEN / *** / Yes, choose a host… / api.example.com / header / yes → o3s secret add NEW_TOKEN --no-bind-hint; o3s firewall add api.example.com --secret NEW_TOKEN --inject header --yes
+secret / Secrets + Add a secret… / NEW_TOKEN / *** / Yes, choose a host… / example.net / header / yes → o3s secret add NEW_TOKEN --no-bind-hint; o3s firewall add example.net --secret NEW_TOKEN --inject header --yes
+secret / Secrets + Add a secret… / NEW_TOKEN / *** / Yes, choose a host… / example.org / header / yes → o3s secret add NEW_TOKEN --no-bind-hint; o3s firewall add example.org --secret NEW_TOKEN --inject header --yes
 secret / Secrets + Add a secret… / NEW_TOKEN / *** / Not now → o3s secret add NEW_TOKEN --no-bind-hint
 secret / Secrets EXAMPLE_TOKEN / Set a value / *** → o3s secret add EXAMPLE_TOKEN --no-bind-hint
 secret / Secrets EXAMPLE_TOKEN / Back → back
@@ -178,7 +182,7 @@ update / Update [cli, tool] / yes → o3s update cli registry.example.com/featur
 update / Update [cli, stack] / yes → o3s update cli stack --yes [restart]
 update / Update [] → (Everything is up to date.)
 
-# stopped, 164 paths
+# stopped, 168 paths
 cage / Open in VS Code → o3s cage ide
 cage / Open a shell → o3s cage shell [terminal]
 cage / Start → o3s cage start
@@ -324,10 +328,14 @@ project / Projects + Add a project… / example/app → o3s project add example/
 project / Projects + Create a project… / example/app → o3s project create example/app
 project / Projects example/app / Remove / example/app → o3s project rm github.com/example/app --yes
 project / Projects example/app / Back → back
-secret / Secrets + Add a secret… / NEW_TOKEN / *** / Yes, choose a host… / example.com → o3s secret add NEW_TOKEN --no-bind-hint; o3s firewall add example.com --secret NEW_TOKEN --yes
-secret / Secrets + Add a secret… / NEW_TOKEN / *** / Yes, choose a host… / api.example.com → o3s secret add NEW_TOKEN --no-bind-hint; o3s firewall add api.example.com --secret NEW_TOKEN --yes
-secret / Secrets + Add a secret… / NEW_TOKEN / *** / Yes, choose a host… / example.net → o3s secret add NEW_TOKEN --no-bind-hint; o3s firewall add example.net --secret NEW_TOKEN --yes
-secret / Secrets + Add a secret… / NEW_TOKEN / *** / Yes, choose a host… / example.org → o3s secret add NEW_TOKEN --no-bind-hint; o3s firewall add example.org --secret NEW_TOKEN --yes
+secret / Secrets + Add a secret… / NEW_TOKEN / *** / Yes, choose a host… / example.com / header / yes → o3s secret add NEW_TOKEN --no-bind-hint; o3s firewall add example.com --secret NEW_TOKEN --inject header --yes
+secret / Secrets + Add a secret… / NEW_TOKEN / *** / Yes, choose a host… / example.com / header / no → o3s secret add NEW_TOKEN --no-bind-hint
+secret / Secrets + Add a secret… / NEW_TOKEN / *** / Yes, choose a host… / example.com / query / yes → o3s secret add NEW_TOKEN --no-bind-hint; o3s firewall add example.com --secret NEW_TOKEN --inject query --yes
+secret / Secrets + Add a secret… / NEW_TOKEN / *** / Yes, choose a host… / example.com / body / yes → o3s secret add NEW_TOKEN --no-bind-hint; o3s firewall add example.com --secret NEW_TOKEN --inject body --yes
+secret / Secrets + Add a secret… / NEW_TOKEN / *** / Yes, choose a host… / example.com / header, query, body / yes → o3s secret add NEW_TOKEN --no-bind-hint; o3s firewall add example.com --secret NEW_TOKEN --inject header,query,body --yes
+secret / Secrets + Add a secret… / NEW_TOKEN / *** / Yes, choose a host… / api.example.com / header / yes → o3s secret add NEW_TOKEN --no-bind-hint; o3s firewall add api.example.com --secret NEW_TOKEN --inject header --yes
+secret / Secrets + Add a secret… / NEW_TOKEN / *** / Yes, choose a host… / example.net / header / yes → o3s secret add NEW_TOKEN --no-bind-hint; o3s firewall add example.net --secret NEW_TOKEN --inject header --yes
+secret / Secrets + Add a secret… / NEW_TOKEN / *** / Yes, choose a host… / example.org / header / yes → o3s secret add NEW_TOKEN --no-bind-hint; o3s firewall add example.org --secret NEW_TOKEN --inject header --yes
 secret / Secrets + Add a secret… / NEW_TOKEN / *** / Not now → o3s secret add NEW_TOKEN --no-bind-hint
 secret / Secrets EXAMPLE_TOKEN / Set a value / *** → o3s secret add EXAMPLE_TOKEN --no-bind-hint
 secret / Secrets EXAMPLE_TOKEN / Back → back

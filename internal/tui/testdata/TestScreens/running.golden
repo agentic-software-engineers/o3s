@@ -2501,11 +2501,146 @@ secret / Add a secret / NEW_TOKEN / *** / Yes, choose a host
 
 Host
 ❯ example.com
-  api.example.com   EXAMPLE_TOKEN
-  example.net
+  api.example.com   EXAMPLE_TOKEN   in 1h
+  example.net       expired
   example.org
 
 ↑/↓ navigate · type to search · enter select · esc back
+
+──── inject
+o3s  /home/ubuntu/o3s
+secret / Add a secret / NEW_TOKEN / *** / Yes, choose a host / example.com
+
+Where the secret goes
+❯ [x] header
+  [ ] query
+  [ ] body
+
+↑/↓ navigate · space toggle · type to search · enter continue · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+…et / Add a secret / NEW_TOKEN / *** / Yes, choose a host / example.com / header
+
+~ example.com: NEW_TOKEN in header
+
+Binds NEW_TOKEN to example.com
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+…ret / Add a secret / NEW_TOKEN / *** / Yes, choose a host / example.com / query
+
+~ example.com: NEW_TOKEN in query
+
+Binds NEW_TOKEN to example.com
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+…cret / Add a secret / NEW_TOKEN / *** / Yes, choose a host / example.com / body
+
+~ example.com: NEW_TOKEN in body
+
+Binds NEW_TOKEN to example.com
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+…cret / NEW_TOKEN / *** / Yes, choose a host / example.com / header, query, body
+
+~ example.com: NEW_TOKEN in header, query, body
+
+Binds NEW_TOKEN to example.com
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── inject
+o3s  /home/ubuntu/o3s
+secret / Add a secret / NEW_TOKEN / *** / Yes, choose a host / api.example.com
+
+Where the secret goes
+❯ [x] header
+  [ ] query
+  [ ] body
+
+↑/↓ navigate · space toggle · type to search · enter continue · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+… Add a secret / NEW_TOKEN / *** / Yes, choose a host / api.example.com / header
+
+~ api.example.com: NEW_TOKEN in header, replacing EXAMPLE_TOKEN
+
+Binds NEW_TOKEN to api.example.com
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── inject
+o3s  /home/ubuntu/o3s
+secret / Add a secret / NEW_TOKEN / *** / Yes, choose a host / example.net
+
+Where the secret goes
+❯ [x] header
+  [ ] query
+  [ ] body
+
+↑/↓ navigate · space toggle · type to search · enter continue · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+…et / Add a secret / NEW_TOKEN / *** / Yes, choose a host / example.net / header
+
+~ example.net: NEW_TOKEN in header
+
+Binds NEW_TOKEN to example.net
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── inject
+o3s  /home/ubuntu/o3s
+secret / Add a secret / NEW_TOKEN / *** / Yes, choose a host / example.org
+
+Where the secret goes
+❯ [x] header
+  [ ] query
+  [ ] body
+
+↑/↓ navigate · space toggle · type to search · enter continue · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+…et / Add a secret / NEW_TOKEN / *** / Yes, choose a host / example.org / header
+
+~ example.org: NEW_TOKEN in header
+
+Binds NEW_TOKEN to example.org
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
 
 ──── action
 o3s  /home/ubuntu/o3s
