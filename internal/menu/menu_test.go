@@ -291,6 +291,18 @@ func TestEveryOtherDialogEndsInItsCommand(t *testing.T) {
 			[]Command{{Args: []string{"secret", "add", fixture.NewSecret, "--no-bind-hint"}, Stdin: &value}},
 		},
 		{
+			"a value replacing the one a secret holds, confirmed",
+			[][]string{{"secret"}, {"Secrets", fixture.OtherSecret}, {setValue}, {value}, {yes}},
+			[]string{"do", "view", "action", "value", "apply"},
+			[]Command{{Args: []string{"secret", "add", fixture.OtherSecret, "--no-bind-hint"}, Stdin: &value}},
+		},
+		{
+			"a value replacing the one a secret holds, declined",
+			[][]string{{"secret"}, {"Secrets", fixture.OtherSecret}, {setValue}, {value}, {"no"}},
+			[]string{"do", "view", "action", "value", "apply"},
+			[]Command{{Note: nothingChanged}},
+		},
+		{
 			"a value for a secret a host carries",
 			[][]string{{"secret"}, {"Secrets", fixture.Secret}, {setValue}, {value}},
 			[]string{"do", "view", "action", "value"},

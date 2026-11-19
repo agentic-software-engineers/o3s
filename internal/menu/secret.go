@@ -50,9 +50,9 @@ func secretDialog(h Home, a Answers) (Question, bool) {
 	// Show the secret's facts and what the user can do with it
 	if !a.has("action") {
 		actions := []Option{{Value: setValue, Label: "Set a value"}}
-		// Offer the removal of a value the secret holds
-		if slices.ContainsFunc(h.Secrets, func(s Secret) bool { return s.Name == name && s.Set }) {
-			actions = append(actions, Option{Value: remove, Label: "Remove"})
+		// Offer to replace and to remove a value the secret holds
+		if holdsValue(h, name) {
+			actions = []Option{{Value: setValue, Label: "Replace the value"}, {Value: remove, Label: "Remove"}}
 		}
 		facts := []Fact{{Label: "Value", Value: SecretState(!waits(h, name))}, {Label: "Hosts", Value: words.Or(strings.Join(carrying(h, name), ", "), "none")}}
 		return detail(name, facts, actions...), false
@@ -60,7 +60,15 @@ func secretDialog(h Home, a Answers) (Question, bool) {
 	// Follow what the user chose
 	switch a.get("action") {
 	case setValue:
-		return ask(a, Question{Key: "value", Kind: Hidden, Title: "Value for " + name})
+		// Ask the new value first
+		if !a.has("value") {
+			return Question{Key: "value", Kind: Hidden, Title: "Value for " + name}, false
+		}
+		// Confirm a value that replaces the one the secret holds
+		if holdsValue(h, name) {
+			return ask(a, apply([]string{"~ " + name + ": value replaced"}, "Replaces the value of "+name, false))
+		}
+		return Question{}, true
 	case remove:
 		line := "- " + name
 		// Name the hosts that stop receiving the value
@@ -114,8 +122,8 @@ func secretPlan(a Answers) []Command {
 		}
 		return cmds
 	}
-	// Store the value the user typed
-	if a.get("action") == setValue {
+	// Store the value the user typed, where it replaces none or the user agreed to the replacement
+	if a.get("action") == setValue && (!a.has("apply") || confirmed(a)) {
 		return []Command{{Args: []string{"secret", "add", picked[0], "--no-bind-hint"}, Stdin: &value}}
 	}
 	// Leave the value as it was where the user declines
@@ -156,4 +164,9 @@ func storeValue(a Answers, name string) []Command {
 		return nil
 	}
 	return []Command{{Args: []string{"secret", "add", name, "--no-bind-hint"}, Stdin: &value}}
+}
+
+// holdsValue reports whether a secret holds a value.
+func holdsValue(h Home, name string) bool {
+	return slices.ContainsFunc(h.Secrets, func(s Secret) bool { return s.Name == name && s.Set })
 }
