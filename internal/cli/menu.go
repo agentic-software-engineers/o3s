@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"path"
 	"slices"
@@ -15,7 +16,6 @@ import (
 	"github.com/hansehart/o3s/internal/home"
 	"github.com/hansehart/o3s/internal/menu"
 	"github.com/hansehart/o3s/internal/registry"
-	"github.com/hansehart/o3s/internal/restart"
 	"github.com/hansehart/o3s/internal/traffic"
 	"github.com/hansehart/o3s/internal/tui"
 	"github.com/hansehart/o3s/internal/update"
@@ -27,29 +27,51 @@ import (
 // runMenu shows the menu in its own screen, running each dialog's commands as this binary, until the user leaves.
 func runMenu(ctx context.Context, s Streams) int {
 	// Report a menu that fails to run
-	if err := openMenu(ctx); err != nil {
+	if err := openMenu(ctx, menuAt(), nil); err != nil {
 		fmt.Fprintf(s.Err, "error: %v\n", err)
 		return 1
 	}
 	return 0
 }
 
-// openMenu shows the menu in its own screen, opened at the view of the group a command path names, until the user
-// leaves.
-func openMenu(ctx context.Context, path ...string) error {
+// openMenu shows the menu in its own screen, opened at the view of the group a command path names, or at the view a
+// binary that replaced itself was at with the main menu behind it, until the user leaves.
+func openMenu(ctx context.Context, resume, path []string) error {
 	self, err := executable()
 	// Hand back a binary that fails to find itself
 	if err != nil {
 		return err
 	}
 	cats := newCatalogs(ctx)
-	return tui.Run(ctx, tui.Config{
-		Home:  func() menu.Home { return menuHome(ctx, cats) },
-		Start: menu.Open(path...),
+	reopen, err := tui.Run(ctx, tui.Config{
+		Home:   func() menu.Home { return menuHome(ctx, cats) },
+		Start:  menu.Open(path...),
+		Resume: menu.Open(resume...),
 		Command: func(args []string) *exec.Cmd {
 			return exec.CommandContext(ctx, self, args...)
 		},
 	})
+	// End where the user left the menu
+	if err != nil || reopen == nil {
+		return err
+	}
+	// Hand back a place the new binary fails to learn
+	if err := os.Setenv(menuAtEnv, strings.Join(reopen, " ")); err != nil {
+		return err
+	}
+	return restartAs(self, []string{self})
+}
+
+// menuAtEnv names the group whose view a new binary's menu opens at, which the old one leaves for it when it replaced
+// itself.
+const menuAtEnv = "O3S_MENU_AT"
+
+// menuAt takes the group whose view the menu opens at from an old binary that replaced itself, so no later menu
+// reads it.
+func menuAt() []string {
+	at := os.Getenv(menuAtEnv)
+	_ = os.Unsetenv(menuAtEnv)
+	return strings.Fields(at)
 }
 
 // menuLookup answers the menu's questions to the stores, reading each store once.
@@ -71,12 +93,12 @@ func (l menuLookup) Peek(store string) ([]menu.Offer, bool, error) {
 	return l.cats.peek(store)
 }
 
-// Updates lists every part with a newer version, as update would bring it: o3s, the stack and each feature.
+// Updates lists every part with a newer version, as update would bring it: the cli, the stack and each feature.
 func (l menuLookup) Updates() ([]menu.Update, error) {
 	var out []menu.Update
 	// Name the newer release of the binary's channel
 	if target, current, ok := newerRelease(l.ctx); ok {
-		out = append(out, menu.Update{Target: "o3s", Name: "o3s", Change: current + " -> " + target})
+		out = append(out, menu.Update{Target: menu.CLI, Name: menu.CLI, Change: current + " -> " + target})
 	}
 	dir, err := workingHome()
 	// Hand back a working folder that stays unknown
@@ -238,28 +260,13 @@ func installed(dc *devcontainer.Config) []menu.Installed {
 	return out
 }
 
-// stackFacts names whether each part of the stack runs, and nothing outside a home.
+// stackFacts names where each part of the stack stands, and nothing outside a home.
 func stackFacts(ctx context.Context, dir string, exists bool) []menu.Fact {
 	// Name nothing outside a home
 	if !exists {
 		return nil
 	}
-	var facts []menu.Fact
-	// Name the state of every part
-	for _, part := range []string{"cage", "gateway", "proxy"} {
-		ids, err := restart.Containers(ctx, dir, part)
-		state := "stopped"
-		// Name a part whose state stays unknown
-		if err != nil {
-			state = "unknown"
-		}
-		// Name a part that runs
-		if len(ids) > 0 {
-			state = "running"
-		}
-		facts = append(facts, menu.Fact{Label: strings.ToUpper(part[:1]) + part[1:], Value: state})
-	}
-	return facts
+	return homeStack(ctx, dir).facts()
 }
 
 // menuSecrets lists every secret the hosts carry or the secrets file names, once each, noting whether it holds a

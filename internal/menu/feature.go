@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/hansehart/o3s/internal/config"
 	"github.com/hansehart/o3s/internal/words"
 )
 
@@ -19,17 +20,16 @@ const (
 
 // Values the feature view and a feature's detail answer with.
 const (
-	move      = "+move"
 	configure = "configure"
 )
 
 // featureView shows the installed features in the order they install, every feature the stores offer, and the
 // stores.
 func featureView(h Home, a Answers) Question {
-	installed := Tab{Name: installedTab, About: "Installed in this order on every rebuild. Move one with ctrl+↑/↓.", Empty: "No features yet. Mark the ones you want on the Discover tab.", Header: []string{"FEATURE", "TAG", "STORE"}, Reorder: true}
-	// Show every installed feature with its tag and its store
+	installed := Tab{Name: installedTab, About: "Installed in this order on every rebuild. Pick one up with m to move it.", Empty: "No features yet. Mark the ones you want on the Discover tab.", Header: InstalledHeader, Reorder: true}
+	// Show every installed feature as its row
 	for _, f := range h.Installed {
-		installed.Options = append(installed.Options, Option{Value: f.Package, Label: path.Base(f.Package), Columns: []string{":" + f.Tag, path.Dir(f.Package)}})
+		installed.Options = append(installed.Options, Option{Value: f.Package, Label: path.Base(f.Package), Columns: InstalledRow(f, h.Hosts)})
 	}
 	rows, loading := offers(h)
 	discover := Tab{Name: discoverTab, About: "Every feature the stores offer. Mark the ones the cage installs.", Empty: "No store offers a feature. Add one on the Stores tab.", Header: []string{"FEATURE", "STORE"}, Multi: true, Options: rows, Marked: packages(h), Loading: loading}
@@ -114,8 +114,8 @@ func featureDialog(h Home, a Answers) (Question, bool) {
 	// Follow what the user picked on its tab
 	switch tab {
 	case installedTab:
-		// End a move or an empty pick, which the plan runs or leaves
-		if len(picked) == 0 || picked[0] == move {
+		// End a new order or an empty pick, which the plan runs or leaves
+		if len(picked) == 0 || picked[0] == Order {
 			return Question{}, true
 		}
 		return installedDialog(h, a, picked[0])
@@ -232,9 +232,9 @@ func featurePlan(h Home, a Answers) []Command {
 	if len(picked) == 0 || a.get("action") == back {
 		return nil
 	}
-	// Move a feature without asking, since moving it back undoes it
-	if tab == installedTab && picked[0] == move {
-		return movePlan(h, picked[1:])
+	// Order the features without asking, since moving them back undoes it
+	if tab == installedTab && picked[0] == Order && len(picked) > 1 {
+		return orderPlan(h, picked[2:])
 	}
 	// Add the store the user typed, which asks no confirmation since removing it undoes it
 	if tab == storesTab && picked[0] == add {
@@ -312,20 +312,13 @@ func discoverPlan(h Home, a Answers, marked []string) []Command {
 	return cmds
 }
 
-// movePlan moves an installed feature one place up or down, which the install order then follows.
-func movePlan(h Home, move []string) []Command {
-	order := packages(h)
-	i := slices.Index(order, move[0])
-	j := i + 1
-	// Move up where the user says so
-	if len(move) > 1 && move[1] == "up" {
-		j = i - 1
-	}
-	// Leave a feature at either end where it is
-	if i < 0 || j < 0 || j >= len(order) {
+// orderPlan installs the features in the order the user dropped them in, at once and quietly, and runs nothing where
+// the order stays as it was.
+func orderPlan(h Home, order []string) []Command {
+	// Run nothing for an order that stays
+	if slices.Equal(order, packages(h)) {
 		return nil
 	}
-	order[i], order[j] = order[j], order[i]
 	return []Command{{Args: append([]string{"feature", "order"}, order...), Quiet: true}}
 }
 
@@ -511,4 +504,21 @@ func capitalized(line string) string {
 		return line
 	}
 	return strings.ToUpper(line[:1]) + line[1:]
+}
+
+// InstalledHeader labels an installed feature's row, piped and in the feature view.
+var InstalledHeader = []string{"FEATURE", "TAG", "STORE", "HOSTS"}
+
+// InstalledRow is how an installed feature shows in a row after its name, piped or in the feature view: its tag, its
+// store and the hosts it needs.
+func InstalledRow(f Installed, hosts []config.Host) []string {
+	var needs []string
+	// Take every host that names the feature among its reasons
+	for _, h := range hosts {
+		// Take a host the feature needs
+		if slices.Contains(h.By, f.Package) {
+			needs = append(needs, h.Name)
+		}
+	}
+	return []string{f.Tag, path.Dir(f.Package), strings.Join(needs, ", ")}
 }

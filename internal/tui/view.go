@@ -73,8 +73,8 @@ func (v view) answer(values ...string) (field, result, tea.Cmd) {
 	return v, result{outcome: answered, values: append([]string{t.Name}, values...)}, nil
 }
 
-// Update follows a key: the arrows move and switch tabs, / searches, Space marks, ctrl+arrows move a row, a tab's own
-// keys act, Enter picks or applies, Esc stops a search or steps back.
+// Update follows a key: the arrows move and switch tabs, / searches, Space marks, m or ctrl+arrows pick a row up, a
+// tab's own keys act, Enter picks or applies, Esc stops a search or steps back.
 func (v view) Update(msg tea.Msg) (field, result, tea.Cmd) {
 	k, isKey := msg.(tea.KeyPressMsg)
 	// Keep the field as it is on anything but a key
@@ -83,6 +83,10 @@ func (v view) Update(msg tea.Msg) (field, result, tea.Cmd) {
 	}
 	v.lists = slices.Clone(v.lists)
 	t, l := v.current()
+	// Carry the row the user holds
+	if l.before != nil {
+		return v.carry(k, l)
+	}
 	// Type into the search while it takes what the user types
 	if v.searching {
 		// Follow the keys that end or edit the search
@@ -123,16 +127,11 @@ func (v view) Update(msg tea.Msg) (field, result, tea.Cmd) {
 		if t.Multi {
 			l.toggle()
 		}
-	case "ctrl+up", "K", "ctrl+down", "J":
-		o, ok := l.highlighted()
-		// Move a row where the tab lets rows move
-		if t.Reorder && ok && l.filter == "" {
-			direction := "down"
-			// Move up where the key says so
-			if k.String() == "ctrl+up" || k.String() == "K" {
-				direction = "up"
-			}
-			return v.answer("+move", o.Value, direction)
+	case "m", "ctrl+up", "K", "ctrl+down", "J":
+		// Pick a row up where the tab lets rows move, and carry it at once on ctrl+arrows
+		if v.movable() {
+			l.pick()
+			return v.carry(k, l)
 		}
 	case "enter":
 		// Hand back the marks of a tab that takes them
@@ -145,6 +144,47 @@ func (v view) Update(msg tea.Msg) (field, result, tea.Cmd) {
 		}
 	default:
 		l.move(k.String(), "", false)
+	}
+	return v, result{}, nil
+}
+
+// movable reports whether the user may pick the row under the cursor up: on a tab that lets rows move, with another
+// row to move past and no search narrowing the rows.
+func (v view) movable() bool {
+	t, l := v.current()
+	return t.Reorder && len(l.options) > 1 && l.filter == ""
+}
+
+// holding reports whether the user holds a row.
+func (v view) holding() bool {
+	_, l := v.current()
+	return l.before != nil
+}
+
+// carry follows a key while the user holds a row: the arrows move it within the view, Enter drops it and answers the
+// new order, and Esc puts it back.
+func (v view) carry(k tea.KeyPressMsg, l *list) (field, result, tea.Cmd) {
+	// Follow the key the user pressed
+	switch k.String() {
+	case "up", "ctrl+up", "K":
+		l.shift(-1)
+	case "down", "ctrl+down", "J":
+		l.shift(1)
+	case "enter":
+		order := make([]string, len(l.options))
+		// Take every row's value in the new order
+		for i, o := range l.options {
+			order[i] = o.Value
+		}
+		moved := !slices.EqualFunc(l.options, l.before, func(a, b menu.Option) bool { return a.Value == b.Value })
+		o, _ := l.highlighted()
+		l.drop()
+		// Answer the new order where the row moved
+		if moved {
+			return v.answer(append([]string{menu.Order, o.Value}, order...)...)
+		}
+	case "esc":
+		l.putBack()
 	}
 	return v, result{}, nil
 }
@@ -202,6 +242,10 @@ func (v view) search(l *list, width int) string {
 // Keys are the keys the view takes now: the search's own while it takes keys, and the tab's otherwise.
 func (v view) Keys() []key.Binding {
 	t, l := v.current()
+	// Name the keys that carry a row while the user holds one
+	if l.before != nil {
+		return []key.Binding{keyCarry, keyDrop, keyCancel}
+	}
 	// Name the keys of the search while it takes keys
 	if v.searching {
 		return []key.Binding{keyType, keyNavigate, keyContinue, keyClear}
@@ -219,9 +263,9 @@ func (v view) Keys() []key.Binding {
 	if t.Multi && len(t.Options) > 0 {
 		keys = append(keys, keyToggle)
 	}
-	// Name moving a row where the tab lets rows move
-	if t.Reorder && len(t.Options) > 1 {
-		keys = append(keys, keyMove)
+	// Name picking a row up where the tab lets rows move
+	if v.movable() {
+		keys = append(keys, keyPick)
 	}
 	// Name every key the tab acts on
 	for _, tk := range t.Keys {

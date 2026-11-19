@@ -11,7 +11,7 @@ stdout '^  ~ expires '
 ! exec o3s firewall add example.com --for 10m
 stdout '^example\.com closes at .+, needed by user\.$'
 stdout '^With --for 10m it closes at .+ instead\.$'
-stderr 'pass --yes to apply without a terminal'
+stderr 'pass --yes to close sooner without a terminal'
 
 # A host that stays open needs a yes before it gets an end, naming everyone who needs it
 ! exec o3s firewall add example.org --for 1h

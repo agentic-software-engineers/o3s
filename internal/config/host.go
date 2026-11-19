@@ -53,6 +53,20 @@ func CheckHost(name string) error {
 	return validate(Change{Name: name})
 }
 
+// Reading writes what a host's name covers, the way a sentence names it: a name or an address as it stands, a wildcard
+// as every name below the domain it leads, and a range as every address in it.
+func Reading(name string) string {
+	// Read a range as every address in it
+	if _, err := netip.ParsePrefix(name); err == nil {
+		return "every address in " + name
+	}
+	// Read a wildcard as every name below its domain
+	if domain, ok := strings.CutPrefix(name, "*."); ok {
+		return "every name below " + domain
+	}
+	return name
+}
+
 // validateHost holds a host, as a change leaves it, to the rules that span its fields.
 func validateHost(h Host) error {
 	// Require a secret wherever inject sites are named

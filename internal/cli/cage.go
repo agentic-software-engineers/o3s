@@ -49,19 +49,9 @@ func showCage(cmd *cobra.Command) error {
 	}
 	w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 2, ' ', 0)
 	fmt.Fprintln(w, "PART\tSTATE")
-	// Write whether each part of the stack runs
-	for _, service := range []string{"cage", "gateway", "proxy"} {
-		ids, err := restart.Containers(cmd.Context(), dir, service)
-		state := "stopped"
-		// Name a part whose state stays unknown
-		if err != nil {
-			state = "unknown"
-		}
-		// Name a part that runs
-		if len(ids) > 0 {
-			state = "running"
-		}
-		fmt.Fprintf(w, "%s\t%s\n", service, state)
+	// Write where each part of the stack stands
+	for _, p := range homeStack(cmd.Context(), dir) {
+		fmt.Fprintf(w, "%s\t%s\n", p.name, p.state)
 	}
 	return w.Flush()
 }
@@ -124,6 +114,11 @@ func newCageStart() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			// Leave a cage that runs as it is
+			if homeStack(cmd.Context(), dir).caged() {
+				fmt.Fprintln(cmd.OutOrStdout(), "The cage runs already")
+				return nil
+			}
 			// Hand back a cage that fails to come up
 			if _, err := raise(cmd, dir); err != nil {
 				return err
@@ -153,6 +148,11 @@ func newCageStop() *cobra.Command {
 			// Hand back a folder that holds no home
 			if err != nil {
 				return err
+			}
+			// Leave a stack that runs nothing as it is
+			if !homeStack(cmd.Context(), dir).up() {
+				fmt.Fprintln(cmd.OutOrStdout(), "The cage is stopped already")
+				return nil
 			}
 			n, err := restart.Stop(cmd.Context(), dir)
 			// Hand back a stack that keeps running
@@ -189,7 +189,7 @@ func newCageRm() *cobra.Command {
 				}
 				fmt.Fprintln(out, "  - the stack's containers, the home's files and the projects volume staying")
 			}
-			ok, err := confirm(cmd.InOrStdin(), out, isTerminal(cmd.InOrStdin()), yes)
+			ok, err := confirm(cmd.InOrStdin(), out, isTerminal(cmd.InOrStdin()), yes, "remove")
 			// Hand back an answer that fails to arrive
 			if err != nil {
 				return err

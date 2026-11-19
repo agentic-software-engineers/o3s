@@ -46,7 +46,10 @@ stdout '/features/go   0 -> 1$'
 cmp .devcontainer/compose.yaml $WORK/edited.yaml
 exec o3s update stack --yes
 
-# o3s alone brings the binary up and leaves the home as it is
+# The cli alone brings the binary up and leaves the home as it is, under its name and its old one
+exec o3s update cli
+stdout '^o3s dev builds update with go install or install\.sh$'
+! stdout 'Up to date'
 exec o3s update o3s
 stdout '^o3s dev builds update with go install or install\.sh$'
 ! stdout 'Up to date'

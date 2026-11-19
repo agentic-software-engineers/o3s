@@ -249,16 +249,48 @@ func TestViewSearchesAfterTheSlash(t *testing.T) {
 	}
 }
 
-// A view's tab that lets rows move answers with the row and the direction on ctrl+arrows.
-func TestViewMovesARow(t *testing.T) {
+// A view's tab that lets rows move takes a row up on m, moves it within the view, and on Enter answers the row and
+// the new order.
+func TestViewCarriesARowAndDropsIt(t *testing.T) {
+	q := aView
+	q.Tabs = []menu.Tab{{Name: "Installed", Reorder: true, Options: []menu.Option{{Value: fixture.Feature}, {Value: fixture.OtherFeature}, {Value: fixture.ThirdFeature}}}}
+
+	f, r := press(newView(q), typed("m")[0], down, down)
+
+	// Require the row moved in the view, nothing answered, and the keys that carry it
+	if view := stripped(f.View(usualWidth, usualHeight)); r.outcome != open || !strings.Contains(view, "↕ "+fixture.Feature) || strings.Index(view, fixture.ThirdFeature) > strings.Index(view, fixture.Feature) {
+		t.Errorf("outcome %v, view:\n%s", r.outcome, view)
+	}
+	// Require the footer of a held row
+	if help := stripped(footer(usualWidth, f.Keys())); help != "↑/↓ move · enter drop · esc cancel" {
+		t.Errorf("keys = %q", help)
+	}
+
+	_, r = press(f, enter)
+
+	// Require the row and the new order
+	if want := []string{"Installed", menu.Order, fixture.Feature, fixture.OtherFeature, fixture.ThirdFeature, fixture.Feature}; !cmp.Equal(want, r.values) {
+		t.Errorf("answer = %v, want %v", r.values, want)
+	}
+}
+
+// Ctrl+arrows pick a row up and move it at once, Esc puts it back, and a row dropped where it was answers nothing.
+func TestViewPutsARowBack(t *testing.T) {
 	q := aView
 	q.Tabs = []menu.Tab{{Name: "Installed", Reorder: true, Options: []menu.Option{{Value: fixture.Feature}, {Value: fixture.OtherFeature}}}}
 
-	_, r := press(newView(q), tea.KeyPressMsg{Code: tea.KeyDown, Mod: tea.ModCtrl})
+	back, r := press(newView(q), tea.KeyPressMsg{Code: tea.KeyDown, Mod: tea.ModCtrl}, esc)
 
-	// Require the row and the direction
-	if !cmp.Equal([]string{"Installed", "+move", fixture.Feature, "down"}, r.values) {
-		t.Errorf("answer = %v, want the feature moved down", r.values)
+	// Require the first order, the cursor on the row, and no answer
+	if view := stripped(back.View(usualWidth, usualHeight)); r.outcome != open || !strings.Contains(view, "❯ "+fixture.Feature) || strings.Index(view, fixture.OtherFeature) < strings.Index(view, fixture.Feature) {
+		t.Errorf("outcome %v, view:\n%s", r.outcome, view)
+	}
+
+	_, r = press(newView(q), typed("m")[0], down, tea.KeyPressMsg{Code: tea.KeyUp}, enter)
+
+	// Require no answer for a row dropped where it was
+	if r.outcome != open {
+		t.Errorf("dropped in place = %v, want no answer", r.values)
 	}
 }
 

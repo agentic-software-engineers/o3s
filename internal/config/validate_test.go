@@ -66,3 +66,21 @@ func TestAllowAcceptsEveryFormOfHost(t *testing.T) {
 		})
 	}
 }
+
+// A host reads as what it covers: a name or an address as it stands, a wildcard as every name below its domain, and a
+// range as every address in it.
+func TestReadingNamesWhatAHostCovers(t *testing.T) {
+	tests := map[string]string{
+		fixture.Host:          fixture.Host,
+		fixture.OtherWildcard: "every name below " + fixture.OtherHost,
+		fixture.Address:       fixture.Address,
+		fixture.Range:         "every address in " + fixture.Range,
+	}
+	// Read every form
+	for name, want := range tests {
+		// Report a host that reads otherwise
+		if got := config.Reading(name); got != want {
+			t.Errorf("Reading(%q) = %q, want %q", name, got, want)
+		}
+	}
+}

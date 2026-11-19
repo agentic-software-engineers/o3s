@@ -106,7 +106,7 @@ func TestTheMainMenuNotesWhatEachGroupHolds(t *testing.T) {
 		{Value: "firewall", Note: "hosts the cage reaches · 4 allowed · 2 blocked"},
 		{Value: "project", Note: "repositories in the workspace · 1"},
 		{Value: "secret", Note: "values the proxy injects · 2"},
-		{Value: "update", Note: "o3s, the stack and the features"},
+		{Value: "update", Note: "the cli, the stack and the features"},
 	}
 	// Report entries that differ
 	if diff := cmp.Diff(want, q.Options); diff != "" {
@@ -303,10 +303,16 @@ func TestEveryOtherDialogEndsInItsCommand(t *testing.T) {
 			[]Command{{Args: []string{"cage", "shell"}, Terminal: true}},
 		},
 		{
-			"the marked parts of an update",
-			[][]string{{"update"}, {"Update", "o3s", "stack"}, {yes}},
+			"the marked parts of an update, the cli among them, opening the menu again on the new binary",
+			[][]string{{"update"}, {"Update", CLI, "stack"}, {yes}},
 			[]string{"do", "view", "apply"},
-			[]Command{{Args: []string{"update", "o3s", "stack", "--yes"}}},
+			[]Command{{Args: []string{"update", CLI, "stack", "--yes"}, Restart: true}},
+		},
+		{
+			"the marked parts of an update without the cli",
+			[][]string{{"update"}, {"Update", "stack"}, {yes}},
+			[]string{"do", "view", "apply"},
+			[]Command{{Args: []string{"update", "stack", "--yes"}}},
 		},
 		{
 			"an update with nothing marked",
@@ -323,16 +329,16 @@ func TestEveryOtherDialogEndsInItsCommand(t *testing.T) {
 			[]Command{{Args: []string{"init", "--yes"}}},
 		},
 		{
-			"a new home on this machine's kernel with AppArmor",
+			"a new home on this machine's kernel with AppArmor, on the real terminal for sudo",
 			[][]string{{"init"}, {inProcess}, {on}, {yes}},
 			[]string{"do", "isolation", "apparmor", "apply"},
 			[]Command{{Args: []string{"init", "--dangerously-skip-vm"}, Terminal: true}},
 		},
 		{
-			"a new home on this machine's kernel without AppArmor",
+			"a new home on this machine's kernel without AppArmor, in the menu",
 			[][]string{{"init"}, {inProcess}, {off}, {yes}},
 			[]string{"do", "isolation", "apparmor", "apply"},
-			[]Command{{Args: []string{"init", "--dangerously-skip-vm", "--dangerously-skip-apparmor"}, Terminal: true}},
+			[]Command{{Args: []string{"init", "--dangerously-skip-vm", "--dangerously-skip-apparmor"}}},
 		},
 		{
 			"declining a new home",
@@ -349,7 +355,7 @@ func TestTheUpdateViewMarksEveryNewerPart(t *testing.T) {
 
 	tab := q.Tabs[0]
 	// Require every part marked with what changes
-	if !tab.Multi || !cmp.Equal([]string{"o3s", "stack", toolPkg}, tab.Marked) || tab.Options[0].Columns[0] != fixture.Version+" -> "+fixture.NewerVersion {
+	if !tab.Multi || !cmp.Equal([]string{CLI, "stack", toolPkg}, tab.Marked) || tab.Options[0].Columns[0] != fixture.Version+" -> "+fixture.NewerVersion {
 		t.Errorf("update tab = %+v", tab)
 	}
 }
@@ -387,6 +393,27 @@ func TestHostRowShowsAHostTheSameEverywhere(t *testing.T) {
 		// Report a row that differs
 		if diff := cmp.Diff(tt.want, HostRow(tt.host, tt.traffic, tt.waiting, fixture.Now)); diff != "" {
 			t.Errorf("HostRow(%s) (-want +got):\n%s", tt.host.Name, diff)
+		}
+	}
+}
+
+// An installed feature shows the same row piped and in its view: its tag without a colon, its store, and the hosts
+// that name it among their reasons.
+func TestInstalledRowShowsAFeatureTheSameEverywhere(t *testing.T) {
+	pkg := fixture.Store + "/" + fixture.Feature
+	hosts := []config.Host{{Name: fixture.Host, By: []string{pkg}}, {Name: fixture.OtherHost, By: []string{"user"}}, {Name: fixture.ThirdHost, By: []string{pkg, "user"}}}
+	tests := []struct {
+		hosts []config.Host
+		want  []string
+	}{
+		{hosts, []string{fixture.Major, fixture.Store, fixture.Host + ", " + fixture.ThirdHost}},
+		{nil, []string{fixture.Major, fixture.Store, ""}},
+	}
+	// Check every set of hosts
+	for _, tt := range tests {
+		// Report a row that differs
+		if diff := cmp.Diff(tt.want, InstalledRow(Installed{Package: pkg, Tag: fixture.Major}, tt.hosts)); diff != "" {
+			t.Errorf("InstalledRow(%d hosts) (-want +got):\n%s", len(tt.hosts), diff)
 		}
 	}
 }

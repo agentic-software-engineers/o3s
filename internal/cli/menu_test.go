@@ -179,3 +179,15 @@ func TestMenuLookupShowsWhatLeavesWithAFeature(t *testing.T) {
 		t.Errorf("menuHome().Installed (-want +got):\n%s", diff)
 	}
 }
+
+// The menu opens at the group an old binary left for it, once, so no later menu opens there.
+func TestMenuAtReadsTheGroupOnce(t *testing.T) {
+	t.Setenv(menuAtEnv, "update")
+
+	first, second := menuAt(), menuAt()
+
+	// Require the group first and nothing after
+	if !cmp.Equal([]string{"update"}, first) || len(second) != 0 {
+		t.Errorf("menuAt() = %v then %v, want [update] then nothing", first, second)
+	}
+}

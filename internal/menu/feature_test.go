@@ -20,7 +20,7 @@ var (
 )
 
 // fakeLookup is a store that offers the tool and another feature, the tool needing two secrets still waiting for
-// values, and newer versions of o3s, the stack and the tool.
+// values, and newer versions of the cli, the stack and the tool.
 type fakeLookup struct{}
 
 // Catalog lists the features the store offers, and fails for any other store.
@@ -57,9 +57,9 @@ func (fakeLookup) Remove(pkg string) (Preview, error) {
 	return Preview{Lines: []string{pkg, goneLine}, Features: 1, Hosts: 1}, nil
 }
 
-// Updates lists newer versions of o3s, the stack and the tool.
+// Updates lists newer versions of the cli, the stack and the tool.
 func (fakeLookup) Updates() ([]Update, error) {
-	return []Update{{Target: "o3s", Name: "o3s", Change: fixture.Version + " -> " + fixture.NewerVersion}, {Target: "stack", Name: "stack", Change: "1 file, 2 images"}, {Target: toolPkg, Name: fixture.Feature, Change: fixture.Major + " -> " + fixture.NewerMajor}}, nil
+	return []Update{{Target: CLI, Name: CLI, Change: fixture.Version + " -> " + fixture.NewerVersion}, {Target: "stack", Name: "stack", Change: "1 file, 2 images"}, {Target: toolPkg, Name: fixture.Feature, Change: fixture.Major + " -> " + fixture.NewerMajor}}, nil
 }
 
 // aHomeWithTheTool is aHome holding the tool with its mode set.
@@ -112,8 +112,8 @@ func TestEveryFeatureDialogEndsInItsCommand(t *testing.T) {
 			[]Command{{Args: []string{"feature", "rm", toolPkg, "--no-preview", "--yes"}}},
 		},
 		{
-			"moving the tool up, quietly",
-			[][]string{{"feature"}, {installedTab, move, toolPkg, "up"}},
+			"ordering the features, quietly",
+			[][]string{{"feature"}, {installedTab, Order, toolPkg, toolPkg}},
 			[]string{"do", "view"},
 			nil,
 		},
@@ -148,22 +148,22 @@ func TestEveryFeatureDialogEndsInItsCommand(t *testing.T) {
 	}.check(t, aHomeWithTheTool())
 }
 
-// Moving an installed feature orders the features again with it one place further, quietly, and leaves one at either
-// end where it is.
-func TestMovingAFeatureOrdersThemQuietly(t *testing.T) {
+// A new order of the installed features runs one quiet feature order over all of them, and nothing where the order
+// stays.
+func TestOrderingFeaturesRunsOneQuietOrder(t *testing.T) {
 	h := aHomeWithTheTool()
 	h.Installed = append(h.Installed, Installed{Package: otherPkg, Tag: fixture.Major})
-
-	down := Plan(h, Answers{}.With("do", []string{"feature"}).With("view", []string{installedTab, move, toolPkg, "down"}))
-	up := Plan(h, Answers{}.With("do", []string{"feature"}).With("view", []string{installedTab, move, toolPkg, "up"}))
-
-	// Require the order with the tool second, quietly
-	if diff := cmp.Diff([]Command{{Args: []string{"feature", "order", otherPkg, toolPkg}, Quiet: true}}, down); diff != "" {
-		t.Errorf("down (-want +got):\n%s", diff)
+	ordered := func(order ...string) []Command {
+		return Plan(h, Answers{}.With("do", []string{"feature"}).With("view", append([]string{installedTab, Order, toolPkg}, order...)))
 	}
-	// Require nothing for the first feature moving up
-	if up != nil {
-		t.Errorf("up = %v, want nothing", up)
+
+	// Require one quiet order with the tool second
+	if diff := cmp.Diff([]Command{{Args: []string{"feature", "order", otherPkg, toolPkg}, Quiet: true}}, ordered(otherPkg, toolPkg)); diff != "" {
+		t.Errorf("new order (-want +got):\n%s", diff)
+	}
+	// Require nothing for the order the features have
+	if got := ordered(toolPkg, otherPkg); got != nil {
+		t.Errorf("same order = %v, want nothing", got)
 	}
 }
 

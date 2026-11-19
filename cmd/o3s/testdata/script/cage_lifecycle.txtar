@@ -6,10 +6,20 @@ exec o3s cage start
 stdout '^The cage runs$'
 grep '^up --workspace-folder ' $WORK/devcontainer.log
 
+# start leaves a cage that runs as it is
+exec sh -c 'touch $WORK/cage-up $WORK/stack-up'
+exec o3s cage start
+stdout '^The cage runs already$'
+
 # stop stops every container of the stack
 exec o3s cage stop
 stdout '^Stopped \d+ containers?$'
 grep '^ps -aq --filter label=com.docker.compose.project.working_dir=' $WORK/docker.log
+
+# stop leaves a stack that runs nothing as it is
+exec sh -c 'rm $WORK/cage-up $WORK/stack-up'
+exec o3s cage stop
+stdout '^The cage is stopped already$'
 
 # Without a terminal or --yes, rm names what goes and asks for --yes
 ! exec o3s cage rm

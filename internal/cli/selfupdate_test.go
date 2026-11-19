@@ -137,7 +137,7 @@ func TestSelfUpdateMovesAPlainBinaryToLatest(t *testing.T) {
 		t.Errorf("restarted as %q, want %q", *restarted, want)
 	}
 	// Require the version line, the confirmation and the hint for checking by hand
-	for _, want := range []string{fmt.Sprintf("o3s            %s -> %s", fixture.Version, fixture.NewerVersion), "Updated o3s to " + fixture.NewerVersion, "gh attestation verify " + latestPath} {
+	for _, want := range []string{fmt.Sprintf("cli            %s -> %s", fixture.Version, fixture.NewerVersion), "Updated o3s to " + fixture.NewerVersion, "gh attestation verify " + latestPath} {
 		// Report a line the output lacks
 		if !strings.Contains(out.String(), want) {
 			t.Errorf("selfUpdate() output lacks %q:\n%s", want, out.String())

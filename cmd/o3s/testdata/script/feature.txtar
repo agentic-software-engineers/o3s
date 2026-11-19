@@ -1,10 +1,10 @@
 # Piped, every feature shows its tag and the hosts it needs, read from the home alone
 exec o3s feature
-stdout '^FEATURE +VERSION +HOSTS$'
-stdout '^registry\.example\.com/features/tool +2 +example\.com, api\.example\.com$'
+stdout '^FEATURE +TAG +STORE +HOSTS$'
+stdout '^tool +2 +registry\.example\.com/features +example\.com, api\.example\.com$'
 
 # A feature without a tag follows the store's newest release
-stdout '^registry\.example\.com/features/other +latest *$'
+stdout '^other +latest +registry\.example\.com/features *$'
 
 -- o3s.json --
 {"$schema": "./.devcontainer/o3s.schema.json", "stores": [], "hosts": [

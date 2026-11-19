@@ -39,7 +39,7 @@ func newInit() *cobra.Command {
 			_, vmErr := vm.Find(dir)
 			// Ask a new home at a terminal how it isolates the cage, in the menu's own dialog, where no flag chose already
 			if !guest && !skipVM && !yes && !home.Exists(dir) && vmErr != nil && isInteractive(cmd.InOrStdin(), cmd.OutOrStdout()) {
-				return openMenu(cmd.Context(), "init")
+				return openMenu(cmd.Context(), nil, []string{"init"})
 			}
 			// Make the home inside its VM, the default, where this folder holds no home of its own
 			if !guest && !skipVM && !home.Exists(dir) {

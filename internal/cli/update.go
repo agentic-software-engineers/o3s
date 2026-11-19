@@ -1,16 +1,15 @@
 package cli
 
 import (
-	"bufio"
 	"fmt"
 	"io"
 	"path"
 	"slices"
-	"strings"
 
 	"github.com/spf13/cobra"
 
 	"github.com/hansehart/o3s/internal/config"
+	"github.com/hansehart/o3s/internal/menu"
 	"github.com/hansehart/o3s/internal/rebuild"
 	"github.com/hansehart/o3s/internal/registry"
 	"github.com/hansehart/o3s/internal/update"
@@ -21,8 +20,8 @@ import (
 func newUpdate() *cobra.Command {
 	var yes bool
 	cmd := &cobra.Command{
-		Use:   "update [o3s|stack|<feature>...]",
-		Short: "Bring o3s, the home's stack and its features up to date, all of them or the ones named",
+		Use:   "update [cli|stack|<feature>...]",
+		Short: "Bring the cli, the home's stack and its features up to date, all of them or the ones named",
 		Args:  usage(cobra.ArbitraryArgs),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			t := readTargets(args)
@@ -60,7 +59,7 @@ func newUpdate() *cobra.Command {
 				fmt.Fprintln(out, "Up to date")
 				return nil
 			}
-			ok, err := confirm(cmd.InOrStdin(), out, isTerminal(cmd.InOrStdin()), yes)
+			ok, err := confirm(cmd.InOrStdin(), out, isTerminal(cmd.InOrStdin()), yes, "update")
 			// Hand back an answer that fails to arrive
 			if err != nil {
 				return err
@@ -119,7 +118,7 @@ func readTargets(args []string) targets {
 	for _, arg := range args {
 		// Take the part the word names
 		switch arg {
-		case "o3s":
+		case menu.CLI, "o3s":
 			t.binary = true
 		case "stack":
 			t.stack = true
@@ -219,24 +218,4 @@ func show(out, errOut io.Writer, p update.Plan) {
 	for _, w := range p.Warnings {
 		warn(errOut, "%s", w)
 	}
-}
-
-// confirm asks whether to apply, takes --yes as the answer, and turns away a missing terminal.
-func confirm(in io.Reader, out io.Writer, terminal, yes bool) (bool, error) {
-	// Apply without asking where the user said so
-	if yes {
-		return true, nil
-	}
-	// Turn away a run where nobody can answer
-	if !terminal {
-		return false, fmt.Errorf("%w: pass --yes to apply without a terminal", ErrUsage)
-	}
-	fmt.Fprint(out, "Apply? [y/N] ")
-	line, err := bufio.NewReader(in).ReadString('\n')
-	// Read an answer that ends without a line break as it stands, and a failed read as a no
-	if err != nil && line == "" {
-		return false, nil
-	}
-	answer := strings.ToLower(strings.TrimSpace(line))
-	return answer == "y" || answer == "yes", nil
 }

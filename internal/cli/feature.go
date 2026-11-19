@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"maps"
+	"path"
 	"slices"
 	"strings"
 	"text/tabwriter"
@@ -12,6 +13,7 @@ import (
 
 	"github.com/hansehart/o3s/internal/config"
 	"github.com/hansehart/o3s/internal/devcontainer"
+	"github.com/hansehart/o3s/internal/menu"
 	"github.com/hansehart/o3s/internal/registry"
 	"github.com/hansehart/o3s/internal/secrets"
 	"github.com/hansehart/o3s/internal/words"
@@ -197,7 +199,7 @@ func newFeatureRm() *cobra.Command {
 				pkgs = append(pkgs, pkg)
 				all.hosts, all.env = append(all.hosts, gone.hosts...), append(all.env, gone.env...)
 			}
-			ok, err := confirm(cmd.InOrStdin(), out, isTerminal(cmd.InOrStdin()), yes)
+			ok, err := confirm(cmd.InOrStdin(), out, isTerminal(cmd.InOrStdin()), yes, "remove")
 			// Hand back an answer that fails to arrive
 			if err != nil {
 				return err
@@ -342,23 +344,10 @@ func showFeatures(cmd *cobra.Command) error {
 		return err
 	}
 	w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "FEATURE\tVERSION\tHOSTS")
+	fmt.Fprintln(w, strings.Join(menu.InstalledHeader, "\t"))
 	// Write one row per feature, in the order the cage installs them
-	for _, key := range inInstallOrder(dc) {
-		pkg, tag := key, "latest"
-		// Split the tag off a feature a store offers
-		if ref, err := registry.ParseRef(key); err == nil && ref.Tag != "" {
-			pkg, tag = ref.Package(), ref.Tag
-		}
-		var hosts []string
-		// List the hosts the feature needs
-		for _, h := range c.Hosts {
-			// Take a host that names the feature among its reasons
-			if slices.Contains(h.By, pkg) {
-				hosts = append(hosts, h.Name)
-			}
-		}
-		fmt.Fprintf(w, "%s\t%s\t%s\n", pkg, tag, strings.Join(hosts, ", "))
+	for _, f := range installed(dc) {
+		fmt.Fprintln(w, strings.Join(append([]string{path.Base(f.Package)}, menu.InstalledRow(f, c.Hosts)...), "\t"))
 	}
 	return w.Flush()
 }
