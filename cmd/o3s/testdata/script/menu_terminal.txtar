@@ -1,0 +1,16 @@
+# The menu hands the terminal to a shell in the cage and takes it back once the user presses Enter
+[!unix] skip 'the pseudo-terminal runs on unix'
+mkdir home
+cd home
+exec o3s init --guest
+pty o3s cage
+screen '❯ Open in VS Code'
+keys down enter
+screen 'press enter to go back to the menu'
+keys enter
+screen '✓ done'
+keys enter
+screen '❯ Open in VS Code'
+keys esc
+ptywait
+grep '^exec ' $WORK/devcontainer.log

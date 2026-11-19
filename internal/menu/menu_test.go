@@ -20,7 +20,7 @@ var (
 // aHome is a home that allows a host the user added, a host with a secret, an expired host and one a feature needs,
 // knows two secrets, refused two names, offers one store and lists one project.
 var aHome = Home{
-	Dir:    "/home/ubuntu/o3s",
+	Dir:    fixture.HomeDir,
 	Exists: true,
 	Now:    fixture.Now,
 	Hosts: []config.Host{

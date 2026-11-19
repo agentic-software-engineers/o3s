@@ -1,0 +1,8 @@
+# On a terminal o3s opens its menu outside a home, and Esc leaves it with the screen as it was
+[!unix] skip 'the pseudo-terminal runs on unix'
+pty o3s
+screen 'What do you want to do\?'
+screen '❯ init +make this folder a home'
+keys esc
+ptywait
+! screen 'What do you want to do'
