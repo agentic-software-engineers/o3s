@@ -1,5 +1,29 @@
 # Changelog
 
+## [0.8.2](https://github.com/hansehart/o3s/compare/v0.8.1...v0.8.2) (2026-11-19)
+
+
+### ⚠ BREAKING CHANGES
+
+* **cage:** drop the docker socket shared with the host ([#312](https://github.com/hansehart/o3s/issues/312))
+
+### Features
+
+* **cage:** drop the docker socket shared with the host ([#312](https://github.com/hansehart/o3s/issues/312)) ([4f037d5](https://github.com/hansehart/o3s/commit/4f037d512b93b0e77818b1f3619beedab03579c8))
+* **cage:** reach the gateway without NET_ADMIN ([#309](https://github.com/hansehart/o3s/issues/309)) ([3420ee7](https://github.com/hansehart/o3s/commit/3420ee74a6b8d95dbe13772f4247a9a89624f794))
+* **cli:** show a feature's options in one view, one line per offer ([#303](https://github.com/hansehart/o3s/issues/303)) ([88d7e9a](https://github.com/hansehart/o3s/commit/88d7e9aaba3309fe7532fa9a4ea5b78d1dd69030))
+* **gateway:** answer on the cage network's route address ([#306](https://github.com/hansehart/o3s/issues/306)) ([ab367c2](https://github.com/hansehart/o3s/commit/ab367c27604227959730524fc0ffe7cec57fd52e))
+
+
+### Bug Fixes
+
+* **cage:** close the profile's procfs and thermal throttle gaps ([#313](https://github.com/hansehart/o3s/issues/313)) ([15bc47c](https://github.com/hansehart/o3s/commit/15bc47c44eae7539f89e4fabe6573f5fd5a66864))
+* **cli:** polish the firewall, feature, cage, init and update flows ([#302](https://github.com/hansehart/o3s/issues/302)) ([02b5fd0](https://github.com/hansehart/o3s/commit/02b5fd02731d613e27639b3201989f21dd834364))
+* **cli:** round out the feature, store, cage, project and init dialogs ([#315](https://github.com/hansehart/o3s/issues/315)) ([c31bdbe](https://github.com/hansehart/o3s/commit/c31bdbe328ac6ff2212caf151631ef9bf9252c02))
+* **cli:** round out the firewall and secret dialogs ([#314](https://github.com/hansehart/o3s/issues/314)) ([6f0b957](https://github.com/hansehart/o3s/commit/6f0b957aacf836214fea0267084e5f44f4006b4b))
+* **cli:** settle how the menu behaves around a change ([#318](https://github.com/hansehart/o3s/issues/318)) ([3a70182](https://github.com/hansehart/o3s/commit/3a701826259fbf59b918f3d8b907f1730fada975))
+* **deps:** update ubuntu:24.04 docker digest to 73b9993 ([#299](https://github.com/hansehart/o3s/issues/299)) ([9eb4453](https://github.com/hansehart/o3s/commit/9eb44531dc35ed53a29d6cf0cf10d7717da69816))
+
 ## [0.8.1](https://github.com/hansehart/o3s/compare/v0.8.0...v0.8.1) (2026-11-19)
 
 
