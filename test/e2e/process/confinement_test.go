@@ -159,6 +159,23 @@ func TestRootIsDeniedAProcMountElsewhere(t *testing.T) {
 	}
 }
 
+// A procfs on another folder named proc keeps the masked files denied.
+func TestAProcOnAnotherProcFolderKeepsTheMaskedFilesDenied(t *testing.T) {
+	raised, err := stacktest.DevcontainerUp(t)
+	// Stop when the stack fails to come up
+	if err != nil {
+		t.Fatalf("Setup: DevcontainerUp() = %v, want the stack raised", err)
+	}
+	script := "mkdir -p /tmp/x/proc && unshare -Urmpf sh -c 'mount -t proc p /tmp/x/proc && cat /tmp/x/proc/timer_list'"
+
+	out, err := stacktest.ContainerExecAs(t, raised.ContainerID, "ubuntu", "sh", "-c", script)
+
+	// Require the masked file to read as denied
+	if err == nil {
+		t.Errorf("%s as ubuntu = %q, want the read denied", script, out)
+	}
+}
+
 // The nested engine runs a container, whose procfs it mounts under the profile.
 func TestTheNestedEngineRunsAContainer(t *testing.T) {
 	stacktest.ANestedEngine(t)
