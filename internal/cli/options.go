@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/hansehart/o3s/internal/registry"
+	"github.com/hansehart/o3s/internal/words"
 )
 
 // given is one option the command line sets, for the feature it names or for whichever feature offers it.
@@ -59,7 +60,7 @@ func applyOptions(setups []registry.Setup, args []string) error {
 			for _, i := range offering {
 				ids = append(ids, setups[i].Ref.ID)
 			}
-			return fmt.Errorf("%w: %s both offer the option %s, name one as in --option %s:%s=%s", ErrUsage, joinAnd(ids), g.name, ids[len(ids)-1], g.name, g.value)
+			return fmt.Errorf("%w: %s both offer the option %s, name one as in --option %s:%s=%s", ErrUsage, words.JoinAnd(ids), g.name, ids[len(ids)-1], g.name, g.value)
 		}
 		s := &setups[offering[0]]
 		value, err := valueFor(option(*s, g.name), g.value)
@@ -102,16 +103,7 @@ func valueFor(o registry.Option, value string) (any, error) {
 	}
 	// Turn away a value outside the choices an option holds to
 	if len(o.Enum) > 0 && !slices.Contains(o.Enum, value) {
-		return nil, fmt.Errorf("%w: invalid value %q for %s, want %s", ErrUsage, value, o.Name, joinOr(o.Enum))
+		return nil, fmt.Errorf("%w: invalid value %q for %s, want %s", ErrUsage, value, o.Name, words.JoinOr(o.Enum))
 	}
 	return value, nil
-}
-
-// joinOr joins choices the way a sentence offers them.
-func joinOr(choices []string) string {
-	// Join a single choice as it stands, and the last of several with or
-	if len(choices) < 2 {
-		return strings.Join(choices, "")
-	}
-	return strings.Join(choices[:len(choices)-1], ", ") + " or " + choices[len(choices)-1]
 }

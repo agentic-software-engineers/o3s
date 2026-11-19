@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"slices"
-	"strconv"
 	"strings"
 	"text/tabwriter"
 	"time"
@@ -12,8 +11,10 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/hansehart/o3s/internal/config"
+	"github.com/hansehart/o3s/internal/menu"
 	"github.com/hansehart/o3s/internal/restart"
 	"github.com/hansehart/o3s/internal/traffic"
+	"github.com/hansehart/o3s/internal/words"
 )
 
 // newFirewall builds the commands that show, allow and remove hosts.
@@ -94,9 +95,9 @@ func newFirewallAdd() *cobra.Command {
 						for _, d := range diffs {
 							// Show end times as the local clock time they close at
 							if d.Field == "expires" {
-								d.Old, d.New = closesAtOrNone(d.Old, now), closesAt(d.New, now)
+								d.Old, d.New = config.ClosesAtOrNone(d.Old, now), config.ClosesAt(d.New, now)
 							}
-							fmt.Fprintf(out, "  ~ %s %s -> %s\n", d.Field, orNone(d.Old), orNone(d.New))
+							fmt.Fprintf(out, "  ~ %s %s -> %s\n", d.Field, words.Or(d.Old, "none"), words.Or(d.New, "none"))
 						}
 					}
 					h, _ := c.Find(name)
@@ -140,10 +141,10 @@ func newFirewallRm() *cobra.Command {
 				}
 				// Name a host that stays for what still needs it
 				if len(kept) > 0 {
-					fmt.Fprintf(out, "  ~ %s stays open, still needed by %s\n", name, joinAnd(kept))
+					fmt.Fprintf(out, "  ~ %s stays open, still needed by %s\n", name, words.JoinAnd(kept))
 					continue
 				}
-				fmt.Fprintf(out, "  - %s:%s\n", name, joinPorts(h.Ports))
+				fmt.Fprintf(out, "  - %s:%s\n", name, config.JoinPorts(h.Ports))
 			}
 			ok, err := confirm(cmd.InOrStdin(), out, isTerminal(cmd.InOrStdin()), yes)
 			// Hand back an answer that fails to arrive
@@ -165,7 +166,7 @@ func newFirewallRm() *cobra.Command {
 					}
 					// Name what still needs a host that stays
 					if len(kept) > 0 {
-						fmt.Fprintf(out, "Kept %s, still needed by %s\n", name, joinAnd(kept))
+						fmt.Fprintf(out, "Kept %s, still needed by %s\n", name, words.JoinAnd(kept))
 						continue
 					}
 					fmt.Fprintf(out, "Removed %s\n", name)
@@ -208,24 +209,16 @@ func showFirewall(cmd *cobra.Command, limit int, asJSON bool) error {
 	waiting, dead, expired := false, false, false
 	// Write a row per host, in the order the file holds them
 	for _, h := range c.Hosts {
-		secret := h.Secret
-		// Flag a secret that waits for its value
-		if _, ok := store.Value(secret); secret != "" && !ok {
-			secret += " !"
-			waiting = true
-		}
-		data, seen := "–", "–"
+		_, set := store.Value(h.Secret)
+		waits := h.Secret != "" && !set
+		var t menu.Traffic
 		// Show what the host moved where the gateway recorded it
-		if t, ok := record.Hosts[h.Name]; ok {
-			data, seen = traffic.Size(t.Bytes), traffic.Ago(t.LastSeen, now)
-			// Mark a host that moved no data for a whole window
-			if t.Dead(now) {
-				seen += ", dead"
-				dead = true
-			}
+		if recorded, ok := record.Hosts[h.Name]; ok {
+			t = hostTraffic(recorded, now)
+			dead = dead || recorded.Dead(now)
 		}
-		expired = expired || h.Expired(now)
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\t%s\n", h.Name, joinPorts(h.Ports), data, seen, until(h.Expires, now), secret, strings.Join(h.By, ", "))
+		waiting, expired = waiting || waits, expired || h.Expired(now)
+		fmt.Fprintln(w, strings.Join(append([]string{h.Name}, menu.HostRow(h, t, waits, now)...), "\t"))
 	}
 	// Hand back a table that fails to write
 	if err := w.Flush(); err != nil {
@@ -319,6 +312,17 @@ func newFirewallPrune() *cobra.Command {
 	}
 	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "remove without asking")
 	return cmd
+}
+
+// hostTraffic is how what the gateway recorded for a host reads: the data it moved, and when it last moved any, marked
+// dead after a whole window without data.
+func hostTraffic(t traffic.Host, now time.Time) menu.Traffic {
+	seen := traffic.Ago(t.LastSeen, now)
+	// Mark a host that moved no data for a whole window
+	if t.Dead(now) {
+		seen += ", dead"
+	}
+	return menu.Traffic{Data: traffic.Size(t.Bytes), Seen: seen}
 }
 
 // capped keeps the first entries up to a limit, and every entry for a limit of 0.
@@ -422,33 +426,14 @@ func edit(apply func(*config.Config) error) (string, error) {
 
 // allowed confirms a host with its ports, and its secret where it carries one.
 func allowed(h config.Host, now time.Time) string {
-	line := fmt.Sprintf("Allowed %s:%s", h.Name, joinPorts(h.Ports))
+	line := fmt.Sprintf("Allowed %s:%s", h.Name, config.JoinPorts(h.Ports))
 	// Add the secret and where it goes
 	if h.Secret != "" {
 		line += fmt.Sprintf(" with %s in %s", h.Secret, strings.Join(h.Inject, ", "))
 	}
 	// Add when a host with an end closes
 	if h.Expires != "" {
-		line += " until " + closesAt(h.Expires, now)
+		line += " until " + config.ClosesAt(h.Expires, now)
 	}
 	return line
-}
-
-// joinPorts writes ports as one comma-separated value.
-func joinPorts(ports []int) string {
-	parts := make([]string, len(ports))
-	// Write every port
-	for i, p := range ports {
-		parts[i] = strconv.Itoa(p)
-	}
-	return strings.Join(parts, ",")
-}
-
-// orNone shows an empty value as none.
-func orNone(v string) string {
-	// Name the absence of a value
-	if v == "" {
-		return "none"
-	}
-	return v
 }

@@ -10,6 +10,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/hansehart/o3s/internal/config"
 	"github.com/hansehart/o3s/internal/rebuild"
 	"github.com/hansehart/o3s/internal/registry"
 	"github.com/hansehart/o3s/internal/update"
@@ -199,7 +200,7 @@ func show(out, errOut io.Writer, p update.Plan) {
 		fmt.Fprintln(out, line)
 		// Show every host the feature needs anew
 		for _, h := range fc.HostsAdded {
-			fmt.Fprintf(out, "  + %s:%s\n", h.Name, joinPorts(registry.PortsOf(h)))
+			fmt.Fprintf(out, "  + %s:%s\n", h.Name, config.JoinPorts(registry.PortsOf(h)))
 		}
 		// Show every host the feature leaves
 		for _, name := range fc.HostsDropped {

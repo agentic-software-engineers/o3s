@@ -1,6 +1,10 @@
 package menu
 
-import "strings"
+import (
+	"strings"
+
+	"github.com/hansehart/o3s/internal/words"
+)
 
 // updateDialog shows every part with a newer version, all of them marked, then the confirmation of the marked ones.
 func updateDialog(h Home, a Answers) (Question, bool) {
@@ -32,7 +36,7 @@ func updateDialog(h Home, a Answers) (Question, bool) {
 			lines = append(lines, "~ "+u.Name+"   "+u.Change)
 		}
 	}
-	return ask(a, apply(lines, "Updates "+count(len(lines), "part", "parts"), false))
+	return ask(a, apply(lines, "Updates "+words.Count(len(lines), "part", "parts"), false))
 }
 
 // updatePlan brings the marked parts up to date.

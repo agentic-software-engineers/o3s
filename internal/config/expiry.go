@@ -67,3 +67,50 @@ func ParseFor(s string) (time.Duration, error) {
 	}
 	return d, nil
 }
+
+// ClosesAt writes the local clock time a host closes, with its date when that is another day.
+func ClosesAt(end string, now time.Time) string {
+	t, err := time.Parse(EndTimeLayout, end)
+	// Show an end time that fails to read as it stands
+	if err != nil {
+		return end
+	}
+	t, now = t.Local(), now.Local()
+	// Name the date of an end on another day
+	if t.YearDay() != now.YearDay() || t.Year() != now.Year() {
+		return t.Format("Jan 2 15:04")
+	}
+	return t.Format("15:04")
+}
+
+// ClosesAtOrNone writes the local clock time a host closes, and nothing for a host that stays open.
+func ClosesAtOrNone(end string, now time.Time) string {
+	// Keep nothing for a host that stays open
+	if end == "" {
+		return ""
+	}
+	return ClosesAt(end, now)
+}
+
+// Until writes how long a host stays open, expired once its end has come, and nothing for a host that stays open.
+func Until(end string, now time.Time) string {
+	t, err := time.Parse(EndTimeLayout, end)
+	// Show nothing for a host that stays open
+	if end == "" || err != nil {
+		return ""
+	}
+	left := t.Sub(now)
+	// Name a host whose end has come
+	switch {
+	case left <= 0:
+		return "expired"
+	case left < time.Minute:
+		return fmt.Sprintf("in %ds", int(left.Seconds()))
+	case left < time.Hour:
+		return fmt.Sprintf("in %dm", int(left.Minutes()))
+	case left < 24*time.Hour:
+		return fmt.Sprintf("in %dh", int(left.Hours()))
+	default:
+		return fmt.Sprintf("in %dd", int(left.Hours()/24))
+	}
+}

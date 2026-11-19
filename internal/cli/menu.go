@@ -19,6 +19,7 @@ import (
 	"github.com/hansehart/o3s/internal/traffic"
 	"github.com/hansehart/o3s/internal/tui"
 	"github.com/hansehart/o3s/internal/update"
+	"github.com/hansehart/o3s/internal/words"
 	"github.com/hansehart/o3s/internal/workspace"
 )
 
@@ -90,7 +91,7 @@ func (l menuLookup) Updates() ([]menu.Update, error) {
 	}
 	// Name the stack's files and images that change
 	if len(plan.Files) > 0 || len(plan.Images) > 0 {
-		out = append(out, menu.Update{Target: "stack", Name: "stack", Change: count(len(plan.Files), "file", "files") + ", " + count(len(plan.Images), "image", "images")})
+		out = append(out, menu.Update{Target: "stack", Name: "stack", Change: words.Count(len(plan.Files), "file", "files") + ", " + words.Count(len(plan.Images), "image", "images")})
 	}
 	// Name every feature that moves
 	for _, fc := range plan.Features {
@@ -184,16 +185,11 @@ func menuHome(ctx context.Context) menu.Home {
 	if err == nil {
 		// Show the data each host moved and when
 		for name, t := range record.Hosts {
-			seen := traffic.Ago(t.LastSeen, now)
-			// Mark a host that moved no data for a whole window
-			if t.Dead(now) {
-				seen += ", dead"
-			}
-			h.Traffic[name] = menu.Traffic{Data: traffic.Size(t.Bytes), Seen: seen}
+			h.Traffic[name] = hostTraffic(t, now)
 		}
 		// Offer each refused name, the most recent first, with how often and when
 		for _, b := range record.Refused() {
-			h.Blocked = append(h.Blocked, menu.Option{Value: b.Name, Columns: []string{attempts(b.Attempts), traffic.Ago(b.LastSeen, now)}})
+			h.Blocked = append(h.Blocked, menu.Option{Value: b.Name, Columns: []string{words.Count(b.Attempts, "attempt", "attempts"), traffic.Ago(b.LastSeen, now)}})
 		}
 	}
 	h.Stack = stackFacts(ctx, dir, h.Exists)
@@ -220,7 +216,7 @@ func installed(dc *devcontainer.Config) []menu.Installed {
 		if err != nil {
 			continue
 		}
-		f := menu.Installed{Package: ref.Package(), Tag: orDefault(ref.Tag, "latest"), Options: map[string]string{}}
+		f := menu.Installed{Package: ref.Package(), Tag: words.Or(ref.Tag, "latest"), Options: map[string]string{}}
 		// Take every option the feature sets, the folder o3s gives it left out
 		for name, v := range dc.FeatureOptions(ref.Package()) {
 			// Take an option that is the user's to set
@@ -281,33 +277,6 @@ func menuSecrets(hosts []config.Host) []menu.Secret {
 		out = append(out, menu.Secret{Name: name, Set: set})
 	}
 	return out
-}
-
-// count writes a number with the word that fits it.
-func count(n int, one, many string) string {
-	// Take the singular for a single one
-	if n == 1 {
-		return "1 " + one
-	}
-	return fmt.Sprintf("%d %s", n, many)
-}
-
-// orDefault shows an empty value as the one given.
-func orDefault(v, fallback string) string {
-	// Take the fallback for an empty value
-	if v == "" {
-		return fallback
-	}
-	return v
-}
-
-// attempts writes a number of refused lookups.
-func attempts(n int64) string {
-	// Write a single attempt in the singular
-	if n == 1 {
-		return "1 attempt"
-	}
-	return fmt.Sprintf("%d attempts", n)
 }
 
 // isInteractive reports whether both ends of a stream reach a terminal, as a menu needs.

@@ -5,6 +5,8 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+
+	"github.com/hansehart/o3s/internal/words"
 )
 
 var (
@@ -40,7 +42,7 @@ func buildFailure(output, logPath string, err error) error {
 	lines := []string{step + ": " + err.Error()}
 	// Name the hosts the build could not reach and the command that allows them
 	if len(hosts) > 0 {
-		lines = append(lines, "  it could not reach "+joinAnd(hosts), "  allow them with: o3s firewall add "+strings.Join(hosts, " "))
+		lines = append(lines, "  it could not reach "+words.JoinAnd(hosts), "  allow them with: o3s firewall add "+strings.Join(hosts, " "))
 	}
 	// Name where the whole log is
 	if logPath != "" {
