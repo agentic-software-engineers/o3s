@@ -193,6 +193,16 @@ func menuHome(ctx context.Context) menu.Home {
 		}
 	}
 	h.Stack = stackFacts(ctx, dir, h.Exists)
+	// Show the VM of a home that lives in one, in place of the stack it runs inside
+	if lima, name, err := homeVM(); err == nil {
+		h.InVM = true
+		status, err := lima.Status(ctx, name)
+		// Name a VM whose state stays unknown
+		if err != nil {
+			status = "unknown"
+		}
+		h.Stack = []menu.Fact{{Label: "VM", Value: strings.ToLower(status)}}
+	}
 	ws, err := workspace.Load(home.Workspace(dir))
 	// Offer every project the workspace lists
 	if err == nil {

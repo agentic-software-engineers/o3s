@@ -14,6 +14,8 @@ type Home struct {
 	Dir string
 	// Exists marks a folder that holds a home already.
 	Exists bool
+	// InVM marks a folder whose home lives in its VM, which holds the home's files.
+	InVM bool
 	// Now is the moment the menu reads the home at, which end times count from.
 	Now   time.Time
 	Hosts []config.Host
@@ -281,20 +283,20 @@ func mainMenu(h Home) Question {
 	q := Question{Key: "do", Kind: Select, Title: "What do you want to do?"}
 	// Offer every group that works here
 	for _, e := range entries {
-		// Take init outside a home, every other group inside one, and the secrets in both
-		if e.Value == "init" && !h.Exists || e.Value != "init" && (h.Exists || e.Value == "secret") {
+		// Take init outside a home, every other group inside one, the secrets in both, and the cage beside a home in its VM
+		if e.Value == "init" && !h.Exists && !h.InVM || e.Value != "init" && (h.Exists || e.Value == "secret" || h.InVM && e.Value == "cage") {
 			q.Options = append(q.Options, e)
 		}
 	}
 	return q
 }
 
-// stackState names in a word whether the cage runs.
+// stackState names in a word whether the cage runs, or the VM of a home that lives in one.
 func stackState(h Home) string {
-	// Read the cage's own part of the stack
+	// Read the cage's own part of the stack, or the VM
 	for _, f := range h.Stack {
-		// Name the state of the cage
-		if f.Label == "Cage" {
+		// Name the state of the cage or the VM
+		if f.Label == "Cage" || f.Label == "VM" {
 			return f.Value
 		}
 	}
@@ -310,7 +312,7 @@ func next(h Home, a Answers) (Question, bool) {
 	// Follow the dialog of the group
 	switch a.get("do") {
 	case "init":
-		return ask(a, Question{Key: "init", Kind: Confirm, Title: "Apply?", Summary: "Creates an o3s home in " + h.Dir, Default: []string{yes}})
+		return initDialog(h, a)
 	case "cage":
 		return cageDialog(h, a)
 	case "feature":
@@ -332,11 +334,7 @@ func plan(h Home, a Answers) []Command {
 	// Build the commands of the group's dialog
 	switch a.get("do") {
 	case "init":
-		// End where the user declines
-		if a.get("init") != yes {
-			return declined()
-		}
-		return []Command{{Args: []string{"init"}, Terminal: true}}
+		return initPlan(a)
 	case "cage":
 		return cagePlan(a)
 	case "feature":

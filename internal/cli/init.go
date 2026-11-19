@@ -14,7 +14,6 @@ import (
 	"github.com/hansehart/o3s/internal/home"
 	"github.com/hansehart/o3s/internal/host"
 	"github.com/hansehart/o3s/internal/paths"
-	"github.com/hansehart/o3s/internal/preview"
 	"github.com/hansehart/o3s/internal/release"
 	"github.com/hansehart/o3s/internal/secrets"
 	"github.com/hansehart/o3s/internal/vm"
@@ -22,7 +21,7 @@ import (
 
 // newInit builds the command that makes the working folder a home, and prepares the host for it on every start.
 func newInit() *cobra.Command {
-	var skipVM, guest bool
+	var skipVM, skipAppArmor, guest bool
 	c := &cobra.Command{
 		Use:   "init",
 		Short: "Make this folder an o3s home, or prepare the host for the home it is",
@@ -33,8 +32,18 @@ func newInit() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			// Make the home inside its VM, where the VM preview is on, this folder holds no home of its own, and the VM stays chosen
-			if preview.Enabled(preview.VM) && !guest && !skipVM && !home.Exists(dir) {
+			// Turn away AppArmor's opt-out for a home in its VM, where AppArmor always runs
+			if skipAppArmor && !skipVM {
+				return fmt.Errorf("%w: AppArmor always runs in the home's VM, pair --dangerously-skip-apparmor with --dangerously-skip-vm", ErrUsage)
+			}
+			_, vmErr := vm.Find(dir)
+			// Ask a new home at a terminal how it isolates the cage, where no flag chose already
+			if !guest && !skipVM && !home.Exists(dir) && vmErr != nil && isInteractive(cmd.InOrStdin(), cmd.OutOrStdout()) {
+				chosen := interview(cmd.InOrStdin(), cmd.OutOrStdout())
+				skipVM, skipAppArmor = chosen.skipVM, chosen.skipAppArmor
+			}
+			// Make the home inside its VM, the default, where this folder holds no home of its own
+			if !guest && !skipVM && !home.Exists(dir) {
 				return initVM(cmd, dir)
 			}
 			secretsFile, err := secrets.Path()
@@ -60,7 +69,7 @@ func newInit() *cobra.Command {
 				// Record the choice of a home without its VM, which every later start reads
 				if skipVM {
 					// Hand back a choice that stays unrecorded
-					if err := recordProcess(dir); err != nil {
+					if err := recordProcess(dir, skipAppArmor); err != nil {
 						return err
 					}
 				}
@@ -92,6 +101,7 @@ func newInit() *cobra.Command {
 		},
 	}
 	c.Flags().BoolVar(&skipVM, "dangerously-skip-vm", false, "run the stack on this machine's kernel, without the home's VM")
+	c.Flags().BoolVar(&skipAppArmor, "dangerously-skip-apparmor", false, "run the cage without AppArmor, for a home without its VM on a host that lacks it")
 	c.Flags().BoolVar(&guest, "guest", false, "make the home inside the VM it runs in")
 	_ = c.Flags().MarkHidden("guest")
 	return c
@@ -155,14 +165,19 @@ func installInVM(ctx context.Context, lima vm.Lima, name, folder string, out io.
 	return nil
 }
 
-// recordProcess records in a home's settings that its stack runs on this machine's kernel.
-func recordProcess(dir string) error {
+// recordProcess records in a home's settings that its stack runs on this machine's kernel, and without AppArmor where
+// the home chose so.
+func recordProcess(dir string, skipAppArmor bool) error {
 	c, err := config.Load(dir)
 	// Hand back settings that fail to load
 	if err != nil {
 		return err
 	}
 	c.Isolation = config.Process
+	// Record the cage's run without AppArmor
+	if skipAppArmor {
+		c.AppArmorProfile = config.Unconfined
+	}
 	return c.Save(dir)
 }
 

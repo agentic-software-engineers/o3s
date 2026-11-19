@@ -13,7 +13,7 @@ import (
 )
 
 // o3s init makes the home inside its VM, which boots the pinned Ubuntu, keeps to its own filesystems, confines the cage
-// with AppArmor, stops, and goes away with o3s vm rm.
+// with AppArmor, stops, and goes away with o3s cage rm --yes.
 //
 // The subtests share one VM in order, since every boot takes minutes.
 func TestTheHomesVM(t *testing.T) {
@@ -23,7 +23,7 @@ func TestTheHomesVM(t *testing.T) {
 	if err != nil {
 		t.Fatalf("o3s init = %v, want the home made inside its VM\n%s", err, out)
 	}
-	t.Cleanup(func() { _, _ = stacktest.O3sIn(t, dir, "vm", "rm") })
+	t.Cleanup(func() { _, _ = stacktest.O3sIn(t, dir, "cage", "rm", "--yes") })
 
 	t.Run("leaves the host folder its ID alone", func(t *testing.T) {
 		entries, err := os.ReadDir(dir)
@@ -34,26 +34,26 @@ func TestTheHomesVM(t *testing.T) {
 	})
 
 	t.Run("holds the home inside the VM", func(t *testing.T) {
-		out, err := stacktest.O3sIn(t, dir, "vm", "shell", "--", "cat", "o3s/o3s.json")
+		out, err := stacktest.O3sIn(t, dir, "cage", "shell", "--vm", "--", "cat", "o3s/o3s.json")
 		// Require the home's settings in the VM
 		if err != nil || !strings.Contains(out, `"hosts"`) {
-			t.Errorf("o3s vm shell -- cat o3s/o3s.json = %v\n%s\nwant the home's settings", err, out)
+			t.Errorf("o3s cage shell --vm -- cat o3s/o3s.json = %v\n%s\nwant the home's settings", err, out)
 		}
 	})
 
 	t.Run("boots the pinned Ubuntu", func(t *testing.T) {
-		out, err := stacktest.O3sIn(t, dir, "vm", "shell", "--", "cat", "/etc/os-release")
+		out, err := stacktest.O3sIn(t, dir, "cage", "shell", "--vm", "--", "cat", "/etc/os-release")
 		// Require the release the template pins
 		if err != nil || !strings.Contains(out, `VERSION_ID="26.04"`) {
-			t.Errorf("o3s vm shell -- cat /etc/os-release = %v\n%s\nwant Ubuntu 26.04", err, out)
+			t.Errorf("o3s cage shell --vm -- cat /etc/os-release = %v\n%s\nwant Ubuntu 26.04", err, out)
 		}
 	})
 
 	t.Run("keeps to its own filesystems", func(t *testing.T) {
-		out, err := stacktest.O3sIn(t, dir, "vm", "shell", "--", "mount")
+		out, err := stacktest.O3sIn(t, dir, "cage", "shell", "--vm", "--", "mount")
 		// Stop when the mounts stay unread
 		if err != nil {
-			t.Fatalf("o3s vm shell -- mount = %v\n%s", err, out)
+			t.Fatalf("o3s cage shell --vm -- mount = %v\n%s", err, out)
 		}
 		// Require the VM's own filesystems alone, free of any that carries host folders in
 		for _, kind := range []string{"type 9p", "type virtiofs", "type fuse.sshfs", "type drvfs"} {
@@ -65,15 +65,15 @@ func TestTheHomesVM(t *testing.T) {
 	})
 
 	t.Run("runs AppArmor", func(t *testing.T) {
-		out, err := stacktest.O3sIn(t, dir, "vm", "shell", "--", "cat", "/sys/module/apparmor/parameters/enabled")
+		out, err := stacktest.O3sIn(t, dir, "cage", "shell", "--vm", "--", "cat", "/sys/module/apparmor/parameters/enabled")
 		// Require the kernel to enforce AppArmor, which the cage's profile needs
 		if err != nil || strings.TrimSpace(out) != "Y" {
-			t.Errorf("o3s vm shell -- cat /sys/module/apparmor/parameters/enabled = %v, %q, want Y", err, out)
+			t.Errorf("o3s cage shell --vm -- cat /sys/module/apparmor/parameters/enabled = %v, %q, want Y", err, out)
 		}
 	})
 
 	t.Run("confines the cage with its own profile", func(t *testing.T) {
-		out, err := stacktest.O3sIn(t, dir, "vm", "shell", "--", "sh", "-c", `cd "$HOME/o3s" && "$HOME/.local/share/o3s/devcontainers/bin/devcontainer" up --workspace-folder .`)
+		out, err := stacktest.O3sIn(t, dir, "cage", "shell", "--vm", "--", "sh", "-c", `cd "$HOME/o3s" && "$HOME/.local/share/o3s/devcontainers/bin/devcontainer" up --workspace-folder .`)
 		// Stop when the stack fails to come up in the VM
 		if err != nil {
 			t.Fatalf("devcontainer up in the VM = %v\n%s", err, out)
@@ -83,12 +83,12 @@ func TestTheHomesVM(t *testing.T) {
 		if id == nil {
 			t.Fatalf("devcontainer up in the VM names no container\n%s", out)
 		}
-		out, err = stacktest.O3sIn(t, dir, "vm", "shell", "--", "docker", "exec", id[1], "cat", "/proc/self/attr/current")
+		out, err = stacktest.O3sIn(t, dir, "cage", "shell", "--vm", "--", "docker", "exec", id[1], "cat", "/proc/self/attr/current")
 		// Require the cage to run under its profile in enforce mode
 		if err != nil || strings.TrimSpace(out) != "o3s-cage (enforce)" {
 			t.Errorf("cage confinement = %v, %q, want o3s-cage (enforce)", err, out)
 		}
-		out, err = stacktest.O3sIn(t, dir, "vm", "shell", "--", "docker", "ps", "--format", "{{.Names}}")
+		out, err = stacktest.O3sIn(t, dir, "cage", "shell", "--vm", "--", "docker", "ps", "--format", "{{.Names}}")
 		// Require the gateway and the proxy beside the cage
 		if err != nil || !strings.Contains(out, "gateway") || !strings.Contains(out, "proxy") {
 			t.Errorf("docker ps in the VM = %v\n%s\nwant the gateway and the proxy running", err, out)
@@ -97,28 +97,28 @@ func TestTheHomesVM(t *testing.T) {
 
 	t.Run("stops and starts again", func(t *testing.T) {
 		// Stop when the VM fails to stop
-		if out, err := stacktest.O3sIn(t, dir, "vm", "stop"); err != nil {
-			t.Fatalf("o3s vm stop = %v\n%s", err, out)
+		if out, err := stacktest.O3sIn(t, dir, "cage", "stop"); err != nil {
+			t.Fatalf("o3s cage stop = %v\n%s", err, out)
 		}
 		// Stop when the stopped VM fails to start again
-		if out, err := stacktest.O3sIn(t, dir, "vm", "start"); err != nil {
-			t.Fatalf("o3s vm start after stop = %v\n%s", err, out)
+		if out, err := stacktest.O3sIn(t, dir, "cage", "start"); err != nil {
+			t.Fatalf("o3s cage start after stop = %v\n%s", err, out)
 		}
 		// Require the restarted VM to run commands
-		if out, err := stacktest.O3sIn(t, dir, "vm", "shell", "--", "true"); err != nil {
-			t.Errorf("o3s vm shell -- true after a restart = %v\n%s", err, out)
+		if out, err := stacktest.O3sIn(t, dir, "cage", "shell", "--vm", "--", "true"); err != nil {
+			t.Errorf("o3s cage shell --vm -- true after a restart = %v\n%s", err, out)
 		}
 	})
 
-	t.Run("goes away with o3s vm rm", func(t *testing.T) {
-		out, err := stacktest.O3sIn(t, dir, "vm", "rm")
+	t.Run("goes away with o3s cage rm --yes", func(t *testing.T) {
+		out, err := stacktest.O3sIn(t, dir, "cage", "rm", "--yes")
 		// Stop when the VM stays
 		if err != nil {
-			t.Fatalf("o3s vm rm = %v\n%s", err, out)
+			t.Fatalf("o3s cage rm --yes = %v\n%s", err, out)
 		}
 		// Require the VM to be gone
-		if out, err := stacktest.O3sIn(t, dir, "vm", "shell", "--", "true"); err == nil {
-			t.Errorf("o3s vm shell -- true after rm = nil error, want a failure\n%s", out)
+		if out, err := stacktest.O3sIn(t, dir, "cage", "shell", "--vm", "--", "true"); err == nil {
+			t.Errorf("o3s cage shell --vm -- true after rm = nil error, want a failure\n%s", out)
 		}
 	})
 }

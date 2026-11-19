@@ -51,10 +51,10 @@ o3s firewall add github.com --port 22 --port 443 --for 1h
 echo "$EXAMPLE_TOKEN" | o3s secret add EXAMPLE_TOKEN
 ```
 
-**store**
+**feature store**
 ```sh
 # Selects where the cage's tools come from, curated, reproducible and locked down
-o3s store add ghcr.io/hansehart/devcontainer-features
+o3s feature store add ghcr.io/hansehart/devcontainer-features
 ```
 
 **feature**
@@ -71,8 +71,8 @@ o3s project add torvalds/linux
 
 **cage**
 ```sh
-# Opens the home's workspace in VS Code inside the cage
-o3s cage ide
+# Opens a shell in the home's VM, where the home and its cage live
+o3s cage shell --vm
 ```
 
 **update**
@@ -93,7 +93,12 @@ o3s update
    ```sh
    mkdir ~/o3s && cd ~/o3s && o3s init
    ```
-3. Open it in the cage.
+3. Step into its VM and open the cage there.
+   ```sh
+   o3s cage shell --vm
+   cd ~/o3s && o3s cage shell
+   ```
+   A home without its VM, made with `o3s init --dangerously-skip-vm`, opens straight from this machine.
    ```sh
    # VS Code
    o3s cage ide
