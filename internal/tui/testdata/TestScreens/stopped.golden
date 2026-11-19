@@ -1,0 +1,31 @@
+──── do
+o3s  /home/ubuntu/o3s
+
+
+What do you want to do?
+❯ cage       VM, stack and cage · stopped
+  feature    tools in the cage · 2 installed
+  firewall   hosts the cage reaches · 4 allowed · 1 blocked
+  project    repositories in the workspace · 1
+  secret     values the proxy injects · 2
+  update     the cli, the stack and the features
+
+↑/↓ navigate · type to search · enter select · esc quit
+
+──── action
+o3s  /home/ubuntu/o3s
+cage
+
+Cage
+
+  Cage      stopped
+  Gateway   stopped
+  Proxy     stopped
+
+❯ Open in VS Code
+  Open a shell
+  Start
+  Remove
+
+↑/↓ navigate · enter select · esc back
+
