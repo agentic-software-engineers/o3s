@@ -80,3 +80,34 @@ func devHome(tb testing.TB) string {
 	tb.Cleanup(func() { overlaid.Delete(tb) })
 	return dir
 }
+
+// ContainerExecAs runs a command in a running container as the user given and hands back what it printed.
+func ContainerExecAs(tb testing.TB, id, user string, command ...string) (string, error) {
+	tb.Helper()
+	return run(tb.Context(), tb, "docker", append([]string{"exec", "-u", user, id}, command...)...)
+}
+
+// featuresLine is the empty feature list a fresh home's config holds.
+const featuresLine = `"features": {}`
+
+// nestedEngine is the feature that gives the cage a rootless engine of its own.
+const nestedEngine = `"features": {"ghcr.io/hansehart/devcontainer-features/docker-in-docker:4": {}}`
+
+// ANestedEngine gives the test's home the docker-in-docker feature, so its cage runs a rootless engine of its own.
+func ANestedEngine(tb testing.TB) {
+	tb.Helper()
+	path := filepath.Join(aHome(tb), ".devcontainer", "devcontainer.json")
+	config, err := os.ReadFile(path)
+	// Stop when the home's config stays unread
+	if err != nil {
+		tb.Fatalf("Setup: read the home's config: %v", err)
+	}
+	// Stop when the home's config lists features of its own
+	if !strings.Contains(string(config), featuresLine) {
+		tb.Fatalf("Setup: the home's config lacks %s", featuresLine)
+	}
+	// Stop when the config stays unwritten
+	if err := os.WriteFile(path, []byte(strings.Replace(string(config), featuresLine, nestedEngine, 1)), 0o644); err != nil {
+		tb.Fatalf("Setup: write the home's config: %v", err)
+	}
+}
