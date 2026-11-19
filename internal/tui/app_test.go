@@ -476,3 +476,42 @@ func TestAppResumesWithTheMainMenuBehind(t *testing.T) {
 		t.Errorf("opened on %q, after esc quit %v on %q, want the view then the main menu", m.q.Key, quit, back.q.Key)
 	}
 }
+
+// A change opens the last view the dialog answered again, at its row: an option's own view after an edit, and the
+// group's view after a new order.
+func TestAppReopensTheViewAChangeCameFrom(t *testing.T) {
+	pkg := fixture.Store + "/" + fixture.Feature
+	tests := []struct {
+		name    string
+		answers menu.Answers
+		kinds   []menu.Kind
+		group   menu.Answers
+		place   []string
+	}{
+		{
+			"an option's edit",
+			menu.Answers{}.With("do", []string{"feature"}).With("view", []string{"Installed", pkg}).With("action", []string{"configure"}).With("options", []string{"Options", "debug"}).With("option:debug", []string{"true"}),
+			[]menu.Kind{menu.Select, menu.View, menu.Select, menu.View, menu.Select},
+			menu.Answers{}.With("do", []string{"feature"}).With("view", []string{"Installed", pkg}).With("action", []string{"configure"}),
+			[]string{"Options", "debug"},
+		},
+		{
+			"a new order",
+			menu.Answers{}.With("do", []string{"feature"}).With("view", []string{"Installed", menu.Order, pkg, pkg}),
+			[]menu.Kind{menu.Select, menu.View},
+			menu.Answers{}.With("do", []string{"feature"}),
+			[]string{"Installed", pkg},
+		},
+	}
+	// Check every change
+	for _, tt := range tests {
+		m := model{answers: tt.answers, kinds: tt.kinds}
+
+		group, place := m.group(), m.place()
+
+		// Require the view and the row the change came from
+		if !cmp.Equal(tt.group, group) || !cmp.Equal(tt.place, place) {
+			t.Errorf("%s: group %v at %v, want %v at %v", tt.name, group, place, tt.group, tt.place)
+		}
+	}
+}
