@@ -139,7 +139,7 @@ func projectPlan(h Home, a Answers) []Command {
 		for _, o := range opening(h, a, picked[0]) {
 			// Leave everything as it was where the user declines
 			if !confirmed(a) {
-				return declined()
+				return nil
 			}
 			cmds = append(cmds, Command{Args: []string{"firewall", "add", o.host, "--port", o.ports, "--yes"}})
 		}
@@ -147,7 +147,7 @@ func projectPlan(h Home, a Answers) []Command {
 	}
 	// Leave the project where the typed name differs
 	if strings.TrimSpace(a.get("typed")) != fullName(picked[0]) {
-		return declined()
+		return nil
 	}
 	return []Command{{Args: []string{"project", "rm", picked[0], "--yes"}}}
 }

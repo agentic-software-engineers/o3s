@@ -43,7 +43,7 @@ func initDialog(h Home, a Answers) (Question, bool) {
 func initPlan(a Answers) []Command {
 	// Leave the folder as it was where the user declines
 	if !confirmed(a) {
-		return declined()
+		return nil
 	}
 	// Make the home inside its VM, the recommended answer, in the menu
 	if a.get("isolation") != inProcess {

@@ -245,7 +245,7 @@ func featurePlan(h Home, a Answers) []Command {
 	}
 	// Run nothing where the marks change nothing
 	if added, removed := changes(h, picked); tab == discoverTab && len(added) == 0 && len(removed) == 0 {
-		return declined()
+		return nil
 	}
 	// Set an option without asking, since editing it back undoes it
 	if tab == installedTab && a.get("action") == configure {
@@ -253,7 +253,7 @@ func featurePlan(h Home, a Answers) []Command {
 	}
 	// Leave everything as it was where the user declines
 	if !confirmed(a) {
-		return declined()
+		return nil
 	}
 	// Build the commands of the tab
 	switch tab {

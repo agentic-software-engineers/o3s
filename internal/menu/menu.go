@@ -129,6 +129,9 @@ type Question struct {
 	Facts []Fact
 	// Example shows the form a line of text takes.
 	Example string
+	// Completes names the earlier question whose answer this one finishes, as a typed value finishes the choice to
+	// type one.
+	Completes string
 	// Suggestions are values a line of text completes to from what the user typed.
 	Suggestions []string
 	// Check reads a line of text as the user types it, in plain words where it holds, and names the rule it breaks
@@ -261,9 +264,6 @@ const (
 	// always keeps a host open without an end time.
 	always = "always"
 )
-
-// nothingChanged is the note a declined change ends in.
-const nothingChanged = "Nothing changed."
 
 // Next hands back the question a dialog asks next, or reports that it asks nothing more.
 func Next(h Home, a Answers) (Question, bool) {
@@ -402,11 +402,6 @@ func pickedIn(a Answers, key string) (string, []string) {
 		return "", nil
 	}
 	return v[0], v[1:]
-}
-
-// declined is the note a change ends in where the user says no.
-func declined() []Command {
-	return []Command{{Note: nothingChanged}}
 }
 
 // confirmed reports whether the user said yes to the change.

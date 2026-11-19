@@ -32,9 +32,7 @@ var instant = map[string]string{
 
 // knownBreaks are the breaks of the rules the menu shows today, each named by the finding a fix removes it with.
 // Fixing one removes its entry, and a new break fails the test.
-var knownBreaks = map[string]string{
-	"wider than 60: feature": "F25: the footer overflows, upstream charmbracelet/bubbles#1066",
-}
+var knownBreaks = map[string]string{}
 
 // breaks are every break of the rules on the screens and in the plans of every path of every home, at the sizes
 // the menu runs at.
@@ -72,7 +70,7 @@ func breaks(t *testing.T) map[string]bool {
 // the screen, and a question that offers nothing to pick.
 func screenBreaks(m model) []string {
 	var out []string
-	trail := strings.Join(m.crumbs, " / ")
+	trail := strings.Join(m.crumbs(), " / ")
 	// Check every part of the trail, a view's tab and row each apart
 	for c := range strings.SplitSeq(trail, " / ") {
 		// Note a part that shows an inner value or a label's note

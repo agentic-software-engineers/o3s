@@ -64,7 +64,7 @@ func cagePlan(a Answers) []Command {
 	case remove:
 		// Leave the cage as it was where the user declines
 		if !confirmed(a) {
-			return declined()
+			return nil
 		}
 		return []Command{{Args: []string{"cage", "rm", "--yes"}}}
 	default:

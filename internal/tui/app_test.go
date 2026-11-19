@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"charm.land/bubbles/v2/spinner"
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/google/go-cmp/cmp"
@@ -21,22 +22,31 @@ func stripped(s string) string {
 	return ansi.Strip(s)
 }
 
-// settle runs every command the app hands back, feeding each message in, until the app is quiet, and reports whether it quit.
+// settle runs every command the app hands back, a batch's commands each in turn, feeding each message in until the
+// app is quiet, and reports whether it quit. It leaves the messages a timer sends unfed, a view's next ask for its rows
+// and a spinner's next frame, which a test sends itself where it needs one.
 func settle(m model, cmd tea.Cmd) (model, bool) {
+	cmds := []tea.Cmd{cmd}
 	// Run commands until none is left
-	for cmd != nil {
-		msg := cmd()
-		// Report the app leaving
-		if _, quit := msg.(tea.QuitMsg); quit {
+	for len(cmds) > 0 {
+		next := cmds[0]
+		cmds = cmds[1:]
+		// Pass over an empty command
+		if next == nil {
+			continue
+		}
+		// Follow what the command hands back
+		switch msg := next().(type) {
+		case tea.QuitMsg:
 			return m, true
+		case tea.BatchMsg:
+			cmds = append(cmds, msg...)
+		case refreshMsg, spinner.TickMsg:
+		default:
+			updated, more := m.Update(msg)
+			m = updated.(model)
+			cmds = append(cmds, more)
 		}
-		// Stop at a view's next ask for its rows, which a test sends itself when the rows came in
-		if _, refresh := msg.(refreshMsg); refresh {
-			return m, false
-		}
-		var next tea.Model
-		next, cmd = m.Update(msg)
-		m = next.(model)
 	}
 	return m, false
 }
@@ -45,7 +55,7 @@ func settle(m model, cmd tea.Cmd) (model, bool) {
 func anApp(t *testing.T, scripts map[string]string) (model, *[]string) {
 	t.Helper()
 	var handed []string
-	m := model{width: usualWidth, height: usualHeight, cfg: Config{
+	m := newModel(Config{
 		Home: func() menu.Home { return menu.Home{Dir: fixture.HomeDir, Exists: true} },
 		Command: func(args []string) *exec.Cmd {
 			line := strings.Join(args, " ")
@@ -60,7 +70,8 @@ func anApp(t *testing.T, scripts map[string]string) (model, *[]string) {
 			handed = append(handed, strings.Join(cmd.Args[4:], " "))
 			return func() tea.Msg { return fn(nil) }
 		},
-	}}
+	})
+	m.width, m.height = usualWidth, usualHeight
 	m, _ = settle(m, m.Init())
 	return m, &handed
 }
@@ -120,8 +131,8 @@ func TestAppStepsBackWithTheAnswer(t *testing.T) {
 		t.Errorf("after esc = %q, view:\n%s", m.q.Key, view)
 	}
 	// Require the trail without the host
-	if strings.Join(m.crumbs, " / ") != "firewall / Allowed / Allow a host" {
-		t.Errorf("trail = %q, want firewall / Allowed / Allow a host", strings.Join(m.crumbs, " / "))
+	if strings.Join(m.crumbs(), " / ") != "firewall / Allowed / Allow a host" {
+		t.Errorf("trail = %q, want firewall / Allowed / Allow a host", strings.Join(m.crumbs(), " / "))
 	}
 }
 
@@ -158,15 +169,16 @@ func TestAppOpenedAtAGroupStaysThere(t *testing.T) {
 	}
 }
 
-// A declined change says that nothing changed, and goes back to the group's view.
-func TestAppNamesADeclinedChange(t *testing.T) {
+// A declined change goes straight back to the view it came from, with nothing run, the way a declined confirmation
+// prints nothing.
+func TestAppGoesBackOnADeclinedChange(t *testing.T) {
 	m, _ := anApp(t, nil)
 
 	m, _ = drive(m, append(allowing(), typed("n")...)...)
 
-	// Require the note and the way back, with nothing run
-	if view := stripped(m.View().Content); m.state != done || !strings.Contains(view, "Nothing changed.") || strings.Contains(view, "$ o3s") {
-		t.Errorf("state %v, view:\n%s", m.state, view)
+	// Require the firewall's view again, with nothing run
+	if view := stripped(m.View().Content); m.state != asking || m.q.Key != "view" || strings.Contains(view, "$ o3s") {
+		t.Errorf("state %v on %q, view:\n%s", m.state, m.q.Key, view)
 	}
 }
 
@@ -241,9 +253,9 @@ func TestAppHandsTheTerminalToTheShell(t *testing.T) {
 
 	m, _ = drive(m, keys("cage", enter, "shell", enter)...)
 
-	// Require the shell handed the terminal, and the dialog done
-	if len(*handed) != 1 || !strings.HasSuffix((*handed)[0], "cage shell") || m.state != done {
-		t.Errorf("handed %v, state %v, want cage shell and done", *handed, m.state)
+	// Require the shell handed the terminal, and the cage's view again once it ends
+	if len(*handed) != 1 || !strings.HasSuffix((*handed)[0], "cage shell") || m.state != asking || m.q.Key != "action" {
+		t.Errorf("handed %v, state %v on %q, want cage shell and the cage's view", *handed, m.state, m.q.Key)
 	}
 }
 
@@ -496,6 +508,13 @@ func TestAppReopensTheViewAChangeCameFrom(t *testing.T) {
 			[]string{"Options", "debug"},
 		},
 		{
+			"a group's action",
+			menu.Answers{}.With("do", []string{"cage"}).With("action", []string{"stop"}),
+			[]menu.Kind{menu.Select, menu.Select},
+			menu.Answers{}.With("do", []string{"cage"}),
+			[]string{"stop"},
+		},
+		{
 			"a new order",
 			menu.Answers{}.With("do", []string{"feature"}).With("view", []string{"Installed", menu.Order, pkg, pkg}),
 			[]menu.Kind{menu.Select, menu.View},
@@ -505,7 +524,11 @@ func TestAppReopensTheViewAChangeCameFrom(t *testing.T) {
 	}
 	// Check every change
 	for _, tt := range tests {
-		m := model{answers: tt.answers, kinds: tt.kinds}
+		m := model{answers: tt.answers}
+		// Take every kind as the step the dialog took
+		for _, k := range tt.kinds {
+			m.steps = append(m.steps, step{kind: k})
+		}
 
 		group, place := m.group(), m.place()
 
@@ -541,5 +564,65 @@ func TestCrumbNamesWhatMarksChange(t *testing.T) {
 		if got != tt.want {
 			t.Errorf("crumb(%v from %v) = %q, want %q", tt.values, tt.marked, got, tt.want)
 		}
+	}
+}
+
+// A typed answer shows in the trail in place of the choice that asked for it, and stepping back shows the choice again.
+func TestTrailShowsATypedAnswerInPlaceOfItsChoice(t *testing.T) {
+	m, _ := anApp(t, nil)
+	m, _ = drive(m, keys("fir", enter, enter, fixture.Host, enter, "1", "5", fixture.Duration, enter)...)
+
+	typed := strings.Join(m.crumbs(), " / ")
+	back, _ := drive(m, esc)
+
+	// Require the duration in place of its choice, and the choice back on a step back
+	if want := "firewall / Allowed / Allow a host / " + fixture.Host + " / " + port + " / " + fixture.Duration; typed != want {
+		t.Errorf("trail = %q, want %q", typed, want)
+	}
+	// Require the choice in the trail once the step back leaves the typed answer
+	if got, want := strings.Join(back.crumbs(), " / "), "firewall / Allowed / Allow a host / "+fixture.Host+" / "+port+" / Type a duration"; got != want {
+		t.Errorf("trail after esc = %q, want %q", got, want)
+	}
+}
+
+// While the app works without a result to show, the screen says so with a spinner, and a run with output shows it.
+func TestAppShowsThatItWorks(t *testing.T) {
+	tests := []struct {
+		name    string
+		state   state
+		shown   bool
+		working bool
+	}{
+		{"reading and asking", loading, false, true},
+		{"quiet commands", running, false, true},
+		{"commands with output", running, true, false},
+	}
+	// Check every state the app works in
+	for _, tt := range tests {
+		m := newModel(Config{})
+		m.width, m.height, m.state, m.shown = usualWidth, usualHeight, tt.state, tt.shown
+
+		view := stripped(m.View().Content)
+
+		// Report a screen that shows the work otherwise
+		if strings.Contains(view, "Working…") != tt.working {
+			t.Errorf("%s: view =\n%s", tt.name, view)
+		}
+	}
+}
+
+// The spinner turns while the app works and stops once the app asks again.
+func TestAppTurnsTheSpinnerWhileItWorks(t *testing.T) {
+	m := newModel(Config{})
+	tick := m.spin.Tick()
+
+	m.state = loading
+	_, working := m.Update(tick)
+	m.state = asking
+	_, asking := m.Update(tick)
+
+	// Require a next frame while working and none once asking
+	if working == nil || asking != nil {
+		t.Errorf("next frame while working %v, while asking %v, want one and none", working != nil, asking != nil)
 	}
 }

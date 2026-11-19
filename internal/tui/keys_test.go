@@ -2,8 +2,11 @@ package tui
 
 import (
 	"strconv"
+	"testing"
 
+	"charm.land/bubbles/v2/key"
 	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/hansehart/o3s/internal/fixture"
 )
@@ -48,3 +51,16 @@ var (
 	port      = strconv.Itoa(fixture.Port)
 	bothPorts = strconv.Itoa(fixture.OtherPort) + "," + port
 )
+
+// The footer fits every width, leaving out the keys that fit no more, as the screen it closes does.
+func TestFooterFitsEveryWidth(t *testing.T) {
+	bindings := []key.Binding{keyNavigate, keySwitch, keyPick, keySearch, keySelect, keyBack}
+
+	// Check every width from one cell to the usual screen
+	for width := 1; width <= usualWidth; width++ {
+		// Report a footer wider than its screen
+		if got := ansi.StringWidth(footer(width, bindings)); got > width {
+			t.Errorf("footer(%d) is %d wide", width, got)
+		}
+	}
+}

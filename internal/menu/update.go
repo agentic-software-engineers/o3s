@@ -53,7 +53,7 @@ func updatePlan(_ Home, a Answers) []Command {
 	}
 	// Leave everything as it was where the user declines
 	if !confirmed(a) {
-		return declined()
+		return nil
 	}
 	return []Command{{Args: append(append([]string{"update"}, marked...), "--yes"), Restart: slices.Contains(marked, CLI)}}
 }

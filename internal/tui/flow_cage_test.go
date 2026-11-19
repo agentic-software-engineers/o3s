@@ -2,7 +2,7 @@ package tui
 
 import "testing"
 
-// Enter after a command goes back to the cage's view, Esc after it to the main menu.
+// Enter after a command goes back to the cage's view on the action it ran, Esc after it to the main menu.
 func TestFlowCageGoesBackAfterACommand(t *testing.T) {
 	m, _ := onHome(t, homeNamed(t, "running"), usualWidth, usualHeight)
 	m, _ = drive(m, keys("cage", enter, down, down, enter)...)
@@ -13,7 +13,7 @@ func TestFlowCageGoesBackAfterACommand(t *testing.T) {
 	back, _ := drive(m, enter)
 	menu, _ := drive(m, esc)
 
-	// Require the cage's view on Enter and the main menu on Esc
-	requireLines(t, back, "cage", "❯ Open in VS Code")
+	// Require the cage's view on the action it ran on Enter, and the main menu on Esc
+	requireLines(t, back, "cage", "❯ Stop")
 	requireLines(t, menu, "What do you want to do?")
 }

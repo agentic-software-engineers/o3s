@@ -232,7 +232,7 @@ func TestEveryFirewallDialogEndsInItsCommand(t *testing.T) {
 			"declining the removal",
 			[][]string{{"firewall"}, {"Allowed", fixture.Host}, {remove}, {"no"}},
 			[]string{"do", "view", "action", "apply"},
-			[]Command{{Note: nothingChanged}},
+			nil,
 		},
 		{
 			"stepping back from a host",
@@ -306,7 +306,7 @@ func TestEveryOtherDialogEndsInItsCommand(t *testing.T) {
 			"a value replacing the one a secret holds, declined",
 			[][]string{{"secret"}, {"Secrets", fixture.OtherSecret}, {setValue}, {value}, {"no"}},
 			[]string{"do", "view", "action", "value", "apply"},
-			[]Command{{Note: nothingChanged}},
+			nil,
 		},
 		{
 			"a value for a secret a host carries",
@@ -330,7 +330,7 @@ func TestEveryOtherDialogEndsInItsCommand(t *testing.T) {
 			"a project the firewall blocks, its opening declined",
 			[][]string{{"project"}, {"Projects", add}, {fixture.Repo}, {"no"}},
 			[]string{"do", "view", "repos", "apply"},
-			[]Command{{Note: nothingChanged}},
+			nil,
 		},
 		{
 			"a project the firewall lets through",
@@ -398,7 +398,7 @@ func TestEveryOtherDialogEndsInItsCommand(t *testing.T) {
 			"declining a new home",
 			[][]string{{"init"}, {inVM}, {"no"}},
 			[]string{"do", "isolation", "apply"},
-			[]Command{{Note: nothingChanged}},
+			nil,
 		},
 	}.check(t, Home{Dir: aHome.Dir})
 }
@@ -423,8 +423,8 @@ func TestAProjectsRemovalChecksTheTypedName(t *testing.T) {
 		t.Errorf("Check(%s) = nil, want the name named", fixture.OtherRepo)
 	}
 	// Require nothing deleted for a name that differs
-	if diff := cmp.Diff([]Command{{Note: nothingChanged}}, cmds); diff != "" {
-		t.Errorf("commands (-want +got):\n%s", diff)
+	if len(cmds) != 0 {
+		t.Errorf("commands = %v, want none", cmds)
 	}
 }
 
@@ -511,7 +511,7 @@ func TestEveryCageDialogEndsInItsCommand(t *testing.T) {
 	dialogs{
 		{"starting", [][]string{{"cage"}, {start}}, []string{"do", "action"}, []Command{{Args: []string{"cage", "start"}}}},
 		{"removing", [][]string{{"cage"}, {remove}, {yes}}, []string{"do", "action", "apply"}, []Command{{Args: []string{"cage", "rm", "--yes"}}}},
-		{"declining the removal", [][]string{{"cage"}, {remove}, {"no"}}, []string{"do", "action", "apply"}, []Command{{Note: nothingChanged}}},
+		{"declining the removal", [][]string{{"cage"}, {remove}, {"no"}}, []string{"do", "action", "apply"}, nil},
 	}.check(t, aHome)
 	dialogs{
 		{"a shell in the VM, on the real terminal", [][]string{{"cage"}, {vmShell}}, []string{"do", "action"}, []Command{{Args: []string{"cage", "shell", "--vm"}, Terminal: true}}},

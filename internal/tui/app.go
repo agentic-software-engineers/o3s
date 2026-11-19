@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/spinner"
 	"github.com/charmbracelet/x/ansi"
 
 	tea "charm.land/bubbletea/v2"
@@ -60,8 +61,7 @@ type model struct {
 	cfg     Config
 	home    menu.Home
 	answers menu.Answers
-	crumbs  []string
-	kinds   []menu.Kind
+	steps   []step
 	carry   []string
 	state   state
 	q       menu.Question
@@ -71,8 +71,12 @@ type model struct {
 	queue      []menu.Command
 	// resume are the answers the next reading of the home opens at, such as the view a change came from.
 	resume menu.Answers
-	// quiet marks commands whose success shows as the view they changed.
-	quiet bool
+	// spin turns while the app works, and spinning marks a turn on its way.
+	spin     spinner.Model
+	spinning bool
+	// shown marks a run that left something to read on the screen: a note, or the output of a command neither quiet
+	// nor handed the real terminal.
+	shown bool
 	// restart marks commands that replace the binary the menu runs, and reopen is the group whose view the new binary
 	// opens at once they succeeded.
 	restart bool
@@ -92,7 +96,7 @@ func Run(ctx context.Context, cfg Config) ([]string, error) {
 	if cfg.Exec == nil {
 		cfg.Exec = tea.ExecProcess
 	}
-	final, err := tea.NewProgram(model{cfg: cfg, resume: cfg.Resume}, tea.WithContext(ctx)).Run()
+	final, err := tea.NewProgram(newModel(cfg), tea.WithContext(ctx)).Run()
 	m, _ := final.(model)
 	return m.reopen, err
 }
@@ -125,6 +129,35 @@ func (m model) plan() tea.Cmd {
 
 // Update follows a message: a key, a resize, a question worked out, or a line of output.
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	// Turn the spinner while the app works, and let it stop once the app asks or shows a result
+	if tick, isTick := msg.(spinner.TickMsg); isTick {
+		// Stop turning once the work is over
+		if !m.busy() {
+			m.spinning = false
+			return m, nil
+		}
+		var cmd tea.Cmd
+		m.spin, cmd = m.spin.Update(tick)
+		return m, cmd
+	}
+	next, cmd := m.update(msg)
+	n, _ := next.(model)
+	// Start turning the spinner where the app begins to work
+	if n.busy() && !n.spinning {
+		n.spinning = true
+		return n, tea.Batch(cmd, n.spin.Tick)
+	}
+	return next, cmd
+}
+
+// busy reports whether the app works without a result to show: reading the home, asking the menu, planning, or running
+// commands whose output stays off the screen.
+func (m model) busy() bool {
+	return m.state == loading || m.state == running && !m.shown
+}
+
+// update follows a message in the state the app is in.
+func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Follow the message
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -132,21 +165,20 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.out.size(m.width, m.paneHeight())
 		return m, nil
 	case homeMsg:
-		start, crumbs, kinds := m.cfg.Start, m.crumbs, m.kinds
+		start, steps := m.cfg.Start, m.steps
 		// Open at the view a change came from, where it asks to
 		if m.resume != nil {
 			start, m.resume = m.resume, nil
 		}
-		m.home, m.answers, m.crumbs, m.kinds = menu.Home(msg), nil, nil, nil
-		// Open at the answers the menu starts with, each shown and kept as the dialog gave it where it gave it before
+		m.home, m.answers, m.steps = menu.Home(msg), nil, nil
+		// Open at the answers the menu starts with, each kept as the dialog gave it where it gave it before
 		for i, a := range start {
-			crumb, kind := strings.Join(a.Values, ", "), menu.Select
-			// Keep how the dialog showed an answer it gave before
-			if i < len(kinds) && i < len(crumbs) {
-				crumb, kind = crumbs[i], kinds[i]
+			s := step{crumb: strings.Join(a.Values, ", "), kind: menu.Select}
+			// Keep the step the dialog took for an answer it gave before
+			if i < len(steps) {
+				s = steps[i]
 			}
-			m.answers = m.answers.With(a.Key, a.Values)
-			m.crumbs, m.kinds = append(m.crumbs, crumb), append(m.kinds, kind)
+			m.answers, m.steps = m.answers.With(a.Key, a.Values), append(m.steps, s)
 		}
 		m.state = loading
 		return m, m.ask()
@@ -155,19 +187,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case refreshMsg:
 		return m.refreshed()
 	case plannedMsg:
-		m.queue, m.failed, m.ran, m.quiet, m.restart = msg, false, 0, len(msg) > 0, false
+		m.queue, m.failed, m.ran, m.shown = msg, false, 0, false
+		m.restart = slices.ContainsFunc(m.queue, func(c menu.Command) bool { return c.Restart })
 		m.out = pane{}
 		m.out.size(m.width, m.paneHeight())
-		// Go straight back to the group's view where the dialog runs nothing
-		if len(m.queue) == 0 {
-			m.resume, m.carry = m.group(), m.place()
-			return m, m.reload()
-		}
-		// Show the output of any command that is not quiet, and restart after one that replaces the binary
-		for _, c := range m.queue {
-			m.quiet = m.quiet && c.Quiet
-			m.restart = m.restart || c.Restart
-		}
 		m.state = running
 		return m.runNext()
 	case lineMsg:
@@ -288,7 +311,7 @@ func (m model) follow(r result, cmd tea.Cmd) (tea.Model, tea.Cmd) {
 	switch r.outcome {
 	case answered:
 		m.answers = m.answers.With(m.q.Key, r.values)
-		m.crumbs, m.kinds = append(m.crumbs, crumb(m.q, r.values)), append(m.kinds, m.q.Kind)
+		m.steps = append(m.steps, step{crumb: crumb(m.q, r.values), kind: m.q.Kind, completes: m.q.Completes})
 		m.state = loading
 		return m, m.ask()
 	case back:
@@ -297,8 +320,8 @@ func (m model) follow(r result, cmd tea.Cmd) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 		}
 		n := len(m.answers) - 1
-		last, kind := m.answers[n], m.kinds[n]
-		m.answers, m.crumbs, m.kinds = m.answers[:n], m.crumbs[:n], m.kinds[:n]
+		last, kind := m.answers[n], m.steps[n].kind
+		m.answers, m.steps = m.answers[:n], m.steps[:n]
 		// Carry a shown answer back into its question, and leave a hidden one out
 		if kind != menu.Hidden {
 			m.carry = last.Values
@@ -315,30 +338,15 @@ func (m model) runNext() (tea.Model, tea.Cmd) {
 	// Show every note before the next command
 	for len(m.queue) > 0 && m.queue[0].Note != "" && len(m.queue[0].Args) == 0 {
 		m.out.add(m.queue[0].Note)
-		m.queue = m.queue[1:]
+		m.queue, m.shown = m.queue[1:], true
 	}
-	// End once every command ran, naming that they all succeeded
+	// End once every command ran
 	if len(m.queue) == 0 {
-		// Leave for the new binary, which opens at the group's view, where the commands replaced this one
-		if m.restart {
-			m.reopen = m.path()
-			return m, tea.Quit
-		}
-		// Go straight back to the view that quiet commands changed
-		if m.quiet {
-			m.resume, m.carry = m.group(), m.place()
-			return m, m.reload()
-		}
-		// Confirm a dialog whose commands all ran
-		if m.ran > 0 {
-			m.out.add("")
-			m.out.add(added.Render("✓ done"))
-		}
-		m.state = done
-		return m, nil
+		return m.finish()
 	}
 	c := m.queue[0]
 	m.queue, m.ran = m.queue[1:], m.ran+1
+	m.shown = m.shown || !c.Quiet && !c.Terminal
 	m.out.add(dim.Render("$ o3s " + echoed(c.Args)))
 	cmd := m.cfg.Command(c.Args)
 	// Hand the terminal to a command that needs it, and come back when it ends
@@ -352,6 +360,29 @@ func (m model) runNext() (tea.Model, tea.Cmd) {
 	}
 	m.stream = capture(cmd, stdin)
 	return m, m.stream.next()
+}
+
+// finish ends a run whose commands all succeeded: the new binary takes over where a command replaced this one, the
+// result stays on the screen where the run left something to read, and the menu goes straight back to where the change
+// came from otherwise, as a quiet change, a declined one and a command on the real terminal leave nothing more to read.
+func (m model) finish() (tea.Model, tea.Cmd) {
+	// Leave for the new binary, which opens at the group's view
+	if m.restart {
+		m.reopen = m.path()
+		return m, tea.Quit
+	}
+	// Keep a result to read on the screen, naming that every command succeeded
+	if m.shown {
+		// Name the success of commands that ran
+		if m.ran > 0 {
+			m.out.add("")
+			m.out.add(added.Render("✓ done"))
+		}
+		m.state = done
+		return m, nil
+	}
+	m.resume, m.carry = m.group(), m.place()
+	return m, m.reload()
 }
 
 // ended takes the end of a command: the next one runs, or the dialog stops at a failure.
@@ -401,15 +432,19 @@ func (m model) group() menu.Answers {
 	return m.answers[:1]
 }
 
-// place is where the view a change came from opens again: the tab the user picked in and the row, the one a new
-// order names.
+// place is where the question the menu reopens at starts: the answer it took when the change began, a view's tab and
+// row, the row a new order names, or the choice a group's own question took.
 func (m model) place() []string {
-	i := m.lastView()
-	// Name no place where the dialog answered no view
-	if i < 0 || len(m.answers[i].Values) == 0 {
+	i := len(m.group())
+	// Name no place where the dialog answered nothing past the group
+	if i >= len(m.answers) || i >= len(m.steps) || len(m.answers[i].Values) == 0 {
 		return nil
 	}
 	v := m.answers[i].Values
+	// Read a choice as it was taken
+	if m.steps[i].kind != menu.View {
+		return v
+	}
 	// Read the row a new order names
 	if len(v) > 2 && v[1] == menu.Order {
 		return []string{v[0], v[2]}
@@ -420,9 +455,9 @@ func (m model) place() []string {
 // lastView is where the last answer a view took stands among the answers, and -1 where no view took one.
 func (m model) lastView() int {
 	// Look back from the last answer for one a view took
-	for i, kind := range slices.Backward(m.kinds) {
+	for i, s := range slices.Backward(m.steps) {
 		// Take an answer a view took
-		if kind == menu.View {
+		if s.kind == menu.View {
 			return i
 		}
 	}
@@ -615,10 +650,33 @@ func (m model) question() string {
 	return strings.Join(append(out, m.fieldView()), "\n")
 }
 
+// step is how the dialog took one answer: its crumb in the trail, the kind of question it answered, and the earlier
+// question that answer finishes, where it finishes one.
+type step struct {
+	crumb     string
+	kind      menu.Kind
+	completes string
+}
+
+// crumbs are the crumbs of the trail, each answer once, an answer a later one finishes left out for the one that
+// finishes it.
+func (m model) crumbs() []string {
+	var out []string
+	// Take every step a later step leaves standing
+	for i, s := range m.steps {
+		// Leave out a step a later answer finishes
+		if slices.ContainsFunc(m.steps[i+1:], func(later step) bool { return later.completes == m.answers[i].Key }) {
+			continue
+		}
+		out = append(out, s.crumb)
+	}
+	return out
+}
+
 // trail is the path of the dialog so far, cut at its start where it runs wider than the screen, so its end stays in
 // view.
 func (m model) trail() string {
-	line := strings.Join(m.crumbs, separator)
+	line := strings.Join(m.crumbs(), separator)
 	// Keep the end of a trail wider than the screen
 	if over := ansi.StringWidth(line) - m.width; m.width > 0 && over > 0 {
 		return ansi.TruncateLeft(line, over+1, "…")
@@ -674,6 +732,16 @@ func (m model) keys() []key.Binding {
 	return nil
 }
 
+// newModel is the app before it reads the home, opening where the configuration says.
+func newModel(cfg Config) model {
+	return model{cfg: cfg, resume: cfg.Resume, spin: spinner.New(spinner.WithSpinner(spinner.Dot))}
+}
+
+// working says that the app works, beside the spinner that turns while it does.
+func (m model) working() string {
+	return m.spin.View() + dim.Render("Working…")
+}
+
 // View draws the whole screen from the state: header, trail, body, footer.
 func (m model) View() tea.View {
 	top := header.Render("o3s") + "  " + dim.Render(m.home.Dir) + "\n" + m.trail() + "\n\n"
@@ -683,9 +751,13 @@ func (m model) View() tea.View {
 	case asking:
 		body = m.question()
 	case loading:
-		body = dim.Render("…")
+		body = m.working()
 	case running, done:
 		body = m.out.View()
+		// Show that the app works where its output stays off the screen
+		if m.busy() {
+			body = m.working()
+		}
 	}
 	v := tea.NewView(top + body + "\n\n" + footer(m.width, m.keys()))
 	v.AltScreen = true
