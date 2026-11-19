@@ -11,32 +11,47 @@ import (
 	"testing"
 )
 
-// AVMHost makes a host for a home's VM, with o3s built from this branch first on PATH and as the release the VM installs,
-// and hands back the home's empty folder.
+// AVMHost makes a bare host for a home's VM and installs o3s on it the way a user does, with install.sh from release files
+// built from this branch, and hands back the home's empty folder. The installer brings Lima along. Windows takes o3s built from
+// this branch and the Lima on PATH until its installer joins.
 //
-// The XDG folders sit below a short temporary folder, since the VM manager keeps sockets there and socket paths are capped in length.
+// The folders sit below a short temporary folder, since the VM manager keeps sockets there and socket paths are capped in length.
 func AVMHost(tb testing.TB) string {
 	tb.Helper()
-	bin := o3sBinary(tb)
-	tb.Setenv("PATH", filepath.Dir(bin)+string(os.PathListSeparator)+os.Getenv("PATH"))
 	tb.Setenv("O3S_PREVIEW", "vm")
-	tb.Setenv("O3S_RELEASE_URL", fileURL(aRelease(tb)))
 	base := ""
 	// Keep the folder short on hosts with Unix sockets
 	if runtime.GOOS != "windows" {
 		base = "/tmp"
 	}
-	xdg, err := os.MkdirTemp(base, "o3s") //nolint:usetesting // tb.TempDir() is named after the test, too long for Lima's sockets
-	// Stop when the XDG folders' place fails to appear
+	root, err := os.MkdirTemp(base, "o3s") //nolint:usetesting // tb.TempDir() is named after the test, too long for Lima's sockets
+	// Stop when the host's folders have no place to go
 	if err != nil {
 		tb.Fatalf("Setup: %v", err)
 	}
-	tb.Cleanup(func() { _ = os.RemoveAll(xdg) })
+	tb.Cleanup(func() { _ = os.RemoveAll(root) })
 	// Give every XDG folder a place of its own
 	for _, kind := range []string{"CONFIG", "STATE", "DATA"} {
-		tb.Setenv("XDG_"+kind+"_HOME", filepath.Join(xdg, kind))
+		tb.Setenv("XDG_"+kind+"_HOME", filepath.Join(root, kind))
 	}
-	dir := filepath.Join(xdg, "home")
+	release := aRelease(tb)
+	tb.Setenv("O3S_RELEASE_URL", fileURL(release))
+	bin := filepath.Join(root, "bin")
+	// Install o3s with its installer, where the host has one
+	if runtime.GOOS != "windows" {
+		install := exec.CommandContext(tb.Context(), "sh", filepath.Join(release, "install.sh"), "--no-devcontainer")
+		install.Env = append(os.Environ(), "O3S_INSTALL_DIR="+bin, "GH_TOKEN=", "GITHUB_TOKEN=", "GH_CONFIG_DIR="+tb.TempDir())
+		out, err := install.CombinedOutput()
+		// Stop when the install fails
+		if err != nil {
+			tb.Fatalf("Setup: install.sh: %v\n%s", err, out)
+		}
+		tb.Logf("install.sh:\n%s", out)
+	} else {
+		bin = filepath.Dir(o3sBinary(tb))
+	}
+	tb.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+	dir := filepath.Join(root, "home")
 	// Stop when the home's folder fails to appear
 	if err := os.Mkdir(dir, 0o700); err != nil {
 		tb.Fatalf("Setup: %v", err)
@@ -44,18 +59,26 @@ func AVMHost(tb testing.TB) string {
 	return dir
 }
 
-// aRelease lays out the release files the VM installs from, built from this branch for Linux on this host's architecture,
-// the way a bare machine's install reads a local build, and hands back their folder.
+// aRelease lays out the release files a host installs from, o3s built from this branch for this host and for Linux, the system
+// its VM runs, the way a bare machine's install reads a local build, and hands back their folder.
 func aRelease(tb testing.TB) string {
 	tb.Helper()
 	dir := tb.TempDir()
-	asset := "o3s-linux-" + runtime.GOARCH
-	build := exec.CommandContext(tb.Context(), "go", "build", "-o", filepath.Join(dir, asset), "./cmd/o3s")
-	build.Dir = Repo(tb)
-	build.Env = append(os.Environ(), "GOOS=linux", "GOARCH="+runtime.GOARCH, "CGO_ENABLED=0")
-	// Stop when the Linux build fails
-	if out, err := build.CombinedOutput(); err != nil {
-		tb.Fatalf("Setup: build o3s for Linux: %v\n%s", err, out)
+	assets := []string{"o3s-linux-" + runtime.GOARCH}
+	// Build for this host too, where it runs another system than its VM
+	if runtime.GOOS != "linux" {
+		assets = append(assets, "o3s-"+runtime.GOOS+"-"+runtime.GOARCH)
+	}
+	// Build every binary the release holds
+	for _, asset := range assets {
+		goos := strings.Split(asset, "-")[1]
+		build := exec.CommandContext(tb.Context(), "go", "build", "-o", filepath.Join(dir, asset), "./cmd/o3s")
+		build.Dir = Repo(tb)
+		build.Env = append(os.Environ(), "GOOS="+goos, "GOARCH="+runtime.GOARCH, "CGO_ENABLED=0")
+		// Stop when a build fails
+		if out, err := build.CombinedOutput(); err != nil {
+			tb.Fatalf("Setup: build %s: %v\n%s", asset, err, out)
+		}
 	}
 	installer, err := os.ReadFile(filepath.Join(Repo(tb), "install.sh"))
 	// Stop when the installer fails to read
@@ -68,7 +91,7 @@ func aRelease(tb testing.TB) string {
 	}
 	var sums strings.Builder
 	// Name every file's checksum, the way a release lists them
-	for _, name := range []string{asset, "install.sh"} {
+	for _, name := range append(assets, "install.sh") {
 		data, err := os.ReadFile(filepath.Join(dir, name))
 		// Stop when a release file fails to read
 		if err != nil {
