@@ -21,22 +21,31 @@ func stripped(s string) string {
 	return ansi.Strip(s)
 }
 
-// settle runs every command the app hands back, feeding each message in, until the app is quiet, and reports whether it quit.
+// settle runs every command the app hands back, a batch's commands each in turn, feeding each message in until the
+// app is quiet, and reports whether it quit. It leaves the messages a timer sends unfed, a view's next ask for its rows
+// and a spinner's next frame, which a test sends itself where it needs one.
 func settle(m model, cmd tea.Cmd) (model, bool) {
+	cmds := []tea.Cmd{cmd}
 	// Run commands until none is left
-	for cmd != nil {
-		msg := cmd()
-		// Report the app leaving
-		if _, quit := msg.(tea.QuitMsg); quit {
+	for len(cmds) > 0 {
+		next := cmds[0]
+		cmds = cmds[1:]
+		// Pass over an empty command
+		if next == nil {
+			continue
+		}
+		// Follow what the command hands back
+		switch msg := next().(type) {
+		case tea.QuitMsg:
 			return m, true
+		case tea.BatchMsg:
+			cmds = append(cmds, msg...)
+		case refreshMsg:
+		default:
+			updated, more := m.Update(msg)
+			m = updated.(model)
+			cmds = append(cmds, more)
 		}
-		// Stop at a view's next ask for its rows, which a test sends itself when the rows came in
-		if _, refresh := msg.(refreshMsg); refresh {
-			return m, false
-		}
-		var next tea.Model
-		next, cmd = m.Update(msg)
-		m = next.(model)
 	}
 	return m, false
 }
