@@ -168,7 +168,7 @@ Apply?
 
 ──── apply
 o3s  /home/ubuntu/o3s
-feature / Discover / 1 marked
+feature / Discover / unmarks 1
 
 - registry.example.com/features/other
 - example.org:443
@@ -182,7 +182,7 @@ Apply?
 
 ──── apply
 o3s  /home/ubuntu/o3s
-feature / Discover / 1 marked
+feature / Discover / unmarks 1
 
 - registry.example.com/features/tool
 - example.org:443
@@ -196,7 +196,7 @@ Apply?
 
 ──── apply
 o3s  /home/ubuntu/o3s
-feature / Discover / 0 marked
+feature / Discover / unmarks 2
 
 - registry.example.com/features/tool
 - example.org:443
@@ -2688,7 +2688,7 @@ Apply?
 
 ──── apply
 o3s  /home/ubuntu/o3s
-update / 2 marked
+update / unmarks 1
 
 ~ stack   1 file, 2 images
 ~ tool   1 -> 2
@@ -2702,7 +2702,7 @@ Apply?
 
 ──── apply
 o3s  /home/ubuntu/o3s
-update / 2 marked
+update / unmarks 1
 
 ~ cli   1.0.0 -> 2.0.0
 ~ tool   1 -> 2
@@ -2716,7 +2716,7 @@ Apply?
 
 ──── apply
 o3s  /home/ubuntu/o3s
-update / 2 marked
+update / unmarks 1
 
 ~ cli   1.0.0 -> 2.0.0
 ~ stack   1 file, 2 images

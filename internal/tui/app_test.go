@@ -515,3 +515,31 @@ func TestAppReopensTheViewAChangeCameFrom(t *testing.T) {
 		}
 	}
 }
+
+// A tab of marks shows in the trail by what the marks change against the ones it started with, and by how many are
+// marked where it started with none or they stay as they started.
+func TestCrumbNamesWhatMarksChange(t *testing.T) {
+	tool, other := fixture.Store+"/"+fixture.Feature, fixture.Store+"/"+fixture.OtherFeature
+	rows := []menu.Option{{Value: tool}, {Value: other}, {Value: fixture.ThirdFeature}}
+	tests := []struct {
+		marked []string
+		values []string
+		want   string
+	}{
+		{[]string{tool}, []string{tool, other}, "Discover / marks 1"},
+		{[]string{tool, other}, []string{fixture.ThirdFeature}, "Discover / marks 1, unmarks 2"},
+		{[]string{tool, other}, []string{tool, other}, "Discover / 2 marked"},
+		{nil, []string{tool, other}, "Discover / 2 marked"},
+	}
+	// Check every change of marks
+	for _, tt := range tests {
+		q := menu.Question{Kind: menu.View, Tabs: []menu.Tab{{Name: "Discover", Multi: true, Options: rows, Marked: tt.marked}, {Name: "Stores"}}}
+
+		got := crumb(q, append([]string{"Discover"}, tt.values...))
+
+		// Report a crumb that names the change otherwise
+		if got != tt.want {
+			t.Errorf("crumb(%v from %v) = %q, want %q", tt.values, tt.marked, got, tt.want)
+		}
+	}
+}
