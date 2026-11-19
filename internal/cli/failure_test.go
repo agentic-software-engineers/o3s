@@ -16,12 +16,12 @@ func TestBuildFailureNamesTheStepAndItsCause(t *testing.T) {
 #16 54.48 Temporary failure resolving '` + fixture.Host + `'
 #16 54.48 ERROR: Feature "Go" (` + fixture.Store + `/` + fixture.ThirdFeature + `) failed to install!`
 
-	err := buildFailure(output, "/state/cage.log", errors.New("exit status 1"))
+	err := buildFailure(output, fixture.LogFile, errors.New("exit status 1"))
 
 	want := "the cage failed to build at the feature Go (" + fixture.Store + "/" + fixture.ThirdFeature + "): exit status 1\n" +
 		"  it could not reach " + fixture.Subdomain + " and " + fixture.Host + "\n" +
 		"  allow them with: o3s firewall add " + fixture.Subdomain + " " + fixture.Host + "\n" +
-		"  the whole log: /state/cage.log"
+		"  the whole log: " + fixture.LogFile
 	// Report a failure named otherwise
 	if err.Error() != want {
 		t.Errorf("buildFailure() =\n%s\nwant\n%s", err, want)
@@ -30,10 +30,10 @@ func TestBuildFailureNamesTheStepAndItsCause(t *testing.T) {
 
 // A build that fails without a feature or a host to name still names the failure and the log.
 func TestBuildFailureNamesAPlainFailure(t *testing.T) {
-	err := buildFailure("something else broke", "/state/cage.log", errors.New("exit status 1"))
+	err := buildFailure("something else broke", fixture.LogFile, errors.New("exit status 1"))
 
 	// Report a failure named otherwise
-	if !strings.HasPrefix(err.Error(), "the cage failed to come up: exit status 1\n") || !strings.Contains(err.Error(), "/state/cage.log") {
+	if !strings.HasPrefix(err.Error(), "the cage failed to come up: exit status 1\n") || !strings.Contains(err.Error(), fixture.LogFile) {
 		t.Errorf("buildFailure() = %v", err)
 	}
 }
@@ -43,12 +43,12 @@ func TestBuildFailureNamesAPlainFailure(t *testing.T) {
 func TestVMFailureNamesTheCauseAndTheRetry(t *testing.T) {
 	cause := errors.New(`failed to download the image: Get "https://` + fixture.Host + `/image": dial tcp: lookup ` + fixture.Host + ` on 127.0.0.11:53: server misbehaving`)
 
-	err := vmFailure("start the VM", cause, "/state/vm.log")
+	err := vmFailure("start the VM", cause, fixture.LogFile)
 
 	want := "start the VM: " + cause.Error() + "\n" +
 		"  this machine could not reach " + fixture.Host + ", check its network\n" +
 		"  run o3s init again, it goes on where it stopped\n" +
-		"  the whole log: /state/vm.log"
+		"  the whole log: " + fixture.LogFile
 	// Report a failure named otherwise
 	if err.Error() != want {
 		t.Errorf("vmFailure() =\n%s\nwant\n%s", err, want)

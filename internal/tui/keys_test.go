@@ -1,6 +1,12 @@
 package tui
 
-import tea "charm.land/bubbletea/v2"
+import (
+	"strconv"
+
+	tea "charm.land/bubbletea/v2"
+
+	"github.com/hansehart/o3s/internal/fixture"
+)
 
 // Keys the tests press.
 var (
@@ -36,3 +42,9 @@ func keys(parts ...any) []tea.Msg {
 	}
 	return out
 }
+
+// Ports as a question offers them, the one a host opens by default and both a host may open.
+var (
+	port      = strconv.Itoa(fixture.Port)
+	bothPorts = strconv.Itoa(fixture.OtherPort) + "," + port
+)

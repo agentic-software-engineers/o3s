@@ -50,8 +50,10 @@ type Installed struct {
 
 // Lookup asks the stores what they offer and works out what a change brings to the home.
 type Lookup interface {
-	// Catalog lists the features a store offers.
+	// Catalog lists the features a store offers, once its catalog is read.
 	Catalog(store string) ([]Offer, error)
+	// Peek lists the features a store offers where its catalog is read already, and reports whether it is.
+	Peek(store string) ([]Offer, bool, error)
 	// Add shows what adding a feature brings.
 	Add(id string) (Preview, error)
 	// Remove shows what leaves with a feature.
@@ -136,20 +138,30 @@ type Question struct {
 	Tabs []Tab
 }
 
+// Pending reports whether a view waits for rows still on their way, so its screen asks again for them.
+func (q Question) Pending() bool {
+	return slices.ContainsFunc(q.Tabs, func(t Tab) bool { return t.Loading })
+}
+
 // Fact is one labeled fact a detail shows.
 type Fact struct {
 	Label, Value string
 }
 
-// Tab is one tab of a view: what it holds, what it says while it holds nothing, and how its rows answer.
+// Tab is one tab of a view: what it holds, what it says while it holds nothing, how its rows answer, and the labels of
+// its columns.
 type Tab struct {
 	Name, About, Empty string
 	Options            []Option
+	// Header labels the rows' label and each of their columns, the words the piped tables use.
+	Header []string
 	// Multi marks a tab whose rows the user marks and hands back together, the ones in Marked marked from the start.
 	Multi  bool
 	Marked []string
 	// Reorder lets the user move a row up or down.
 	Reorder bool
+	// Loading marks a tab whose rows are still on their way, which the view asks for again until they all came in.
+	Loading bool
 	// Keys are the single keys the tab acts on beside Enter.
 	Keys []Key
 }

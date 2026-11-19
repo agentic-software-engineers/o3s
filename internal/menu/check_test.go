@@ -1,10 +1,14 @@
 package menu
 
 import (
+	"strconv"
 	"testing"
 
 	"github.com/hansehart/o3s/internal/fixture"
 )
+
+// bothPortsTyped is both ports a host may open, as the user types them, with a space after the comma.
+var bothPortsTyped = strconv.Itoa(fixture.OtherPort) + ", " + strconv.Itoa(fixture.Port)
 
 // Every check reads a line that holds in plain words, and names what is wrong with one that breaks a rule.
 func TestChecksReadWhatHoldsAndNameWhatBreaks(t *testing.T) {
@@ -15,12 +19,12 @@ func TestChecksReadWhatHoldsAndNameWhatBreaks(t *testing.T) {
 		bad           []string
 	}{
 		{"hosts", checkHosts, fixture.Host + " " + fixture.Subdomain, "2 hosts", []string{"", "bad host!"}},
-		{"ports", checkPorts, "22, 443", "ports 22, 443", []string{"", "70000", "ssh"}},
-		{"duration", checkFor, "90m", "open for 90 minutes", []string{"soon", "0", "-5m"}},
+		{"ports", checkPorts, bothPortsTyped, "ports " + bothPortsTyped, []string{"", strconv.Itoa(fixture.BadPort), "ssh"}},
+		{"duration", checkFor, fixture.Duration, "open for 90 minutes", []string{"soon", "0", "-5m"}},
 		{"secret name", checkSecretName, fixture.Secret, "reads as $" + fixture.Secret, []string{"lower_case"}},
 		{"store", checkStore, fixture.Store, "reads as a store", []string{"Registry.example.com/Features"}},
 		{"repositories", checkRepos, fixture.Repo, "git@github.com:" + fixture.Repo + ".git", []string{"", "not a repo"}},
-		{"typed name", checkName(fixture.Repo), fixture.Repo, "matches", []string{"other/name"}},
+		{"typed name", checkName(fixture.Repo), fixture.Repo, "matches", []string{fixture.OtherRepo}},
 	}
 	// Check every check
 	for _, tt := range tests {

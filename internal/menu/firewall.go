@@ -22,7 +22,7 @@ const (
 
 // firewallView shows the hosts the cage reaches and the names the firewall refused.
 func firewallView(h Home) Question {
-	allowed := Tab{Name: "Allowed", About: "The cage reaches only these hosts.", Options: []Option{{Value: add, Label: "+ Allow a host…"}}}
+	allowed := Tab{Name: "Allowed", About: "The cage reaches only these hosts.", Header: HostHeader, Options: []Option{{Value: add, Label: "+ Allow a host…"}}}
 	expired := false
 	// Show every host with its ports, its traffic, when it closes, its secret and who needs it
 	for _, host := range h.Hosts {
@@ -34,7 +34,7 @@ func firewallView(h Home) Question {
 	if expired {
 		allowed.Keys = []Key{{Key: "p", Help: "prune expired", Value: prune}}
 	}
-	blocked := Tab{Name: "Blocked", About: "Names the cage asked for and the firewall refused, last 30 days.", Multi: true, Options: h.Blocked}
+	blocked := Tab{Name: "Blocked", About: "Names the cage asked for and the firewall refused, last 30 days.", Header: BlockedHeader, Multi: true, Options: h.Blocked}
 	blocked.Empty = "Nothing blocked yet. Names the cage asks for and the firewall refuses show here."
 	// Name where the blocked names come from while the stack is down
 	if !h.Running {
@@ -362,6 +362,17 @@ func spoken(d time.Duration) string {
 	return d.String()
 }
 
+// HostHeader labels a host's row, piped and in the firewall's view.
+var HostHeader = []string{"HOST", "PORTS", "DATA", "LAST SEEN", "CLOSES", "SECRET", "BY"}
+
+// BlockedHeader labels a refused name's row, piped and in the firewall's view.
+var BlockedHeader = []string{"NAME", "ATTEMPTS", "LAST SEEN"}
+
+// BlockedRow is how a refused name shows in a row, piped or in the firewall's view: how often and when it was refused.
+func BlockedRow(attempts int64, seen string) []string {
+	return []string{strconv.FormatInt(attempts, 10), seen}
+}
+
 // HostRow is how a host shows in a row of the firewall, piped or in its view: its ports, the data it moved, when it
 // last moved any, when it closes, its secret marked while it waits for a value, and who needs it.
 func HostRow(host config.Host, t Traffic, waiting bool, now time.Time) []string {
@@ -371,6 +382,15 @@ func HostRow(host config.Host, t Traffic, waiting bool, now time.Time) []string 
 		secret += " !"
 	}
 	return []string{config.JoinPorts(host.Ports), words.Or(t.Data, "–"), words.Or(t.Seen, "–"), words.Or(config.Until(host.Expires, now), "for good"), secret, strings.Join(host.By, ", ")}
+}
+
+// SecretHeader labels a secret's row, piped and in the secret view.
+var SecretHeader = []string{"NAME", "VALUE", "HOSTS"}
+
+// SecretRow is how a secret shows in a row, piped or in the secret view: whether it holds a value, and the hosts that
+// carry it.
+func SecretRow(set bool, hosts []string) []string {
+	return []string{SecretState(set), strings.Join(hosts, ", ")}
 }
 
 // SecretState is how a secret's value shows: set, or empty while it waits for one.

@@ -42,8 +42,9 @@ func openMenu(ctx context.Context, path ...string) error {
 	if err != nil {
 		return err
 	}
+	cats := newCatalogs(ctx)
 	return tui.Run(ctx, tui.Config{
-		Home:  func() menu.Home { return menuHome(ctx) },
+		Home:  func() menu.Home { return menuHome(ctx, cats) },
 		Start: menu.Open(path...),
 		Command: func(args []string) *exec.Cmd {
 			return exec.CommandContext(ctx, self, args...)
@@ -56,21 +57,18 @@ type menuLookup struct {
 	// ctx is the run's context, which the menu's questions ask the stores within.
 	ctx context.Context
 	r   *registry.Resolver
+	// cats reads the stores' catalogs in the background for the run.
+	cats *catalogs
 }
 
 // Catalog lists the features a store offers, with how it names them and what they do.
 func (l menuLookup) Catalog(store string) ([]menu.Offer, error) {
-	features, err := l.r.Features(l.ctx, store)
-	// Name the store whose features stay out of reach
-	if err != nil {
-		return nil, fmt.Errorf("read the features of %s: %w", store, err)
-	}
-	out := make([]menu.Offer, len(features))
-	// Take every feature's id, name and description
-	for i, f := range features {
-		out[i] = menu.Offer{ID: f.ID, Name: f.Name, Description: f.Description}
-	}
-	return out, nil
+	return l.cats.wait(store)
+}
+
+// Peek lists the features a store offers where its catalog is read already, and reports whether it is.
+func (l menuLookup) Peek(store string) ([]menu.Offer, bool, error) {
+	return l.cats.peek(store)
 }
 
 // Updates lists every part with a newer version, as update would bring it: o3s, the stack and each feature.
@@ -157,8 +155,8 @@ func (l menuLookup) Remove(pkg string) (menu.Preview, error) {
 }
 
 // menuHome reads what the menu offers from the home it runs in, and as much as there is outside one.
-func menuHome(ctx context.Context) menu.Home {
-	lookup := menuLookup{ctx: ctx, r: &registry.Resolver{}}
+func menuHome(ctx context.Context, cats *catalogs) menu.Home {
+	lookup := menuLookup{ctx: ctx, r: &registry.Resolver{}, cats: cats}
 	now := time.Now()
 	dir, err := workingHome()
 	// Start without a folder where the working folder stays unknown
@@ -174,6 +172,7 @@ func menuHome(ctx context.Context) menu.Home {
 		for _, s := range c.Stores {
 			h.Stores = append(h.Stores, s.ID)
 		}
+		cats.fetch(h.Stores)
 	}
 	dc, err := devcontainer.Load(dir)
 	// Offer every feature the home installs from a store, in the order the cage installs them
@@ -190,7 +189,7 @@ func menuHome(ctx context.Context) menu.Home {
 		}
 		// Offer each refused name, the most recent first, with how often and when
 		for _, b := range record.Refused() {
-			h.Blocked = append(h.Blocked, menu.Option{Value: b.Name, Columns: []string{words.Count(b.Attempts, "attempt", "attempts"), traffic.Ago(b.LastSeen, now)}})
+			h.Blocked = append(h.Blocked, menu.Option{Value: b.Name, Columns: menu.BlockedRow(b.Attempts, traffic.Ago(b.LastSeen, now))})
 		}
 	}
 	h.Stack = stackFacts(ctx, dir, h.Exists)

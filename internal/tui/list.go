@@ -15,7 +15,9 @@ const rows = 12
 
 // list is the options, the filter, the cursor and the marks that a choice, a multi-select and a view's tab share.
 type list struct {
-	options  []menu.Option
+	options []menu.Option
+	// header labels the rows' label and each of their columns.
+	header   []string
 	filter   string
 	cursor   int
 	numbered bool
@@ -118,7 +120,7 @@ func (l list) view(width, height int) []string {
 	if len(shown) == 0 {
 		return []string{dim.Render("  No match for \"" + l.filter + "\"")}
 	}
-	label, columns := widths(shown)
+	label, columns := widths(shown, l.header)
 	per := 1
 	// Give every option a second line where any says what it is
 	for _, o := range shown {
@@ -127,6 +129,12 @@ func (l list) view(width, height int) []string {
 			per = 2
 			break
 		}
+	}
+	var lines []string
+	// Label the columns above the rows
+	if len(l.header) > 0 {
+		lines = append(lines, cut(dim.Render(l.heading(label, columns)), width))
+		height--
 	}
 	fit := len(shown)
 	// Fit the options into the height, keeping a line for the ones below, and into the usual rows without a height
@@ -137,7 +145,6 @@ func (l list) view(width, height int) []string {
 		fit = rows
 	}
 	start := max(l.cursor-fit+1, 0)
-	var lines []string
 	// Draw the options in reach of the cursor
 	for i := start; i < min(start+fit, len(shown)); i++ {
 		lines = append(lines, l.row(shown[i], i, i == l.cursor, label, columns, width)...)
@@ -200,10 +207,43 @@ func (l list) row(o menu.Option, i int, current bool, label int, columns []int, 
 	return lines
 }
 
-// widths measures the widest label and the widest value of each column across options.
-func widths(options []menu.Option) (int, []int) {
+// heading lines the header up with the rows below it, past the room their pointer, number and mark take.
+func (l list) heading(label int, columns []int) string {
+	var b strings.Builder
+	b.WriteString("  ")
+	// Leave the room a number takes
+	if l.numbered {
+		b.WriteString("   ")
+	}
+	// Leave the room a mark takes
+	if l.marks != nil {
+		b.WriteString("    ")
+	}
+	b.WriteString(pad(l.header[0], label))
+	// Line every column's label up with its column
+	for c, h := range l.header[1:] {
+		b.WriteString("   ")
+		// Pad a label to a column the rows hold
+		if c < len(columns) {
+			h = pad(h, columns[c])
+		}
+		b.WriteString(h)
+	}
+	return strings.TrimRight(b.String(), " ")
+}
+
+// widths measures the widest label and the widest value of each column across options and the header's labels.
+func widths(options []menu.Option, header []string) (int, []int) {
 	label := 0
 	var columns []int
+	// Count the header's labels in
+	if len(header) > 0 {
+		label = ansi.StringWidth(header[0])
+		// Measure every column's label
+		for _, h := range header[1:] {
+			columns = append(columns, ansi.StringWidth(h))
+		}
+	}
 	// Measure every option
 	for _, o := range options {
 		label = max(label, ansi.StringWidth(o.Shown()))

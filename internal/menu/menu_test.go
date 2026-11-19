@@ -29,11 +29,11 @@ var aHome = Home{
 		{Name: fixture.ThirdHost, Ports: []int{fixture.Port}, By: []string{"user"}, Expires: fixture.LongAgoText},
 		{Name: fixture.OtherHost, Ports: []int{fixture.Port}, By: []string{fixture.Store + "/" + fixture.Feature, "user"}},
 	},
-	Traffic:  map[string]Traffic{fixture.Host: {Data: "1.2 GB", Seen: "2m ago"}},
+	Traffic:  map[string]Traffic{fixture.Host: {Data: fixture.DataMoved, Seen: fixture.LastSeen}},
 	Secrets:  []Secret{{Name: fixture.Secret, Set: false}, {Name: fixture.OtherSecret, Set: true}},
 	Stores:   []string{fixture.Store},
 	Projects: []string{"github.com/" + fixture.Repo},
-	Blocked:  []Option{{Value: fixture.RefusedName, Columns: []string{"3 attempts", "5m ago"}}, {Value: fixture.AbsentName, Columns: []string{"1 attempt", "2h ago"}}},
+	Blocked:  []Option{{Value: fixture.RefusedName, Columns: BlockedRow(fixture.Attempts, fixture.LastSeen)}, {Value: fixture.AbsentName, Columns: BlockedRow(fixture.Attempts, fixture.LastSeen)}},
 	Running:  true,
 	Stack:    []Fact{{Label: "Cage", Value: "running"}},
 	Lookup:   fakeLookup{},
@@ -146,7 +146,7 @@ func TestTheFirewallViewShowsTheHostsAndTheRefusedNames(t *testing.T) {
 		t.Errorf("Allowed = %v", allowed.Options)
 	}
 	// Require the host's traffic and end in its columns
-	if diff := cmp.Diff([]string{bothPorts, "1.2 GB", "2m ago", "for good", "", "user"}, allowed.Options[1].Columns); diff != "" {
+	if diff := cmp.Diff([]string{bothPorts, fixture.DataMoved, fixture.LastSeen, "for good", "", "user"}, allowed.Options[1].Columns); diff != "" {
 		t.Errorf("host columns (-want +got):\n%s", diff)
 	}
 	// Require the expired host to read as expired, and the key that prunes it
@@ -164,15 +164,15 @@ func TestEveryFirewallDialogEndsInItsCommand(t *testing.T) {
 	dialogs{
 		{
 			"a new host on the HTTPS port for good",
-			[][]string{{"firewall"}, {"Allowed", add}, {"one.example.net"}, {port}, {always}, {none}, {yes}},
+			[][]string{{"firewall"}, {"Allowed", add}, {fixture.NewHost}, {port}, {always}, {none}, {yes}},
 			[]string{"do", "view", "hosts", "ports", "for", "secret", "apply"},
-			[]Command{{Args: []string{"firewall", "add", "one.example.net", "--port", port, "--yes"}}},
+			[]Command{{Args: []string{"firewall", "add", fixture.NewHost, "--port", port, "--yes"}}},
 		},
 		{
 			"two hosts on typed ports for a typed time with a new secret in two sites",
-			[][]string{{"firewall"}, {"Allowed", add}, {"one.example.net two.example.net"}, {typed}, {"22, 443"}, {typed}, {"90m"}, {fresh}, {fixture.NewSecret}, {"header", "body"}, {yes}},
+			[][]string{{"firewall"}, {"Allowed", add}, {fixture.NewHost + " " + fixture.NextHost}, {typed}, {strconv.Itoa(fixture.OtherPort) + ", " + port}, {typed}, {fixture.Duration}, {fresh}, {fixture.NewSecret}, {"header", "body"}, {yes}},
 			[]string{"do", "view", "hosts", "ports", "portsTyped", "for", "forTyped", "secret", "secretName", "inject", "apply"},
-			[]Command{{Args: []string{"firewall", "add", "one.example.net", "two.example.net", "--port", bothPorts, "--for", "90m", "--secret", fixture.NewSecret, "--inject", "header,body", "--yes"}}},
+			[]Command{{Args: []string{"firewall", "add", fixture.NewHost, fixture.NextHost, "--port", bothPorts, "--for", fixture.Duration, "--secret", fixture.NewSecret, "--inject", "header,body", "--yes"}}},
 		},
 		{
 			"two refused names for an hour",
@@ -231,7 +231,7 @@ func TestAHostsDetailShowsItsFacts(t *testing.T) {
 
 	got := asked[2]
 	// Require the facts of the host
-	if diff := cmp.Diff([]Fact{{"Ports", bothPorts}, {"Data", "1.2 GB"}, {"Last seen", "2m ago"}, {"Closes", "for good"}, {"Secret", "none"}, {"Needed by", "user"}}, got.Facts); diff != "" {
+	if diff := cmp.Diff([]Fact{{"Ports", bothPorts}, {"Data", fixture.DataMoved}, {"Last seen", fixture.LastSeen}, {"Closes", "for good"}, {"Secret", "none"}, {"Needed by", "user"}}, got.Facts); diff != "" {
 		t.Errorf("facts (-want +got):\n%s", diff)
 	}
 	// Require the removal among the actions, and Back last
@@ -356,11 +356,11 @@ func TestTheUpdateViewMarksEveryNewerPart(t *testing.T) {
 
 // A project's removal holds the name typed back to the project's owner/name.
 func TestAProjectsRemovalChecksTheTypedName(t *testing.T) {
-	asked, cmds := walk(t, aHome, []string{"project"}, []string{"Projects", "github.com/" + fixture.Repo}, []string{remove}, []string{"other/name"})
+	asked, cmds := walk(t, aHome, []string{"project"}, []string{"Projects", "github.com/" + fixture.Repo}, []string{remove}, []string{fixture.OtherRepo})
 
 	// Require the name checked as it is typed
-	if _, err := asked[3].Check("other/name"); err == nil {
-		t.Errorf("Check(other/name) = nil, want the name named")
+	if _, err := asked[3].Check(fixture.OtherRepo); err == nil {
+		t.Errorf("Check(%s) = nil, want the name named", fixture.OtherRepo)
 	}
 	// Require nothing deleted for a name that differs
 	if diff := cmp.Diff([]Command{{Note: nothingChanged}}, cmds); diff != "" {
@@ -377,7 +377,7 @@ func TestHostRowShowsAHostTheSameEverywhere(t *testing.T) {
 		waiting bool
 		want    []string
 	}{
-		{aHome.Hosts[0], aHome.Traffic[fixture.Host], false, []string{bothPorts, "1.2 GB", "2m ago", "for good", "", "user"}},
+		{aHome.Hosts[0], aHome.Traffic[fixture.Host], false, []string{bothPorts, fixture.DataMoved, fixture.LastSeen, "for good", "", "user"}},
 		{aHome.Hosts[1], Traffic{}, true, []string{port, "–", "–", "for good", fixture.Secret + " !", "user"}},
 		{aHome.Hosts[2], Traffic{}, false, []string{port, "–", "–", "expired", "", "user"}},
 		{config.Host{Name: fixture.Host, Ports: []int{fixture.Port}, Expires: fixture.InAnHourText, By: []string{"user"}}, Traffic{}, false, []string{port, "–", "–", "in 1h", "", "user"}},

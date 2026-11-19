@@ -32,6 +32,12 @@ func (fakeLookup) Catalog(store string) ([]Offer, error) {
 	return []Offer{{ID: fixture.OtherFeature, Description: "Another tool"}, {ID: fixture.Feature, Name: "Tool"}}, nil
 }
 
+// Peek lists the features the store offers at once, as a catalog read already.
+func (l fakeLookup) Peek(store string) ([]Offer, bool, error) {
+	catalog, err := l.Catalog(store)
+	return catalog, true, err
+}
+
 // Add shows what a feature brings, the tool with the options it offers.
 func (fakeLookup) Add(id string) (Preview, error) {
 	pv := Preview{Lines: []string{id + ":" + fixture.Major, hostLine, otherHostLine}, Waiting: []string{fixture.Secret, fixture.OtherSecret}, Features: 1, Hosts: 2}
@@ -193,5 +199,28 @@ func TestOptionsAskFromTheValueTheyHold(t *testing.T) {
 	// Require a line of text with its proposals as the example
 	if version.Kind != Input || version.Example != fixture.FloatingTag+"  lts" {
 		t.Errorf("version = %+v", version)
+	}
+}
+
+// lateLookup is the fake store whose catalog is still on its way.
+type lateLookup struct{ fakeLookup }
+
+// Peek reports the catalog still on its way.
+func (lateLookup) Peek(string) ([]Offer, bool, error) {
+	return nil, false, nil
+}
+
+// The feature view opens at once while the stores' catalogs come in: Discover says the features are on their way and
+// the view waits for them, the installed features already in place.
+func TestTheFeatureViewOpensBeforeTheStoresAnswer(t *testing.T) {
+	h := aHomeWithTheTool()
+	h.Lookup = lateLookup{}
+
+	q, _ := Next(h, Answers{}.With("do", []string{"feature"}))
+
+	installed, discover := q.Tabs[0], q.Tabs[1]
+	// Require the installed feature in place and Discover on its way
+	if len(installed.Options) != 1 || !discover.Loading || discover.Empty != "Loading the stores' features…" || !q.Pending() {
+		t.Errorf("view = %+v, pending %v", q.Tabs, q.Pending())
 	}
 }

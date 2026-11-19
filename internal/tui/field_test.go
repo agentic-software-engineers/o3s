@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/google/go-cmp/cmp"
 
 	"github.com/hansehart/o3s/internal/fixture"
@@ -146,12 +147,12 @@ func TestConfirmAnswersYesOrNo(t *testing.T) {
 
 // A digit picks the option it numbers at once, where the options are numbered.
 func TestChoicePicksANumberedOption(t *testing.T) {
-	q := menu.Question{Key: "ports", Kind: menu.Select, Title: "Ports", Numbered: true, Options: []menu.Option{{Value: "443"}, {Value: "22,443"}}}
+	q := menu.Question{Key: "ports", Kind: menu.Select, Title: "Ports", Numbered: true, Options: []menu.Option{{Value: port}, {Value: bothPorts}}}
 
 	_, r := press(newChoice(q), keys("2")...)
 
 	// Require the second option taken
-	if r.outcome != answered || !cmp.Equal([]string{"22,443"}, r.values) {
+	if r.outcome != answered || !cmp.Equal([]string{bothPorts}, r.values) {
 		t.Errorf("answer = %v, want 22,443", r)
 	}
 	// Require the options numbered
@@ -162,7 +163,7 @@ func TestChoicePicksANumberedOption(t *testing.T) {
 
 // A detail shows its facts above its actions, which typing leaves as they are.
 func TestChoiceShowsADetailsFacts(t *testing.T) {
-	q := menu.Question{Key: "action", Kind: menu.Select, Title: fixture.Host, Facts: []menu.Fact{{Label: "Ports", Value: "443"}, {Label: "Needed by", Value: "user"}}, Options: []menu.Option{{Value: "remove", Label: "Remove"}, {Value: "+back", Label: "Back"}}}
+	q := menu.Question{Key: "action", Kind: menu.Select, Title: fixture.Host, Facts: []menu.Fact{{Label: "Ports", Value: port}, {Label: "Needed by", Value: "user"}}, Options: []menu.Option{{Value: "remove", Label: "Remove"}, {Value: "+back", Label: "Back"}}}
 
 	f, _ := press(newChoice(q), keys("zzz")...)
 
@@ -207,7 +208,7 @@ func TestTextChecksTheLineAsItIsTyped(t *testing.T) {
 
 // aView is a view of two tabs: hosts the user picks from with a key that acts, and names the user marks.
 var aView = menu.Question{Key: "view", Kind: menu.View, Title: "Firewall", Tabs: []menu.Tab{
-	{Name: "Allowed", About: "The cage reaches only these hosts.", Options: []menu.Option{{Value: "+add", Label: "+ Allow a host…"}, {Value: fixture.Host, Columns: []string{"443"}}, {Value: fixture.OtherHost, Columns: []string{"22,443"}}}, Keys: []menu.Key{{Key: "p", Help: "prune expired", Value: "+prune"}}},
+	{Name: "Allowed", About: "The cage reaches only these hosts.", Options: []menu.Option{{Value: "+add", Label: "+ Allow a host…"}, {Value: fixture.Host, Columns: []string{port}}, {Value: fixture.OtherHost, Columns: []string{bothPorts}}}, Keys: []menu.Key{{Key: "p", Help: "prune expired", Value: "+prune"}}},
 	{Name: "Blocked", Multi: true, Options: []menu.Option{{Value: fixture.RefusedName}, {Value: fixture.AbsentName}}, Marked: []string{fixture.AbsentName}, Empty: "Nothing blocked yet."},
 }}
 
@@ -277,7 +278,7 @@ func TestViewShowsTheTabsAndTheRows(t *testing.T) {
 		}
 	}
 	// Require the columns lined up across the rows
-	if host, other := strings.Index(view, fixture.Host), strings.Index(view, fixture.OtherHost); strings.Index(view[host:], "443") != strings.Index(view[other:], "22,443") {
+	if host, other := strings.Index(view, fixture.Host), strings.Index(view, fixture.OtherHost); strings.Index(view[host:], port) != strings.Index(view[other:], bothPorts) {
 		t.Errorf("columns differ in where they start:\n%s", view)
 	}
 	// Require what an empty tab says
@@ -303,4 +304,49 @@ func TestListCutsALongRow(t *testing.T) {
 	if !strings.Contains(view, "…") {
 		t.Errorf("view lacks the ellipsis:\n%s", view)
 	}
+}
+
+// A tab's header labels the columns in line with the rows, past the room a mark takes.
+func TestViewLabelsItsColumns(t *testing.T) {
+	q := aView
+	q.Tabs = []menu.Tab{
+		{Name: "Allowed", Header: []string{"HOST", "PORTS"}, Options: aView.Tabs[0].Options[1:]},
+		{Name: "Blocked", Header: []string{"NAME", "ATTEMPTS"}, Multi: true, Options: []menu.Option{{Value: fixture.RefusedName, Columns: []string{"3"}}}},
+	}
+	f := newView(q)
+	marked, _ := press(f, right)
+
+	view := strings.Split(stripped(f.View(usualWidth, usualHeight)), "\n")
+	markedView := strings.Split(stripped(marked.View(usualWidth, usualHeight)), "\n")
+
+	// Require the header's columns where the rows' columns start
+	if header, row := lineWith(view, "HOST"), lineWith(view, fixture.Host); column(header, "PORTS") != column(row, port) {
+		t.Errorf("header %q and row %q differ in where the column starts", header, row)
+	}
+	// Require the header past the room a mark takes
+	if header, row := lineWith(markedView, "NAME"), lineWith(markedView, fixture.RefusedName); column(header, "NAME") != column(row, fixture.RefusedName) {
+		t.Errorf("header %q and row %q differ in where the label starts", header, row)
+	}
+}
+
+// lineWith hands back the first line that holds a text.
+func lineWith(lines []string, text string) string {
+	// Look at every line
+	for _, l := range lines {
+		// Take the line that holds the text
+		if strings.Contains(l, text) {
+			return l
+		}
+	}
+	return ""
+}
+
+// column is the screen column a text starts at in a line, and -1 for a line without it.
+func column(line, text string) int {
+	before, _, found := strings.Cut(line, text)
+	// Report a line without the text
+	if !found {
+		return -1
+	}
+	return ansi.StringWidth(before)
 }

@@ -37,7 +37,7 @@ func TestMenuHomeReadsTheHome(t *testing.T) {
 		t.Fatalf("Setup: %v", err)
 	}
 
-	got := menuHome(t.Context())
+	got := menuHome(t.Context(), newCatalogs(t.Context()))
 
 	got.Lookup, got.Now, got.Traffic, got.Stack = nil, time.Time{}, nil, nil
 	want := menu.Home{
@@ -63,7 +63,7 @@ func TestMenuHomeStartsOutsideAHome(t *testing.T) {
 	t.Chdir(dir)
 	t.Setenv("O3S_SECRETS_DIR", t.TempDir())
 
-	got := menuHome(t.Context())
+	got := menuHome(t.Context(), newCatalogs(t.Context()))
 
 	got.Lookup, got.Now, got.Traffic, got.Stack = nil, time.Time{}, nil, nil
 	// Require a home that names the folder alone
@@ -109,7 +109,7 @@ func aHomeIn(t *testing.T) string {
 func TestMenuLookupShowsWhatAFeatureBrings(t *testing.T) {
 	store := aStoreWithTheTool(t)
 	aHomeIn(t)
-	l := menuLookup{ctx: t.Context(), r: &registry.Resolver{}}
+	l := menuLookup{ctx: t.Context(), r: &registry.Resolver{}, cats: newCatalogs(t.Context())}
 
 	catalog, err := l.Catalog(store)
 	// Stop when the store fails to read
@@ -162,7 +162,7 @@ func TestMenuLookupShowsWhatLeavesWithAFeature(t *testing.T) {
 	if err := saveHome(dir, c, dc); err != nil {
 		t.Fatalf("Setup: %v", err)
 	}
-	l := menuLookup{ctx: t.Context(), r: &registry.Resolver{}}
+	l := menuLookup{ctx: t.Context(), r: &registry.Resolver{}, cats: newCatalogs(t.Context())}
 
 	pv, err := l.Remove(pkg)
 
@@ -175,7 +175,7 @@ func TestMenuLookupShowsWhatLeavesWithAFeature(t *testing.T) {
 		t.Errorf("Remove() (-want +got):\n%s", diff)
 	}
 	// Require the installed feature with its tag
-	if diff := cmp.Diff([]menu.Installed{{Package: pkg, Tag: fixture.Major, Options: map[string]string{}}}, menuHome(t.Context()).Installed); diff != "" {
+	if diff := cmp.Diff([]menu.Installed{{Package: pkg, Tag: fixture.Major, Options: map[string]string{}}}, menuHome(t.Context(), newCatalogs(t.Context())).Installed); diff != "" {
 		t.Errorf("menuHome().Installed (-want +got):\n%s", diff)
 	}
 }
