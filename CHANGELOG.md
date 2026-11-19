@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.8.0-rc.1](https://github.com/hansehart/o3s/compare/v0.7.6-rc.2...v0.8.0-rc.1) (2026-11-19)
+
+
+### ⚠ BREAKING CHANGES
+
+* **cli:** open every group as a view and act on several names at once ([#292](https://github.com/hansehart/o3s/issues/292))
+
+### Features
+
+* **cli:** make the home inside its VM with o3s init --preview ([#264](https://github.com/hansehart/o3s/issues/264)) ([c7b342c](https://github.com/hansehart/o3s/commit/c7b342c74d3f264406a5985e7f5d5fdd3b904460))
+* **cli:** open every group as a view and act on several names at once ([#292](https://github.com/hansehart/o3s/issues/292)) ([5bed122](https://github.com/hansehart/o3s/commit/5bed122976cd6c047f70024bf42e334ab4471b95))
+* **repo:** install o3s and Lima on Linux and macOS with install.sh ([#268](https://github.com/hansehart/o3s/issues/268)) ([57c4f20](https://github.com/hansehart/o3s/commit/57c4f203b78da3d67f3fd87cf3b1a1f2120dbf2d))
+
+
+### Bug Fixes
+
+* **deps:** update module charm.land/lipgloss/v2 to v2.1.1 ([#288](https://github.com/hansehart/o3s/issues/288)) ([c1a3561](https://github.com/hansehart/o3s/commit/c1a35618ef267938a11bf544486b3e17693ac7cb))
+* **deps:** update module github.com/klauspost/compress to v1.20.2 [security] ([#290](https://github.com/hansehart/o3s/issues/290)) ([205f47b](https://github.com/hansehart/o3s/commit/205f47b9c6918d3880a342c5f219e420d846f582))
+* **repo:** release every dependency update that ships ([#287](https://github.com/hansehart/o3s/issues/287)) ([0450385](https://github.com/hansehart/o3s/commit/0450385a0785ee4f28725daa895536d3e40c8438))
+
+
+### Code Refactoring
+
+* **cli:** word the hosts, secrets and counts from one source ([#293](https://github.com/hansehart/o3s/issues/293)) ([00d5951](https://github.com/hansehart/o3s/commit/00d59510cd50fb14bcb7934e84ea2942912b5fcb))
+
 ## [0.7.6-rc.2](https://github.com/hansehart/o3s/compare/v0.7.6-rc.1...v0.7.6-rc.2) (2026-11-18)
 
 
