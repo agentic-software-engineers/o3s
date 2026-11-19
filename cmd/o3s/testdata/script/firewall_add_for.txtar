@@ -28,6 +28,11 @@ exec o3s firewall add example.edu --for 1h30m
 stderr 'invalid duration "soon"'
 stderr 'Run ''o3s firewall add --help'' for usage.'
 
+# For good takes a host's end time off again
+exec o3s firewall add ${THIRD_HOST} --for good
+stdout '^  ~ expires .+ -> none$'
+stdout '^Allowed '${THIRD_HOST@R}':443$'
+
 -- o3s.json --
 {
   "$schema": "./.devcontainer/o3s.schema.json",

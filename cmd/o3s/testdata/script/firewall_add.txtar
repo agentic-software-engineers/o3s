@@ -30,6 +30,14 @@ stdout '^Allowed example.org:443 with EXAMPLE_TOKEN in header$'
 # The file holds the hosts in apex order
 cmp o3s.json want.json
 
+# None takes a host's secret off with its sites, and the file holds the host as before
+exec o3s firewall add ${OTHER_HOST} --secret none
+stdout '^  ~ secret '${SECRET@R}' -> none$'
+stdout '^  ~ inject header -> none$'
+stdout '^Allowed '${OTHER_HOST@R}':443$'
+exec o3s firewall add ${OTHER_HOST} --secret ${SECRET}
+cmp o3s.json want.json
+
 # A host outside the rules is turned away as a usage error and leaves the file as it was
 ! exec o3s firewall add Example.com
 stderr 'invalid host "Example.com"'

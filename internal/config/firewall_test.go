@@ -181,3 +181,25 @@ func TestRemoveTurnsAwayAnUnknownHost(t *testing.T) {
 		t.Errorf("Remove(%s) = %v, want ErrUnknownHost", fixture.Host, err)
 	}
 }
+
+// A change can open a host for good again and take its secret off, the end time, the secret and its sites gone.
+func TestAllowOpensForGoodAndTakesTheSecretOff(t *testing.T) {
+	c := aConfigThatAllows(config.Host{Name: fixture.Subdomain, Ports: []int{fixture.Port}, Secret: fixture.Secret, Inject: []string{"header"}, By: []string{"user"}, Expires: fixture.LongAgoText})
+
+	diffs, err := c.Allow(config.Change{Name: fixture.Subdomain, ForGood: true, NoSecret: true})
+
+	// Stop when the update is turned away
+	if err != nil {
+		t.Fatalf("Allow(%s) = %v", fixture.Subdomain, err)
+	}
+	want := []config.Host{{Name: fixture.Subdomain, Ports: []int{fixture.Port}, By: []string{"user"}}}
+	// Require the host open for good without a secret
+	if diff := cmp.Diff(want, c.Hosts); diff != "" {
+		t.Errorf("Allow(%s) hosts (-want +got):\n%s", fixture.Subdomain, diff)
+	}
+	wantDiffs := []config.Diff{{Field: "secret", Old: fixture.Secret}, {Field: "inject", Old: "header"}, {Field: "expires", Old: fixture.LongAgoText}}
+	// Report every field taken off
+	if diff := cmp.Diff(wantDiffs, diffs); diff != "" {
+		t.Errorf("Allow(%s) diffs (-want +got):\n%s", fixture.Subdomain, diff)
+	}
+}

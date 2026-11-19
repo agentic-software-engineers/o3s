@@ -41,8 +41,15 @@ func newFirewallAdd() *cobra.Command {
 		Args:  usage(cobra.MinimumNArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			now := time.Now()
-			// Give the hosts the end time their duration reaches
-			if forValue != "" {
+			// Take the hosts' secret off where the command says none
+			if ch.Secret == config.WithoutSecret {
+				ch.Secret, ch.NoSecret = "", true
+			}
+			// Open the hosts for good, or give them the end time their duration reaches
+			switch {
+			case forValue == config.OpenForGood:
+				ch.ForGood = true
+			case forValue != "":
 				d, err := parseFor(forValue)
 				// Hand back a duration that reads as no time
 				if err != nil {
@@ -107,10 +114,10 @@ func newFirewallAdd() *cobra.Command {
 			})
 		},
 	}
-	cmd.Flags().StringVar(&forValue, "for", "", "keep the hosts open this long, as seconds or a duration like 20m or 1h (default for good)")
+	cmd.Flags().StringVar(&forValue, "for", "", "keep the hosts open this long, as seconds or a duration like 20m or 1h, or good to open them for good (default for good)")
 	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "close a host sooner without asking")
 	cmd.Flags().IntSliceVarP(&ch.Ports, "port", "p", nil, "a port to allow, 1-65535, repeatable (default 443)")
-	cmd.Flags().StringVar(&ch.Secret, "secret", "", "the name of the secret the proxy injects for these hosts")
+	cmd.Flags().StringVar(&ch.Secret, "secret", "", "the name of the secret the proxy injects for these hosts, or none to take it off")
 	cmd.Flags().StringSliceVar(&ch.Inject, "inject", nil, "where the secret goes: header, query or body, repeatable (default header)")
 	return cmd
 }

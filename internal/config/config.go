@@ -71,6 +71,12 @@ type Host struct {
 	Expires string `json:"expires,omitempty"`
 }
 
+// The words firewall add takes to open a host for good and to take its secret off.
+const (
+	OpenForGood   = "good"
+	WithoutSecret = "none"
+)
+
 // Change names a host and the fields to set, an empty field keeping its value or default.
 type Change struct {
 	Name   string
@@ -79,6 +85,10 @@ type Change struct {
 	Inject []string
 	// Expires is the end time to give the host, and empty to keep the one it has.
 	Expires string
+	// ForGood opens the host for good, taking any end time off.
+	ForGood bool
+	// NoSecret takes the host's secret off, with the sites it went into.
+	NoSecret bool
 }
 
 // New hands back the settings of a new home, with both feature stores and no host.

@@ -193,6 +193,18 @@ func TestEveryFirewallDialogEndsInItsCommand(t *testing.T) {
 			[]Command{{Args: []string{"firewall", "add", fixture.Host, "--for", "8h", "--yes"}}},
 		},
 		{
+			"a host opened for good again",
+			[][]string{{"firewall"}, {"Allowed", fixture.ThirdHost}, {changeEnd}, {always}, {yes}},
+			[]string{"do", "view", "action", "for", "apply"},
+			[]Command{{Args: []string{"firewall", "add", fixture.ThirdHost, "--for", config.OpenForGood, "--yes"}}},
+		},
+		{
+			"a host's secret taken off",
+			[][]string{{"firewall"}, {"Allowed", fixture.Subdomain}, {changeSecret}, {none}, {yes}},
+			[]string{"do", "view", "action", "secret", "apply"},
+			[]Command{{Args: []string{"firewall", "add", fixture.Subdomain, "--secret", config.WithoutSecret, "--yes"}}},
+		},
+		{
 			"a host's secret",
 			[][]string{{"firewall"}, {"Allowed", fixture.Host}, {changeSecret}, {fixture.OtherSecret}, {"header"}, {yes}},
 			[]string{"do", "view", "action", "secret", "inject", "apply"},

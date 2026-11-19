@@ -9,7 +9,7 @@ secret / Secrets EXAMPLE_TOKEN / Back → back
 secret / Secrets OTHER_TOKEN / Remove / yes → o3s secret rm OTHER_TOKEN --yes
 secret / Secrets OTHER_TOKEN / Remove / no → (Nothing changed.)
 
-# running, 95 paths
+# running, 97 paths
 cage / Open in VS Code → o3s cage ide
 cage / Open a shell → o3s cage shell [terminal]
 cage / Stop → o3s cage stop
@@ -53,13 +53,15 @@ firewall / Allowed example.com / Change ports / 443 / yes → o3s firewall add e
 firewall / Allowed example.com / Change ports / 443 / no → (Nothing changed.)
 firewall / Allowed example.com / Change ports / 22, 443 / yes → o3s firewall add example.com --port 22,443 --yes
 firewall / Allowed example.com / Change ports / Type ports… / 22, 443 / yes → o3s firewall add example.com --port 22,443 --yes
+firewall / Allowed example.com / Set an end time / For good / yes → o3s firewall add example.com --for good --yes
+firewall / Allowed example.com / Set an end time / For good / no → (Nothing changed.)
 firewall / Allowed example.com / Set an end time / 1 hour / yes → o3s firewall add example.com --for 1h --yes
-firewall / Allowed example.com / Set an end time / 1 hour / no → (Nothing changed.)
 firewall / Allowed example.com / Set an end time / 8 hours / yes → o3s firewall add example.com --for 8h --yes
 firewall / Allowed example.com / Set an end time / 1 day / yes → o3s firewall add example.com --for 24h --yes
 firewall / Allowed example.com / Set an end time / Type a duration… / 90m / yes → o3s firewall add example.com --for 90m --yes
+firewall / Allowed example.com / Change secret / None / yes → o3s firewall add example.com --secret none --yes
+firewall / Allowed example.com / Change secret / None / no → (Nothing changed.)
 firewall / Allowed example.com / Change secret / EXAMPLE_TOKEN / header / yes → o3s firewall add example.com --secret EXAMPLE_TOKEN --inject header --yes
-firewall / Allowed example.com / Change secret / EXAMPLE_TOKEN / header / no → (Nothing changed.)
 firewall / Allowed example.com / Change secret / EXAMPLE_TOKEN / query / yes → o3s firewall add example.com --secret EXAMPLE_TOKEN --inject query --yes
 firewall / Allowed example.com / Change secret / EXAMPLE_TOKEN / body / yes → o3s firewall add example.com --secret EXAMPLE_TOKEN --inject body --yes
 firewall / Allowed example.com / Change secret / EXAMPLE_TOKEN / header, query, body / yes → o3s firewall add example.com --secret EXAMPLE_TOKEN --inject header,query,body --yes
@@ -106,7 +108,7 @@ update / Update [cli, tool] / yes → o3s update cli registry.example.com/featur
 update / Update [cli, stack] / yes → o3s update cli stack --yes [restart]
 update / Update [] → (Everything is up to date.)
 
-# stopped, 95 paths
+# stopped, 97 paths
 cage / Open in VS Code → o3s cage ide
 cage / Open a shell → o3s cage shell [terminal]
 cage / Start → o3s cage start
@@ -150,13 +152,15 @@ firewall / Allowed example.com / Change ports / 443 / yes → o3s firewall add e
 firewall / Allowed example.com / Change ports / 443 / no → (Nothing changed.)
 firewall / Allowed example.com / Change ports / 22, 443 / yes → o3s firewall add example.com --port 22,443 --yes
 firewall / Allowed example.com / Change ports / Type ports… / 22, 443 / yes → o3s firewall add example.com --port 22,443 --yes
+firewall / Allowed example.com / Set an end time / For good / yes → o3s firewall add example.com --for good --yes
+firewall / Allowed example.com / Set an end time / For good / no → (Nothing changed.)
 firewall / Allowed example.com / Set an end time / 1 hour / yes → o3s firewall add example.com --for 1h --yes
-firewall / Allowed example.com / Set an end time / 1 hour / no → (Nothing changed.)
 firewall / Allowed example.com / Set an end time / 8 hours / yes → o3s firewall add example.com --for 8h --yes
 firewall / Allowed example.com / Set an end time / 1 day / yes → o3s firewall add example.com --for 24h --yes
 firewall / Allowed example.com / Set an end time / Type a duration… / 90m / yes → o3s firewall add example.com --for 90m --yes
+firewall / Allowed example.com / Change secret / None / yes → o3s firewall add example.com --secret none --yes
+firewall / Allowed example.com / Change secret / None / no → (Nothing changed.)
 firewall / Allowed example.com / Change secret / EXAMPLE_TOKEN / header / yes → o3s firewall add example.com --secret EXAMPLE_TOKEN --inject header --yes
-firewall / Allowed example.com / Change secret / EXAMPLE_TOKEN / header / no → (Nothing changed.)
 firewall / Allowed example.com / Change secret / EXAMPLE_TOKEN / query / yes → o3s firewall add example.com --secret EXAMPLE_TOKEN --inject query --yes
 firewall / Allowed example.com / Change secret / EXAMPLE_TOKEN / body / yes → o3s firewall add example.com --secret EXAMPLE_TOKEN --inject body --yes
 firewall / Allowed example.com / Change secret / EXAMPLE_TOKEN / header, query, body / yes → o3s firewall add example.com --secret EXAMPLE_TOKEN --inject header,query,body --yes

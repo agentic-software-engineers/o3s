@@ -88,6 +88,11 @@ func update(h Host, ch Change) (Host, []Diff) {
 		diffs = append(diffs, Diff{Field: "ports", Old: JoinPorts(h.Ports), New: JoinPorts(ch.Ports)})
 		h.Ports = ch.Ports
 	}
+	// Take the secret off with its sites where the change asks
+	if ch.NoSecret && h.Secret != "" {
+		diffs = append(diffs, Diff{Field: "secret", Old: h.Secret}, Diff{Field: "inject", Old: strings.Join(h.Inject, ",")})
+		h.Secret, h.Inject = "", nil
+	}
 	// Replace the secret the change names
 	if ch.Secret != "" && h.Secret != ch.Secret {
 		diffs = append(diffs, Diff{Field: "secret", Old: h.Secret, New: ch.Secret})
@@ -102,6 +107,11 @@ func update(h Host, ch Change) (Host, []Diff) {
 	if len(inject) > 0 && !slices.Equal(h.Inject, inject) {
 		diffs = append(diffs, Diff{Field: "inject", Old: strings.Join(h.Inject, ","), New: strings.Join(inject, ",")})
 		h.Inject = inject
+	}
+	// Open the host for good where the change asks, reporting the end time it takes off
+	if ch.ForGood && h.Expires != "" {
+		diffs = append(diffs, Diff{Field: "expires", Old: h.Expires})
+		h.Expires = ""
 	}
 	// Take a new end time, reporting the one it replaces
 	if ch.Expires != "" && ch.Expires != h.Expires {

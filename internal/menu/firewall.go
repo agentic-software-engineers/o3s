@@ -98,9 +98,9 @@ func hostDialog(h Home, a Answers, name string) (Question, bool) {
 	case changePorts:
 		steps = []func(Home, Answers) (Question, bool){portsQuestion}
 	case changeEnd:
-		steps = []func(Home, Answers) (Question, bool){forQuestion(false)}
+		steps = []func(Home, Answers) (Question, bool){forQuestion(true)}
 	case changeSecret:
-		steps = []func(Home, Answers) (Question, bool){secretQuestion(false)}
+		steps = []func(Home, Answers) (Question, bool){secretQuestion(true)}
 	case remove:
 		return ask(a, apply(removeLines(h, name), "Removes "+name, true))
 	default:
@@ -217,13 +217,20 @@ func allowArgs(a Answers, hosts []string) []string {
 	if ports := chosenPorts(a); ports != "" {
 		args = append(args, "--port", ports)
 	}
-	// Name the time the user chose, keeping a host open for good where the user said so
-	if limit := chosenFor(a); limit != "" && limit != always {
+	limit := chosenFor(a)
+	// Name the time the user chose, opening a host for good again where its end time changes to none
+	switch {
+	case limit == always && a.get("action") == changeEnd:
+		args = append(args, "--for", config.OpenForGood)
+	case limit != "" && limit != always:
 		args = append(args, "--for", limit)
 	}
-	// Name the secret and where it goes
-	if s := chosenSecret(a); s != "" {
+	// Name the secret and where it goes, or take a host's secret off where its secret changes to none
+	switch s := chosenSecret(a); {
+	case s != "":
 		args = append(args, "--secret", s, "--inject", strings.Join(a.all("inject"), ","))
+	case a.get("secret") == none && a.get("action") == changeSecret:
+		args = append(args, "--secret", config.WithoutSecret)
 	}
 	return append(args, "--yes")
 }
@@ -276,13 +283,20 @@ func allowLines(h Home, a Answers, hosts []string) []string {
 			}
 		}
 		line := fmt.Sprintf("%s %s:%s", sign, name, words.Or(ports, "443"))
-		// Name when the host closes
-		if d, err := config.ParseFor(chosenFor(a)); err == nil {
+		d, err := config.ParseFor(chosenFor(a))
+		// Name when the host closes, or that it stays open for good where its end time changes
+		switch {
+		case err == nil:
 			line += "   closes at " + config.ClosesAt(config.EndTime(h.Now.Add(d)), h.Now)
+		case chosenFor(a) == always && a.get("action") == changeEnd:
+			line += "   open for good"
 		}
-		// Name the secret the host carries
-		if s := chosenSecret(a); s != "" {
+		// Name the secret the host carries, or that it carries none where its secret changes
+		switch s := chosenSecret(a); {
+		case s != "":
 			line += "   " + s + " in " + strings.Join(a.all("inject"), ", ")
+		case a.get("secret") == none && a.get("action") == changeSecret:
+			line += "   no secret"
 		}
 		lines = append(lines, line)
 	}
