@@ -1,13 +1,4 @@
-# Without the VM preview, init makes the home in this folder, as it always has
-mkdir plain
-cd plain
-exec o3s init
-exists o3s.json
-! exists .o3s/id
-! exists $WORK/limactl.log
-
-# With the VM preview, init makes the home inside its VM, and leaves this folder an ID to find the VM by
-env O3S_PREVIEW=vm
+# Without a terminal or a flag, init makes the home inside its VM, the secure default, and leaves this folder an ID to find the VM by
 env O3S_RELEASE_URL=file://$WORK/release
 mkdir $WORK/home
 cd $WORK/home
@@ -46,20 +37,6 @@ cd $WORK/empty
 ! exec o3s vm shell -- true
 stderr 'no o3s home with a VM here, run o3s init'
 
-# The preview flag turns the preview on for the command alone, as O3S_PREVIEW=1 turns on every preview
-env O3S_PREVIEW=
-env O3S_RELEASE_URL=file://$WORK/release
-mkdir $WORK/flagged
-cd $WORK/flagged
-exec o3s init --preview
-exists .o3s/id
-env O3S_PREVIEW=1
-mkdir $WORK/all
-cd $WORK/all
-exec o3s init
-exists .o3s/id
-env O3S_PREVIEW=vm
-
 # --dangerously-skip-vm makes the home on this host, records the choice, and warns on every start
 mkdir $WORK/process
 cd $WORK/process
@@ -68,6 +45,23 @@ grep '"isolation": "process"' o3s.json
 ! exists .o3s/id
 exec o3s init
 stderr '^warning: the home runs without its VM, remove "isolation" from o3s.json to go back to the secure default$'
+
+# --dangerously-skip-apparmor pairs with --dangerously-skip-vm and records the cage's run without AppArmor
+mkdir $WORK/unconfined
+cd $WORK/unconfined
+exec o3s init --dangerously-skip-vm --dangerously-skip-apparmor
+grep '"isolation": "process"' o3s.json
+grep '"appArmorProfile": "unconfined"' o3s.json
+stderr '^warning: the cage runs without AppArmor'
+
+# AppArmor always runs in the home's VM, so its opt-out alone is a usage error
+mkdir $WORK/alone
+cd $WORK/alone
+! exec o3s init --dangerously-skip-apparmor
+stderr 'AppArmor always runs in the home''s VM, pair --dangerously-skip-apparmor with --dangerously-skip-vm'
+stderr 'for usage'
+! exists o3s.json
+! exists .o3s/id
 
 -- release/o3s-linux-amd64 --
 #!/bin/sh
