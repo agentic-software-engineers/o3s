@@ -7,6 +7,8 @@ import (
 	"errors"
 	"fmt"
 	"maps"
+	"net/http"
+	"net/url"
 	"slices"
 	"strings"
 
@@ -14,6 +16,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
+	"github.com/google/go-containerregistry/pkg/v1/remote/transport"
 	"github.com/google/go-containerregistry/pkg/v1/types"
 )
 
@@ -22,6 +25,12 @@ const collection types.MediaType = "application/vnd.devcontainers.collection.lay
 
 // ErrNoCollection marks an artifact that holds no feature collection.
 var ErrNoCollection = errors.New("holds no feature collection")
+
+// ErrDenied marks a store its registry serves only to a user who logged in.
+var ErrDenied = errors.New("denies access")
+
+// ErrOutOfReach marks a store whose registry fails to answer.
+var ErrOutOfReach = errors.New("is out of reach")
 
 // Feature is what a store tells about one of its features.
 type Feature struct {
@@ -81,9 +90,9 @@ func Collection(ctx context.Context, store string) ([]Feature, error) {
 		return nil, err
 	}
 	img, err := remote.Image(ref, remote.WithContext(ctx), remote.WithAuthFromKeychain(authn.DefaultKeychain))
-	// Hand back a store the registry fails to serve
+	// Hand back why the registry fails to serve the store
 	if err != nil {
-		return nil, err
+		return nil, served(ref.Context().RegistryStr(), err)
 	}
 	layers, err := img.Layers()
 	// Hand back an artifact whose layers fail to read
@@ -179,4 +188,23 @@ func defaultOf(v any) string {
 	default:
 		return fmt.Sprint(d)
 	}
+}
+
+// served names why a registry turns a store away, by what it answered, and never with the addresses it was asked at:
+// a login it wants, a store it lacks, or an answer it fails to give.
+func served(host string, err error) error {
+	var answer *transport.Error
+	var asked *url.Error
+	// Name the cause by the registry's answer, or by the request that found no answer
+	switch {
+	case errors.As(err, &answer) && (answer.StatusCode == http.StatusUnauthorized || answer.StatusCode == http.StatusForbidden):
+		return fmt.Errorf("%w, log in with docker login %s", ErrDenied, host)
+	case errors.As(err, &answer) && answer.StatusCode == http.StatusNotFound:
+		return ErrNoCollection
+	case errors.As(err, &answer):
+		return fmt.Errorf("%w (%s)", ErrOutOfReach, http.StatusText(answer.StatusCode))
+	case errors.As(err, &asked):
+		return fmt.Errorf("%w (%w)", ErrOutOfReach, asked.Err)
+	}
+	return err
 }
