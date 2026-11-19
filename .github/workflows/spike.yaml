@@ -1,0 +1,63 @@
+name: Spike
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - spike/two-vms
+
+permissions:
+  contents: read
+
+jobs:
+  layout:
+    # raise each two-VM layout on the runner and record which checks pass, how long each takes and the memory in use
+    strategy:
+      fail-fast: false
+      matrix:
+        layout: [nested, siblings]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      # check out the scripts and the VM template
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # hand the runner user the hardware virtualization, and dnsmasq for Lima's host network
+      - name: Set up QEMU and KVM
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y --no-install-recommends ovmf qemu-system-x86 qemu-utils dnsmasq-base
+          sudo modprobe kvm
+          sudo chown "${USER}" /dev/kvm
+
+      # restore the VM image the VM tests cached on main
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/lima/download
+          key: lima-download-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('internal/vm/o3s.yaml') }}
+
+      # install Lima owned by root, and the sudoers file its host network asks for
+      - name: Install Lima
+        run: |
+          bash spike/install-lima.sh
+          limactl sudoers | sudo tee /etc/sudoers.d/lima >/dev/null
+
+      # raise the layout and keep its log for the summary
+      - name: Run the ${{ matrix.layout }} layout
+        env:
+          LAYOUT: ${{ matrix.layout }}
+        run: bash "spike/${LAYOUT}.sh" 2>&1 | tee spike.log
+
+      # write each check's outcome and duration into the run's summary
+      - name: Summarize
+        if: always()
+        env:
+          LAYOUT: ${{ matrix.layout }}
+        run: |
+          {
+            echo "### ${LAYOUT}"
+            echo "| check | result | time |"
+            echo "|---|---|---|"
+            grep '^RESULT' spike.log | sed 's/^RESULT //' || true
+          } >> "${GITHUB_STEP_SUMMARY}"
