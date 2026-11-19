@@ -424,19 +424,15 @@ func packageOfKey(key string) string {
 // showOptions writes the options a feature offers, the value each holds and the one it falls back to.
 func showOptions(out io.Writer, offered []registry.Option, had map[string]any) error {
 	w := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "OPTION\tVALUE\tDEFAULT")
-	// Write a row per option, leaving out the folder o3s sets itself
-	for _, o := range offered {
-		// Leave out the option o3s sets itself
-		if o.Name == registry.StateDir {
-			continue
-		}
-		value := "–"
+	fmt.Fprintln(w, strings.Join(menu.OptionHeader, "\t"))
+	// Write a row per option the user may set
+	for _, o := range userOptions(offered) {
+		value := ""
 		// Show the value the config gives the option
 		if v, ok := had[o.Name]; ok {
 			value = fmt.Sprint(v)
 		}
-		fmt.Fprintf(w, "%s\t%s\t%s\n", o.Name, value, o.Default)
+		fmt.Fprintln(w, strings.Join(append([]string{o.Name}, menu.OptionRow(o, value)...), "\t"))
 	}
 	return w.Flush()
 }

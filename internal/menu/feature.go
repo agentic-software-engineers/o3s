@@ -522,3 +522,12 @@ func InstalledRow(f Installed, hosts []config.Host) []string {
 	}
 	return []string{f.Tag, path.Dir(f.Package), strings.Join(needs, ", ")}
 }
+
+// OptionHeader labels a feature option's row, piped and in the options view.
+var OptionHeader = []string{"OPTION", "VALUE", "DEFAULT"}
+
+// OptionRow is how a feature option shows in a row after its name, piped or in the options view: the value the
+// feature sets, a dash where it sets none, and the one the option falls back to.
+func OptionRow(o FeatureOption, value string) []string {
+	return []string{words.Or(value, "–"), o.Default}
+}

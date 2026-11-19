@@ -145,14 +145,21 @@ func (l menuLookup) Add(id string) (menu.Preview, error) {
 	}
 	lines, waiting := addLines(s, store)
 	pv := menu.Preview{Lines: lines, Waiting: waiting, Features: 1, Hosts: len(s.Hosts), Env: len(s.Env)}
-	// Offer every option the user may set, the folder o3s gives the feature left out
-	for _, o := range s.Offered {
+	pv.Options = userOptions(s.Offered)
+	return pv, nil
+}
+
+// userOptions are the options a feature offers that are the user's to set, the folder o3s gives the feature left out.
+func userOptions(offered []registry.Option) []menu.FeatureOption {
+	var out []menu.FeatureOption
+	// Take every option the user may set
+	for _, o := range offered {
 		// Take an option that is the user's to set
 		if o.Name != registry.StateDir {
-			pv.Options = append(pv.Options, menu.FeatureOption{Name: o.Name, Type: o.Type, Default: o.Default, Enum: o.Enum, Proposals: o.Proposals, Description: o.Description})
+			out = append(out, menu.FeatureOption{Name: o.Name, Type: o.Type, Default: o.Default, Enum: o.Enum, Proposals: o.Proposals, Description: o.Description})
 		}
 	}
-	return pv, nil
+	return out
 }
 
 // Remove shows what leaves with a feature, as feature rm prints it.

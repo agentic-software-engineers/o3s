@@ -418,6 +418,26 @@ func TestInstalledRowShowsAFeatureTheSameEverywhere(t *testing.T) {
 	}
 }
 
+// A feature option shows the same row piped and in its view: the value the feature sets, a dash where it sets none,
+// and its default.
+func TestOptionRowShowsAnOptionTheSameEverywhere(t *testing.T) {
+	o := FeatureOption{Name: "version", Type: "string", Default: fixture.FloatingTag}
+	tests := []struct {
+		value string
+		want  []string
+	}{
+		{fixture.MinorTag, []string{fixture.MinorTag, fixture.FloatingTag}},
+		{"", []string{"–", fixture.FloatingTag}},
+	}
+	// Check every value
+	for _, tt := range tests {
+		// Report a row that differs
+		if diff := cmp.Diff(tt.want, OptionRow(o, tt.value)); diff != "" {
+			t.Errorf("OptionRow(%q) (-want +got):\n%s", tt.value, diff)
+		}
+	}
+}
+
 // A secret's value reads as set or empty, piped and in its view alike.
 func TestSecretStateReadsSetOrEmpty(t *testing.T) {
 	// Report a state that reads otherwise
