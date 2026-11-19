@@ -43,3 +43,13 @@ func TestChecksReadWhatHoldsAndNameWhatBreaks(t *testing.T) {
 		}
 	}
 }
+
+// A store that reads as none is turned away with the shape a store takes and an example of it.
+func TestStoreCheckNamesTheShapeItWants(t *testing.T) {
+	_, err := checkStore("not a store")
+
+	// Require the shape and the example
+	if err == nil || err.Error() != `"not a store" reads as no store, name it registry/repository as in ghcr.io/devcontainers/features` {
+		t.Errorf("checkStore = %v", err)
+	}
+}
