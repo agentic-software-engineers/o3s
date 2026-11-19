@@ -4,6 +4,7 @@ package menutest
 
 import (
 	"errors"
+	"strconv"
 
 	"github.com/hansehart/o3s/internal/config"
 	"github.com/hansehart/o3s/internal/fixture"
@@ -12,7 +13,7 @@ import (
 )
 
 // Dir is the folder every home of the tests lives in.
-const Dir = "/home/ubuntu/o3s"
+const Dir = fixture.HomeDir
 
 // Tool is the package of the feature the store offers with options, a secret and hosts.
 const Tool = fixture.Store + "/" + fixture.Feature
@@ -94,7 +95,7 @@ func (Lookup) Catalog(store string) ([]menu.Offer, error) {
 	if store != fixture.Store {
 		return nil, errors.New("read the features of " + store + ": unreachable")
 	}
-	return []menu.Offer{{ID: fixture.OtherFeature, Description: "Another tool"}, {ID: fixture.Feature, Name: "Tool", Description: "Installs the tool"}}, nil
+	return []menu.Offer{{ID: fixture.OtherFeature, Description: fixture.OtherFeatureAbout}, {ID: fixture.Feature, Name: fixture.FeatureTitle, Description: fixture.FeatureAbout}}, nil
 }
 
 // Peek lists the features the store offers at once, as a catalog read already.
@@ -105,13 +106,13 @@ func (l Lookup) Peek(store string) ([]menu.Offer, bool, error) {
 
 // Add shows what a feature brings, the tool with the options it offers.
 func (Lookup) Add(id string) (menu.Preview, error) {
-	pv := menu.Preview{Lines: []string{id + ":" + fixture.Major, "+ " + fixture.NewHost + ":443"}, Waiting: []string{fixture.Secret}, Features: 1, Hosts: 1}
+	pv := menu.Preview{Lines: []string{id + ":" + fixture.Major, "+ " + fixture.NewHost + ":" + strconv.Itoa(fixture.Port)}, Waiting: []string{fixture.Secret}, Features: 1, Hosts: 1}
 	// Offer the tool's options alone
 	if id == Tool {
 		pv.Options = []menu.FeatureOption{
-			{Name: fixture.Toggle, Type: "boolean", Default: "false", Description: "Log every step"},
-			{Name: fixture.Choice, Type: "string", Default: fixture.ChoiceValue, Enum: []string{fixture.ChoiceValue, fixture.OtherChoiceValue}, Description: "How strict the tool is"},
-			{Name: fixture.Free, Type: "string", Default: fixture.FloatingTag, Proposals: []string{fixture.FloatingTag, fixture.Proposal}, Description: "The version to install"},
+			{Name: fixture.Toggle, Type: "boolean", Default: "false", Description: fixture.ToggleAbout},
+			{Name: fixture.Choice, Type: "string", Default: fixture.ChoiceValue, Enum: []string{fixture.ChoiceValue, fixture.OtherChoiceValue}, Description: fixture.ChoiceAbout},
+			{Name: fixture.Free, Type: "string", Default: fixture.FloatingTag, Proposals: []string{fixture.FloatingTag, fixture.Proposal}, Description: fixture.FreeAbout},
 		}
 	}
 	return pv, nil
@@ -119,14 +120,14 @@ func (Lookup) Add(id string) (menu.Preview, error) {
 
 // Remove shows what leaves with a feature.
 func (Lookup) Remove(pkg string) (menu.Preview, error) {
-	return menu.Preview{Lines: []string{"- " + pkg, "- " + fixture.OtherHost + ":443"}, Features: 1, Hosts: 1}, nil
+	return menu.Preview{Lines: []string{"- " + pkg, "- " + fixture.OtherHost + ":" + strconv.Itoa(fixture.Port)}, Features: 1, Hosts: 1}, nil
 }
 
 // Updates lists newer versions of the cli, the stack and the tool.
 func (Lookup) Updates() ([]menu.Update, error) {
 	return []menu.Update{
 		{Target: menu.CLI, Name: menu.CLI, Change: fixture.Version + " -> " + fixture.NewerVersion},
-		{Target: "stack", Name: "stack", Change: "1 file, 2 images"},
+		{Target: "stack", Name: "stack", Change: fixture.StackChange},
 		{Target: Tool, Name: fixture.Feature, Change: fixture.Major + " -> " + fixture.NewerMajor},
 	}, nil
 }

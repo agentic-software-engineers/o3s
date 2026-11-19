@@ -154,6 +154,30 @@ const (
 	Proposal = "lts"
 )
 
+// What a store and an update say about the parts they offer.
+const (
+	// FeatureTitle is the name Feature shows by.
+	FeatureTitle = "Tool"
+	// FeatureAbout says what Feature does.
+	FeatureAbout = "Installs the tool"
+	// OtherFeatureAbout says what OtherFeature does.
+	OtherFeatureAbout = "Another tool"
+	// ToggleAbout says what Toggle does.
+	ToggleAbout = "Log every step"
+	// ChoiceAbout says what Choice does.
+	ChoiceAbout = "How strict the tool is"
+	// FreeAbout says what Free does.
+	FreeAbout = "The version to install"
+	// StackChange is what a newer stack changes.
+	StackChange = "1 file, 2 images"
+)
+
+// Folders a test works in.
+const (
+	// HomeDir is the folder a test's home lives in.
+	HomeDir = "/home/ubuntu/o3s"
+)
+
 // Moments, in UTC with whole seconds.
 const (
 	// NowText is the moment a test looks from, Go's own reference time, which names no day of its own.
@@ -191,58 +215,66 @@ func at(text string) time.Time {
 // Env hands every value to a test script by a name of its own, the way the script reads it.
 func Env() map[string]string {
 	return map[string]string{
-		"HOST":               Host,
-		"SUBDOMAIN":          Subdomain,
-		"OTHER_HOST":         OtherHost,
-		"OTHER_WILDCARD":     OtherWildcard,
-		"THIRD_HOST":         ThirdHost,
-		"REFUSED_NAME":       RefusedName,
-		"ABSENT_NAME":        AbsentName,
-		"NEW_HOST":           NewHost,
-		"NEXT_HOST":          NextHost,
-		"DATA_MOVED":         DataMoved,
-		"LAST_SEEN":          LastSeen,
-		"ATTEMPTS":           strconv.Itoa(Attempts),
-		"DURATION":           Duration,
-		"LOG_FILE":           LogFile,
-		"SSH_HOST":           SSHHost,
-		"ADDRESS":            Address,
-		"RANGE":              Range,
-		"PORT":               strconv.Itoa(Port),
-		"OTHER_PORT":         strconv.Itoa(OtherPort),
-		"BAD_PORT":           strconv.Itoa(BadPort),
-		"SECRET":             Secret,
-		"OTHER_SECRET":       OtherSecret,
-		"NEW_SECRET":         NewSecret,
-		"SECRET_VALUE":       SecretValue,
-		"STORE":              Store,
-		"ABSENT_STORE":       AbsentStore,
-		"FEATURE":            Feature,
-		"OTHER_FEATURE":      OtherFeature,
-		"THIRD_FEATURE":      ThirdFeature,
-		"REPO":               Repo,
-		"OTHER_REPO":         OtherRepo,
-		"NESTED_REPO":        NestedRepo,
-		"VERSION":            Version,
-		"NEWER_VERSION":      NewerVersion,
-		"CANDIDATE":          Candidate,
-		"NEXT_CANDIDATE":     NextCandidate,
-		"FURTHER_CANDIDATE":  FurtherCandidate,
-		"DEV_BUILD":          DevBuild,
-		"MAJOR":              Major,
-		"TOGGLE":             Toggle,
-		"CHOICE":             Choice,
-		"CHOICE_VALUE":       ChoiceValue,
-		"OTHER_CHOICE_VALUE": OtherChoiceValue,
-		"FREE":               Free,
-		"PROPOSAL":           Proposal,
-		"NEWER_MAJOR":        NewerMajor,
-		"MINOR_TAG":          MinorTag,
-		"FLOATING_TAG":       FloatingTag,
-		"NOW":                NowText,
-		"IN_AN_HOUR":         InAnHourText,
-		"IN_TWO_HOURS":       InTwoHoursText,
-		"LONG_AGO":           LongAgoText,
-		"FAR_AHEAD":          FarAheadText,
+		"HOST":                Host,
+		"SUBDOMAIN":           Subdomain,
+		"OTHER_HOST":          OtherHost,
+		"OTHER_WILDCARD":      OtherWildcard,
+		"THIRD_HOST":          ThirdHost,
+		"REFUSED_NAME":        RefusedName,
+		"ABSENT_NAME":         AbsentName,
+		"NEW_HOST":            NewHost,
+		"NEXT_HOST":           NextHost,
+		"DATA_MOVED":          DataMoved,
+		"LAST_SEEN":           LastSeen,
+		"ATTEMPTS":            strconv.Itoa(Attempts),
+		"DURATION":            Duration,
+		"LOG_FILE":            LogFile,
+		"SSH_HOST":            SSHHost,
+		"ADDRESS":             Address,
+		"RANGE":               Range,
+		"PORT":                strconv.Itoa(Port),
+		"OTHER_PORT":          strconv.Itoa(OtherPort),
+		"BAD_PORT":            strconv.Itoa(BadPort),
+		"SECRET":              Secret,
+		"OTHER_SECRET":        OtherSecret,
+		"NEW_SECRET":          NewSecret,
+		"SECRET_VALUE":        SecretValue,
+		"STORE":               Store,
+		"ABSENT_STORE":        AbsentStore,
+		"FEATURE":             Feature,
+		"OTHER_FEATURE":       OtherFeature,
+		"THIRD_FEATURE":       ThirdFeature,
+		"REPO":                Repo,
+		"OTHER_REPO":          OtherRepo,
+		"NESTED_REPO":         NestedRepo,
+		"VERSION":             Version,
+		"NEWER_VERSION":       NewerVersion,
+		"CANDIDATE":           Candidate,
+		"NEXT_CANDIDATE":      NextCandidate,
+		"FURTHER_CANDIDATE":   FurtherCandidate,
+		"DEV_BUILD":           DevBuild,
+		"MAJOR":               Major,
+		"TOGGLE":              Toggle,
+		"CHOICE":              Choice,
+		"CHOICE_VALUE":        ChoiceValue,
+		"OTHER_CHOICE_VALUE":  OtherChoiceValue,
+		"FREE":                Free,
+		"PROPOSAL":            Proposal,
+		"FEATURE_TITLE":       FeatureTitle,
+		"FEATURE_ABOUT":       FeatureAbout,
+		"OTHER_FEATURE_ABOUT": OtherFeatureAbout,
+		"TOGGLE_ABOUT":        ToggleAbout,
+		"CHOICE_ABOUT":        ChoiceAbout,
+		"FREE_ABOUT":          FreeAbout,
+		"STACK_CHANGE":        StackChange,
+		"HOME_DIR":            HomeDir,
+		"NEWER_MAJOR":         NewerMajor,
+		"MINOR_TAG":           MinorTag,
+		"FLOATING_TAG":        FloatingTag,
+		"NOW":                 NowText,
+		"IN_AN_HOUR":          InAnHourText,
+		"IN_TWO_HOURS":        InTwoHoursText,
+		"LONG_AGO":            LongAgoText,
+		"FAR_AHEAD":           FarAheadText,
 	}
 }

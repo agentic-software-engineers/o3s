@@ -46,7 +46,7 @@ func anApp(t *testing.T, scripts map[string]string) (model, *[]string) {
 	t.Helper()
 	var handed []string
 	m := model{width: usualWidth, height: usualHeight, cfg: Config{
-		Home: func() menu.Home { return menu.Home{Dir: "/home/ubuntu/o3s", Exists: true} },
+		Home: func() menu.Home { return menu.Home{Dir: fixture.HomeDir, Exists: true} },
 		Command: func(args []string) *exec.Cmd {
 			line := strings.Join(args, " ")
 			script, ok := scripts[line]
@@ -174,7 +174,7 @@ func TestAppNamesADeclinedChange(t *testing.T) {
 func TestAppShowsTheViewAfterQuietCommands(t *testing.T) {
 	m, _ := anApp(t, nil)
 	m.cfg.Home = func() menu.Home {
-		return menu.Home{Dir: "/home/ubuntu/o3s", Exists: true, Installed: []menu.Installed{{Package: fixture.Store + "/" + fixture.Feature, Tag: fixture.Major}, {Package: fixture.Store + "/" + fixture.OtherFeature, Tag: fixture.Major}}}
+		return menu.Home{Dir: fixture.HomeDir, Exists: true, Installed: []menu.Installed{{Package: fixture.Store + "/" + fixture.Feature, Tag: fixture.Major}, {Package: fixture.Store + "/" + fixture.OtherFeature, Tag: fixture.Major}}}
 	}
 	m, _ = settle(m, m.Init())
 
@@ -416,7 +416,7 @@ func TestAppFillsInAViewAsItsRowsComeIn(t *testing.T) {
 	ready := false
 	m, _ := anApp(t, nil)
 	m.cfg.Home = func() menu.Home {
-		return menu.Home{Dir: "/home/ubuntu/o3s", Exists: true, Stores: []string{fixture.Store}, Lookup: slowStore{ready: &ready}}
+		return menu.Home{Dir: fixture.HomeDir, Exists: true, Stores: []string{fixture.Store}, Lookup: slowStore{ready: &ready}}
 	}
 	m, _ = settle(m, m.Init())
 	m, _ = drive(m, keys("feat", enter, right)...)
@@ -441,7 +441,7 @@ func TestAppFillsInAViewAsItsRowsComeIn(t *testing.T) {
 func TestAppLeavesForTheNewBinary(t *testing.T) {
 	updating := func(script string) (model, bool) {
 		m, _ := anApp(t, map[string]string{"update": script})
-		m.cfg.Home = func() menu.Home { return menu.Home{Dir: "/home/ubuntu/o3s", Exists: true} }
+		m.cfg.Home = func() menu.Home { return menu.Home{Dir: fixture.HomeDir, Exists: true} }
 		m.answers = menu.Answers{}.With("do", []string{"update"})
 		next, cmd := m.Update(plannedMsg{{Args: []string{"update"}, Restart: true}})
 		return settle(next.(model), cmd)
