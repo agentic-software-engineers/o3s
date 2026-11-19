@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"charm.land/bubbles/v2/key"
+	"charm.land/bubbles/v2/spinner"
 	"github.com/charmbracelet/x/ansi"
 
 	tea "charm.land/bubbletea/v2"
@@ -70,6 +71,9 @@ type model struct {
 	queue      []menu.Command
 	// resume are the answers the next reading of the home opens at, such as the view a change came from.
 	resume menu.Answers
+	// spin turns while the app works, and spinning marks a turn on its way.
+	spin     spinner.Model
+	spinning bool
 	// shown marks a run that left something to read on the screen: a note, or the output of a command neither quiet
 	// nor handed the real terminal.
 	shown bool
@@ -92,7 +96,7 @@ func Run(ctx context.Context, cfg Config) ([]string, error) {
 	if cfg.Exec == nil {
 		cfg.Exec = tea.ExecProcess
 	}
-	final, err := tea.NewProgram(model{cfg: cfg, resume: cfg.Resume}, tea.WithContext(ctx)).Run()
+	final, err := tea.NewProgram(newModel(cfg), tea.WithContext(ctx)).Run()
 	m, _ := final.(model)
 	return m.reopen, err
 }
@@ -125,6 +129,35 @@ func (m model) plan() tea.Cmd {
 
 // Update follows a message: a key, a resize, a question worked out, or a line of output.
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	// Turn the spinner while the app works, and let it stop once the app asks or shows a result
+	if tick, isTick := msg.(spinner.TickMsg); isTick {
+		// Stop turning once the work is over
+		if !m.busy() {
+			m.spinning = false
+			return m, nil
+		}
+		var cmd tea.Cmd
+		m.spin, cmd = m.spin.Update(tick)
+		return m, cmd
+	}
+	next, cmd := m.update(msg)
+	n, _ := next.(model)
+	// Start turning the spinner where the app begins to work
+	if n.busy() && !n.spinning {
+		n.spinning = true
+		return n, tea.Batch(cmd, n.spin.Tick)
+	}
+	return next, cmd
+}
+
+// busy reports whether the app works without a result to show: reading the home, asking the menu, planning, or running
+// commands whose output stays off the screen.
+func (m model) busy() bool {
+	return m.state == loading || m.state == running && !m.shown
+}
+
+// update follows a message in the state the app is in.
+func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	// Follow the message
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -699,6 +732,16 @@ func (m model) keys() []key.Binding {
 	return nil
 }
 
+// newModel is the app before it reads the home, opening where the configuration says.
+func newModel(cfg Config) model {
+	return model{cfg: cfg, resume: cfg.Resume, spin: spinner.New(spinner.WithSpinner(spinner.Dot))}
+}
+
+// working says that the app works, beside the spinner that turns while it does.
+func (m model) working() string {
+	return m.spin.View() + dim.Render("Working…")
+}
+
 // View draws the whole screen from the state: header, trail, body, footer.
 func (m model) View() tea.View {
 	top := header.Render("o3s") + "  " + dim.Render(m.home.Dir) + "\n" + m.trail() + "\n\n"
@@ -708,9 +751,13 @@ func (m model) View() tea.View {
 	case asking:
 		body = m.question()
 	case loading:
-		body = dim.Render("…")
+		body = m.working()
 	case running, done:
 		body = m.out.View()
+		// Show that the app works where its output stays off the screen
+		if m.busy() {
+			body = m.working()
+		}
 	}
 	v := tea.NewView(top + body + "\n\n" + footer(m.width, m.keys()))
 	v.AltScreen = true

@@ -24,7 +24,7 @@ var (
 func onHome(t *testing.T, h menu.Home, width, height int) (model, *[][]string) {
 	t.Helper()
 	var ran [][]string
-	m := model{width: width, height: height, cfg: Config{
+	m := newModel(Config{
 		Home: func() menu.Home { return h },
 		Command: func(args []string) *exec.Cmd {
 			ran = append(ran, args)
@@ -33,7 +33,8 @@ func onHome(t *testing.T, h menu.Home, width, height int) (model, *[][]string) {
 		Exec: func(_ *exec.Cmd, fn tea.ExecCallback) tea.Cmd {
 			return func() tea.Msg { return fn(nil) }
 		},
-	}}
+	})
+	m.width, m.height = width, height
 	m, _ = settle(m, m.Init())
 	return m, &ran
 }

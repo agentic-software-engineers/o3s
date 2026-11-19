@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"charm.land/bubbles/v2/spinner"
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/ansi"
 	"github.com/google/go-cmp/cmp"
@@ -40,7 +41,7 @@ func settle(m model, cmd tea.Cmd) (model, bool) {
 			return m, true
 		case tea.BatchMsg:
 			cmds = append(cmds, msg...)
-		case refreshMsg:
+		case refreshMsg, spinner.TickMsg:
 		default:
 			updated, more := m.Update(msg)
 			m = updated.(model)
@@ -54,7 +55,7 @@ func settle(m model, cmd tea.Cmd) (model, bool) {
 func anApp(t *testing.T, scripts map[string]string) (model, *[]string) {
 	t.Helper()
 	var handed []string
-	m := model{width: usualWidth, height: usualHeight, cfg: Config{
+	m := newModel(Config{
 		Home: func() menu.Home { return menu.Home{Dir: fixture.HomeDir, Exists: true} },
 		Command: func(args []string) *exec.Cmd {
 			line := strings.Join(args, " ")
@@ -69,7 +70,8 @@ func anApp(t *testing.T, scripts map[string]string) (model, *[]string) {
 			handed = append(handed, strings.Join(cmd.Args[4:], " "))
 			return func() tea.Msg { return fn(nil) }
 		},
-	}}
+	})
+	m.width, m.height = usualWidth, usualHeight
 	m, _ = settle(m, m.Init())
 	return m, &handed
 }
@@ -580,5 +582,47 @@ func TestTrailShowsATypedAnswerInPlaceOfItsChoice(t *testing.T) {
 	// Require the choice in the trail once the step back leaves the typed answer
 	if got, want := strings.Join(back.crumbs(), " / "), "firewall / Allowed / Allow a host / "+fixture.Host+" / "+port+" / Type a duration"; got != want {
 		t.Errorf("trail after esc = %q, want %q", got, want)
+	}
+}
+
+// While the app works without a result to show, the screen says so with a spinner, and a run with output shows it.
+func TestAppShowsThatItWorks(t *testing.T) {
+	tests := []struct {
+		name    string
+		state   state
+		shown   bool
+		working bool
+	}{
+		{"reading and asking", loading, false, true},
+		{"quiet commands", running, false, true},
+		{"commands with output", running, true, false},
+	}
+	// Check every state the app works in
+	for _, tt := range tests {
+		m := newModel(Config{})
+		m.width, m.height, m.state, m.shown = usualWidth, usualHeight, tt.state, tt.shown
+
+		view := stripped(m.View().Content)
+
+		// Report a screen that shows the work otherwise
+		if strings.Contains(view, "Working…") != tt.working {
+			t.Errorf("%s: view =\n%s", tt.name, view)
+		}
+	}
+}
+
+// The spinner turns while the app works and stops once the app asks again.
+func TestAppTurnsTheSpinnerWhileItWorks(t *testing.T) {
+	m := newModel(Config{})
+	tick := m.spin.Tick()
+
+	m.state = loading
+	_, working := m.Update(tick)
+	m.state = asking
+	_, asking := m.Update(tick)
+
+	// Require a next frame while working and none once asking
+	if working == nil || asking != nil {
+		t.Errorf("next frame while working %v, while asking %v, want one and none", working != nil, asking != nil)
 	}
 }
