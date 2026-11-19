@@ -25,7 +25,7 @@ func press(f field, msgs ...tea.Msg) (field, result) {
 }
 
 // features is a store's list as the feature question offers it.
-var features = menu.Question{Key: "feature", Kind: menu.Multi, Title: "Features", Options: []menu.Option{{Value: "claude-code"}, {Value: "codex"}, {Value: "go"}, {Value: "golangci-lint"}, {Value: "rust"}}}
+var features = menu.Question{Key: "feature", Kind: menu.Multi, Title: "Features", Filterable: true, Options: []menu.Option{{Value: "claude-code"}, {Value: "codex"}, {Value: "go"}, {Value: "golangci-lint"}, {Value: "rust"}}}
 
 // groups is a choice of groups with notes.
 var groups = menu.Question{Key: "do", Kind: menu.Select, Title: "What do you want to do?", Options: []menu.Option{{Value: "firewall", Note: "allow hosts"}, {Value: "secret", Note: "values"}, {Value: "store", Note: "stores"}}}
@@ -72,6 +72,19 @@ func TestListsClearTheFilterBeforeTheyStepBack(t *testing.T) {
 		if cleared.outcome != open || stepped.outcome != back {
 			t.Errorf("%T: esc = %v then %v, want open then back", f, cleared.outcome, stepped.outcome)
 		}
+	}
+}
+
+// A multi-select that names no filter takes letters as nothing and offers no search.
+func TestMultiFiltersWhereItSaysSo(t *testing.T) {
+	q := features
+	q.Filterable = false
+
+	f, _ := press(newMulti(q), keys("ru")...)
+
+	// Require no filter and no search among the keys
+	if m := f.(multi); m.filter != "" || strings.Contains(stripped(footer(usualWidth, f.Keys())), "search") {
+		t.Errorf("filter %q, keys %q, want neither", m.filter, stripped(footer(usualWidth, f.Keys())))
 	}
 }
 

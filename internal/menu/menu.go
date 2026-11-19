@@ -136,6 +136,8 @@ type Question struct {
 	Check func(string) (string, error)
 	// Numbered numbers the options, so a digit picks one.
 	Numbered bool
+	// Filterable lets the user narrow a long list of marks by typing.
+	Filterable bool
 	// Tabs are the tabs a view shows. A view's default names the tab it opens at and the row it starts on.
 	Tabs []Tab
 }

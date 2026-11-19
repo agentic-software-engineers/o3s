@@ -54,7 +54,7 @@ func (m multi) Update(msg tea.Msg) (field, result, tea.Cmd) {
 	case "space":
 		m.toggle()
 	default:
-		m.move(k.String(), k.Text, true)
+		m.move(k.String(), k.Text, m.q.Filterable)
 	}
 	return m, result{}, nil
 }
@@ -77,5 +77,9 @@ func (m multi) Keys() []key.Binding {
 	if m.filter != "" {
 		esc = keyClear
 	}
-	return []key.Binding{keyNavigate, keyToggle, keyType, keyContinue, esc}
+	// Name typing to search where the list takes it
+	if m.q.Filterable {
+		return []key.Binding{keyNavigate, keyToggle, keyType, keyContinue, esc}
+	}
+	return []key.Binding{keyNavigate, keyToggle, keyContinue, esc}
 }
