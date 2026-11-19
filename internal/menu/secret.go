@@ -72,11 +72,12 @@ func secretDialog(h Home, a Answers) (Question, bool) {
 	return Question{}, true
 }
 
-// bindDialog asks whether to bind a new secret to a host the proxy then injects it for, and which.
+// bindDialog asks whether to bind a new secret to a host the proxy then injects it for, and which, where the home allows
+// a host.
 func bindDialog(h Home, a Answers) (Question, bool) {
 	name := strings.TrimSpace(a.get("name"))
-	// Leave a secret some host carries already as it is
-	if len(carrying(h, name)) > 0 {
+	// Leave a secret some host carries already as it is, and offer no binding where the home allows no host
+	if len(carrying(h, name)) > 0 || len(h.Hosts) == 0 {
 		return Question{}, true
 	}
 	// Ask whether to bind the secret now

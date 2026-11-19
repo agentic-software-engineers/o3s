@@ -34,10 +34,8 @@ var instant = map[string]string{
 // knownBreaks are the breaks of the rules the menu shows today, each named by the finding a fix removes it with.
 // Fixing one removes its entry, and a new break fails the test.
 var knownBreaks = map[string]string{
-	"crumb: +prune":           "F15: the prune key shows its inner value",
 	"crumb: On (recommended)": "F21: a crumb carries its label's note",
 	"crumb: VM (recommended)": "F21: a crumb carries its label's note",
-	"nothing to pick: secret / Add a secret / " + fixture.NewSecret + " / *** / Yes, choose a host":    "F24: binding offers no host in a home without hosts",
 	"unconfirmed: o3s firewall add " + fixture.Subdomain + " --secret " + fixture.NewSecret + " --yes": "F17: binding a secret replaces a host's own unasked",
 	"unconfirmed: o3s firewall add " + fixture.Host + " --secret " + fixture.NewSecret + " --yes":      "F17: binding a secret to a host runs unasked",
 	"unconfirmed: o3s firewall add " + fixture.ThirdHost + " --secret " + fixture.NewSecret + " --yes": "F17: binding a secret to an expired host runs unasked",

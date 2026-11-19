@@ -97,25 +97,6 @@ Value for NEW_TOKEN
 
 enter continue · esc cancel
 
-──── bind
-o3s  /home/ubuntu/o3s
-secret / Add a secret / NEW_TOKEN / ***
-
-Bind NEW_TOKEN to a host?
-❯ 1. Yes, choose a host…
-  2. Not now
-
-↑/↓ navigate · 1-2 choose · enter select · esc back
-
-──── host
-o3s  /home/ubuntu/o3s
-secret / Add a secret / NEW_TOKEN / *** / Yes, choose a host
-
-Host
-  No match for ""
-
-↑/↓ navigate · type to search · enter select · esc back
-
 ──── action
 o3s  /home/ubuntu/o3s
 secret / EXAMPLE_TOKEN

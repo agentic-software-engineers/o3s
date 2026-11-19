@@ -265,7 +265,7 @@ The cage reaches only these hosts.
 
 ──── apply
 o3s  /home/ubuntu/o3s
-firewall / Allowed / +prune
+firewall / Allowed / prune expired
 
 - example.net   expired Jan 1 00:00
 
@@ -1551,6 +1551,16 @@ Values the proxy injects. The cage never sees them.
   OTHER_TOKEN       set
 
 ↑/↓ navigate · / search · enter select · esc back
+
+──── bind
+o3s  /home/ubuntu/o3s
+secret / Add a secret / NEW_TOKEN / ***
+
+Bind NEW_TOKEN to a host?
+❯ 1. Yes, choose a host…
+  2. Not now
+
+↑/↓ navigate · 1-2 choose · enter select · esc back
 
 ──── host
 o3s  /home/ubuntu/o3s
