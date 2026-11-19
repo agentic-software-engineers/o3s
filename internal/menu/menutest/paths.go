@@ -152,13 +152,19 @@ func Answers(q menu.Question) ([][]string, error) {
 	return out, nil
 }
 
+// Typed are the lines a test types for the question a key names, the first the question's check is meant to take.
+func Typed(key string) ([]string, bool) {
+	// Type a proposal for a feature's option
+	if strings.HasPrefix(key, "option:") {
+		return []string{fixture.Proposal}, true
+	}
+	lines, ok := typed[key]
+	return lines, ok
+}
+
 // typedLine is the line a test types for a question that takes text, the first its check takes.
 func typedLine(q menu.Question) (string, error) {
-	lines, ok := typed[q.Key]
-	// Type a proposal for a feature's option
-	if strings.HasPrefix(q.Key, "option:") {
-		lines, ok = []string{fixture.Proposal}, true
-	}
+	lines, ok := Typed(q.Key)
 	// Name a question no line is set for
 	if !ok {
 		return "", fmt.Errorf("no line to type for %q, add one to menutest's typed lines", q.Key)
