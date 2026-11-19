@@ -10,5 +10,5 @@ func TestFlowInitStepsBackToTheIsolation(t *testing.T) {
 	m, _ = drive(m, esc)
 
 	// Require the isolation again, the process highlighted
-	requireLines(t, m, "Isolation", "❯ 2. Process            the cage shares this machine's kernel")
+	requireLines(t, m, "Isolation", "❯ 2. Process   the cage shares this machine's kernel")
 }

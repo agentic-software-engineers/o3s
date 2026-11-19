@@ -14,14 +14,14 @@ func initDialog(h Home, a Answers) (Question, bool) {
 	// Ask the isolation first, the VM recommended
 	if !a.has("isolation") {
 		return Question{Key: "isolation", Kind: Select, Title: "Isolation", Numbered: true, Options: []Option{
-			{Value: inVM, Label: "VM (recommended)", Note: "the home runs in its own VM, AppArmor inside it"},
+			{Value: inVM, Label: "VM", Note: "the home runs in its own VM, AppArmor inside it (recommended)"},
 			{Value: inProcess, Label: "Process", Note: "the cage shares this machine's kernel"},
 		}}, false
 	}
 	// Ask about AppArmor on the shared kernel alone, on recommended
 	if a.get("isolation") == inProcess && !a.has("apparmor") {
 		return Question{Key: "apparmor", Kind: Select, Title: "AppArmor", Numbered: true, Options: []Option{
-			{Value: on, Label: "On (recommended)", Note: "limits what the cage may do on the shared kernel"},
+			{Value: on, Label: "On", Note: "limits what the cage may do on the shared kernel (recommended)"},
 			{Value: off, Label: "Off", Note: "the cage keeps its other limits"},
 		}}, false
 	}

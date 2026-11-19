@@ -479,7 +479,7 @@ func crumb(q menu.Question, values []string) string {
 		case len(values) > 1 && values[1] == menu.Order:
 			parts = append(parts, "order")
 		case i >= 0 && q.Tabs[i].Multi:
-			parts = append(parts, fmt.Sprintf("%d marked", len(values)-1))
+			parts = append(parts, marksChange(q.Tabs[i].Marked, values[1:]))
 		case i >= 0 && len(values) > 1:
 			parts = append(parts, label(append(slices.Clone(q.Tabs[i].Options), keyOptions(q.Tabs[i])...), values[1]))
 		}
@@ -491,6 +491,44 @@ func crumb(q menu.Question, values []string) string {
 		shown[j] = label(q.Options, v)
 	}
 	return strings.Join(shown, ", ")
+}
+
+// marksChange names what the marks a tab hands back change against the ones it started with, and how many are marked
+// where it started with none or they stay as they started.
+func marksChange(before, after []string) string {
+	// Count the marks where the tab started with none
+	if len(before) == 0 {
+		return fmt.Sprintf("%d marked", len(after))
+	}
+	var parts []string
+	// Name the rows marked and unmarked
+	for _, c := range []struct {
+		n    int
+		verb string
+	}{{countMissing(after, before), "marks"}, {countMissing(before, after), "unmarks"}} {
+		// Name a change that happened
+		if c.n > 0 {
+			parts = append(parts, fmt.Sprintf("%s %d", c.verb, c.n))
+		}
+	}
+	// Count the marks where they stay as they started
+	if len(parts) == 0 {
+		return fmt.Sprintf("%d marked", len(after))
+	}
+	return strings.Join(parts, ", ")
+}
+
+// countMissing counts the values of one list the other lacks.
+func countMissing(values, from []string) int {
+	n := 0
+	// Count every value the other list lacks
+	for _, v := range values {
+		// Count a value the other list lacks
+		if !slices.Contains(from, v) {
+			n++
+		}
+	}
+	return n
 }
 
 // keyOptions are the keys a tab acts on as options, each shown by what it does, so a key's answer reads as its help.

@@ -187,7 +187,8 @@ func newCageRm() *cobra.Command {
 				if _, err := cageHome(); err != nil {
 					return err
 				}
-				fmt.Fprintln(out, "  - the stack's containers, the home's files and the projects volume staying")
+				fmt.Fprintln(out, "  - the stack's containers")
+				fmt.Fprintln(out, "  = the home's files and the projects volume stay")
 			}
 			ok, err := confirm(cmd.InOrStdin(), out, isTerminal(cmd.InOrStdin()), yes, "remove")
 			// Hand back an answer that fails to arrive

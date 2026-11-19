@@ -166,3 +166,16 @@ func (c *Config) Find(name string) (Host, bool) {
 	}
 	return c.Hosts[i], true
 }
+
+// Allows reports whether the allowlist lets a host through on a port, by the host's name or by a wildcard above it.
+func (c *Config) Allows(host string, port int) bool {
+	// Look at every host the allowlist holds
+	for _, h := range c.Hosts {
+		suffix, wildcard := strings.CutPrefix(h.Name, "*")
+		// Take the host by its name, or by a wildcard that covers it
+		if (h.Name == host || wildcard && strings.HasSuffix(host, suffix)) && slices.Contains(h.Ports, port) {
+			return true
+		}
+	}
+	return false
+}

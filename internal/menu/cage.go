@@ -21,12 +21,12 @@ func cageDialog(h Home, a Answers) (Question, bool) {
 	}
 	// Confirm a removal, naming what goes
 	if a.get("action") == remove {
-		line := "- the stack's containers, the home's files and the projects volume staying"
+		lines := []string{"- the stack's containers", "= the home's files and the projects volume stay"}
 		// Name the VM and its disk, which hold the home and its projects
 		if h.VM != "" {
-			line = "- the VM and its disk, with the home and the projects inside"
+			lines = []string{"- the VM and its disk, with the home and the projects inside"}
 		}
-		return ask(a, apply([]string{line}, "Removes the cage", true))
+		return ask(a, apply(lines, "Removes the cage", true))
 	}
 	return Question{}, true
 }

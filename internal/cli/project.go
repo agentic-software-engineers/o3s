@@ -56,7 +56,7 @@ func newProjectAdd() *cobra.Command {
 			// Check every repository before the cage comes up
 			for _, repo := range repos {
 				// Turn away a clone the gateway would block, with the command that opens the way
-				if !allows(c, repo.Host, repo.Port) {
+				if !c.Allows(repo.Host, repo.Port) {
 					return fmt.Errorf("the firewall blocks %s:%d, allow it with: o3s firewall add %s --port %d", repo.Host, repo.Port, repo.Host, repo.Port)
 				}
 				// Turn away a project whose folder the workspace lists already
@@ -309,19 +309,6 @@ func addFolder(dir string, ws *workspace.Workspace, repo project.Repository) err
 		return err
 	}
 	return ws.Save(home.Workspace(dir))
-}
-
-// allows reports whether the home's allowlist lets the cage reach a host on a port, by its name or a wildcard over it.
-func allows(c config.Config, host string, port int) bool {
-	// Look at every host the allowlist holds
-	for _, h := range c.Hosts {
-		suffix, wildcard := strings.CutPrefix(h.Name, "*")
-		// Take the host by its name, or by a wildcard that covers it
-		if (h.Name == host || wildcard && strings.HasSuffix(host, suffix)) && slices.Contains(h.Ports, port) {
-			return true
-		}
-	}
-	return false
 }
 
 // errNotConfirmed marks a deletion the user did not confirm.

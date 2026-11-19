@@ -11,7 +11,8 @@ cmp o3s.json want.json
 
 # A store without a collection leaves the list as it was
 ! exec o3s feature store add $REGISTRY/absent
-stderr 'read the features of .*/absent'
+stderr 'read the features of .*/absent: holds no feature collection$'
+! stderr 'http'
 cmp o3s.json want.json
 
 # A store id that names no repository is a usage error

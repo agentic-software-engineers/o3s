@@ -203,3 +203,25 @@ func TestAllowOpensForGoodAndTakesTheSecretOff(t *testing.T) {
 		t.Errorf("Allow(%s) diffs (-want +got):\n%s", fixture.Subdomain, diff)
 	}
 }
+
+// The allowlist lets a host through on a port it names, by its name or by a wildcard above it.
+func TestAllowsReadsNamesAndWildcards(t *testing.T) {
+	c := aConfigThatAllows(config.Host{Name: fixture.Host, Ports: []int{fixture.OtherPort}}, config.Host{Name: fixture.OtherWildcard, Ports: []int{fixture.Port}})
+	tests := []struct {
+		host string
+		port int
+		want bool
+	}{
+		{fixture.Host, fixture.OtherPort, true},
+		{fixture.Host, fixture.Port, false},
+		{"api." + fixture.OtherHost, fixture.Port, true},
+		{fixture.ThirdHost, fixture.Port, false},
+	}
+	// Check every host and port
+	for _, tt := range tests {
+		// Report a host read otherwise
+		if got := c.Allows(tt.host, tt.port); got != tt.want {
+			t.Errorf("Allows(%s, %d) = %v, want %v", tt.host, tt.port, got, tt.want)
+		}
+	}
+}

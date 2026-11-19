@@ -13,14 +13,14 @@ o3s  /home/ubuntu/o3s
 init
 
 Isolation
-❯ 1. VM (recommended)   the home runs in its own VM, AppArmor inside it
-  2. Process            the cage shares this machine's kernel
+❯ 1. VM        the home runs in its own VM, AppArmor inside it (recommended)
+  2. Process   the cage shares this machine's kernel
 
 ↑/↓ navigate · 1-2 choose · enter select · esc back
 
 ──── apply
 o3s  /home/ubuntu/o3s
-init / VM (recommended)
+init / VM
 
 Creates an o3s home in /home/ubuntu/o3s, inside its own VM
 Apply?
@@ -34,14 +34,14 @@ o3s  /home/ubuntu/o3s
 init / Process
 
 AppArmor
-❯ 1. On (recommended)   limits what the cage may do on the shared kernel
-  2. Off                the cage keeps its other limits
+❯ 1. On    limits what the cage may do on the shared kernel (recommended)
+  2. Off   the cage keeps its other limits
 
 ↑/↓ navigate · 1-2 choose · enter select · esc back
 
 ──── apply
 o3s  /home/ubuntu/o3s
-init / Process / On (recommended)
+init / Process / On
 
 Creates an o3s home in /home/ubuntu/o3s, on this machine's kernel
 Apply?

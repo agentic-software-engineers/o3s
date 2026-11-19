@@ -33,7 +33,8 @@ Cage
 o3s  /home/ubuntu/o3s
 cage / Remove
 
-- the stack's containers, the home's files and the projects volume staying
+- the stack's containers
+= the home's files and the projects volume stay
 
 Removes the cage
 Apply?
@@ -168,7 +169,7 @@ Apply?
 
 ──── apply
 o3s  /home/ubuntu/o3s
-feature / Discover / 1 marked
+feature / Discover / unmarks 1
 
 - registry.example.com/features/other
 - example.org:443
@@ -182,7 +183,7 @@ Apply?
 
 ──── apply
 o3s  /home/ubuntu/o3s
-feature / Discover / 1 marked
+feature / Discover / unmarks 1
 
 - registry.example.com/features/tool
 - example.org:443
@@ -196,7 +197,7 @@ Apply?
 
 ──── apply
 o3s  /home/ubuntu/o3s
-feature / Discover / 0 marked
+feature / Discover / unmarks 2
 
 - registry.example.com/features/tool
 - example.org:443
@@ -226,10 +227,14 @@ o3s  /home/ubuntu/o3s
 feature / Stores / registry.example.com/features
 
 registry.example.com/features
+
+  Features            2
+  Installed from it   2
+
 ❯ Remove
   Back
 
-↑/↓ navigate · type to search · enter select · esc back
+↑/↓ navigate · enter select · esc back
 
 ──── apply
 o3s  /home/ubuntu/o3s
@@ -347,7 +352,7 @@ Where the secret goes
   [ ] query
   [ ] body
 
-↑/↓ navigate · space toggle · type to search · enter continue · esc back
+↑/↓ navigate · space toggle · enter continue · esc back
 
 ──── apply
 o3s  /home/ubuntu/o3s
@@ -414,7 +419,7 @@ Where the secret goes
   [ ] query
   [ ] body
 
-↑/↓ navigate · space toggle · type to search · enter continue · esc back
+↑/↓ navigate · space toggle · enter continue · esc back
 
 ──── apply
 o3s  /home/ubuntu/o3s
@@ -460,7 +465,7 @@ Where the secret goes
   [ ] query
   [ ] body
 
-↑/↓ navigate · space toggle · type to search · enter continue · esc back
+↑/↓ navigate · space toggle · enter continue · esc back
 
 ──── apply
 o3s  /home/ubuntu/o3s
@@ -885,7 +890,7 @@ Where the secret goes
   [ ] query
   [ ] body
 
-↑/↓ navigate · space toggle · type to search · enter continue · esc back
+↑/↓ navigate · space toggle · enter continue · esc back
 
 ──── apply
 o3s  /home/ubuntu/o3s
@@ -948,7 +953,7 @@ Where the secret goes
   [ ] query
   [ ] body
 
-↑/↓ navigate · space toggle · type to search · enter continue · esc back
+↑/↓ navigate · space toggle · enter continue · esc back
 
 ──── apply
 o3s  /home/ubuntu/o3s
@@ -993,7 +998,7 @@ Where the secret goes
   [ ] query
   [ ] body
 
-↑/↓ navigate · space toggle · type to search · enter continue · esc back
+↑/↓ navigate · space toggle · enter continue · esc back
 
 ──── apply
 o3s  /home/ubuntu/o3s
@@ -1226,7 +1231,7 @@ Where the secret goes
   [ ] query
   [ ] body
 
-↑/↓ navigate · space toggle · type to search · enter continue · esc back
+↑/↓ navigate · space toggle · enter continue · esc back
 
 ──── apply
 o3s  /home/ubuntu/o3s
@@ -1289,7 +1294,7 @@ Where the secret goes
   [ ] query
   [ ] body
 
-↑/↓ navigate · space toggle · type to search · enter continue · esc back
+↑/↓ navigate · space toggle · enter continue · esc back
 
 ──── apply
 o3s  /home/ubuntu/o3s
@@ -1334,7 +1339,7 @@ Where the secret goes
   [ ] query
   [ ] body
 
-↑/↓ navigate · space toggle · type to search · enter continue · esc back
+↑/↓ navigate · space toggle · enter continue · esc back
 
 ──── apply
 o3s  /home/ubuntu/o3s
@@ -1567,7 +1572,7 @@ Where the secret goes
   [ ] query
   [ ] body
 
-↑/↓ navigate · space toggle · type to search · enter continue · esc back
+↑/↓ navigate · space toggle · enter continue · esc back
 
 ──── apply
 o3s  /home/ubuntu/o3s
@@ -1630,7 +1635,7 @@ Where the secret goes
   [ ] query
   [ ] body
 
-↑/↓ navigate · space toggle · type to search · enter continue · esc back
+↑/↓ navigate · space toggle · enter continue · esc back
 
 ──── apply
 o3s  /home/ubuntu/o3s
@@ -1675,7 +1680,7 @@ Where the secret goes
   [ ] query
   [ ] body
 
-↑/↓ navigate · space toggle · type to search · enter continue · esc back
+↑/↓ navigate · space toggle · enter continue · esc back
 
 ──── apply
 o3s  /home/ubuntu/o3s
@@ -1907,7 +1912,7 @@ Where the secret goes
   [ ] query
   [ ] body
 
-↑/↓ navigate · space toggle · type to search · enter continue · esc back
+↑/↓ navigate · space toggle · enter continue · esc back
 
 ──── apply
 o3s  /home/ubuntu/o3s
@@ -1970,7 +1975,7 @@ Where the secret goes
   [ ] query
   [ ] body
 
-↑/↓ navigate · space toggle · type to search · enter continue · esc back
+↑/↓ navigate · space toggle · enter continue · esc back
 
 ──── apply
 o3s  /home/ubuntu/o3s
@@ -2015,7 +2020,7 @@ Where the secret goes
   [ ] query
   [ ] body
 
-↑/↓ navigate · space toggle · type to search · enter continue · esc back
+↑/↓ navigate · space toggle · enter continue · esc back
 
 ──── apply
 o3s  /home/ubuntu/o3s
@@ -2088,7 +2093,7 @@ Where the secret goes
   [ ] query
   [ ] body
 
-↑/↓ navigate · space toggle · type to search · enter continue · esc back
+↑/↓ navigate · space toggle · enter continue · esc back
 
 ──── apply
 o3s  /home/ubuntu/o3s
@@ -2151,7 +2156,7 @@ Where the secret goes
   [ ] query
   [ ] body
 
-↑/↓ navigate · space toggle · type to search · enter continue · esc back
+↑/↓ navigate · space toggle · enter continue · esc back
 
 ──── apply
 o3s  /home/ubuntu/o3s
@@ -2196,7 +2201,7 @@ Where the secret goes
   [ ] query
   [ ] body
 
-↑/↓ navigate · space toggle · type to search · enter continue · esc back
+↑/↓ navigate · space toggle · enter continue · esc back
 
 ──── apply
 o3s  /home/ubuntu/o3s
@@ -2435,6 +2440,19 @@ e.g. hansehart/o3s  gitlab.com/group/app
 
 enter continue · esc cancel
 
+──── apply
+o3s  /home/ubuntu/o3s
+project / Add a project / example/app
+
++ github.com:22
+
+Opens github.com so the clone reaches it
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
 ──── repos
 o3s  /home/ubuntu/o3s
 project / Create a project
@@ -2516,7 +2534,7 @@ Where the secret goes
   [ ] query
   [ ] body
 
-↑/↓ navigate · space toggle · type to search · enter continue · esc back
+↑/↓ navigate · space toggle · enter continue · esc back
 
 ──── apply
 o3s  /home/ubuntu/o3s
@@ -2579,7 +2597,7 @@ Where the secret goes
   [ ] query
   [ ] body
 
-↑/↓ navigate · space toggle · type to search · enter continue · esc back
+↑/↓ navigate · space toggle · enter continue · esc back
 
 ──── apply
 o3s  /home/ubuntu/o3s
@@ -2603,7 +2621,7 @@ Where the secret goes
   [ ] query
   [ ] body
 
-↑/↓ navigate · space toggle · type to search · enter continue · esc back
+↑/↓ navigate · space toggle · enter continue · esc back
 
 ──── apply
 o3s  /home/ubuntu/o3s
@@ -2627,7 +2645,7 @@ Where the secret goes
   [ ] query
   [ ] body
 
-↑/↓ navigate · space toggle · type to search · enter continue · esc back
+↑/↓ navigate · space toggle · enter continue · esc back
 
 ──── apply
 o3s  /home/ubuntu/o3s
@@ -2688,7 +2706,7 @@ Apply?
 
 ──── apply
 o3s  /home/ubuntu/o3s
-update / 2 marked
+update / unmarks 1
 
 ~ stack   1 file, 2 images
 ~ tool   1 -> 2
@@ -2702,7 +2720,7 @@ Apply?
 
 ──── apply
 o3s  /home/ubuntu/o3s
-update / 2 marked
+update / unmarks 1
 
 ~ cli   1.0.0 -> 2.0.0
 ~ tool   1 -> 2
@@ -2716,7 +2734,7 @@ Apply?
 
 ──── apply
 o3s  /home/ubuntu/o3s
-update / 2 marked
+update / unmarks 1
 
 ~ cli   1.0.0 -> 2.0.0
 ~ stack   1 file, 2 images
