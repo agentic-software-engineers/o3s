@@ -7,7 +7,6 @@ import (
 	"os/exec"
 	"path"
 	"slices"
-	"strings"
 	"time"
 
 	"github.com/hansehart/o3s/internal/config"
@@ -15,7 +14,6 @@ import (
 	"github.com/hansehart/o3s/internal/home"
 	"github.com/hansehart/o3s/internal/menu"
 	"github.com/hansehart/o3s/internal/registry"
-	"github.com/hansehart/o3s/internal/restart"
 	"github.com/hansehart/o3s/internal/traffic"
 	"github.com/hansehart/o3s/internal/tui"
 	"github.com/hansehart/o3s/internal/update"
@@ -238,28 +236,13 @@ func installed(dc *devcontainer.Config) []menu.Installed {
 	return out
 }
 
-// stackFacts names whether each part of the stack runs, and nothing outside a home.
+// stackFacts names where each part of the stack stands, and nothing outside a home.
 func stackFacts(ctx context.Context, dir string, exists bool) []menu.Fact {
 	// Name nothing outside a home
 	if !exists {
 		return nil
 	}
-	var facts []menu.Fact
-	// Name the state of every part
-	for _, part := range []string{"cage", "gateway", "proxy"} {
-		ids, err := restart.Containers(ctx, dir, part)
-		state := "stopped"
-		// Name a part whose state stays unknown
-		if err != nil {
-			state = "unknown"
-		}
-		// Name a part that runs
-		if len(ids) > 0 {
-			state = "running"
-		}
-		facts = append(facts, menu.Fact{Label: strings.ToUpper(part[:1]) + part[1:], Value: state})
-	}
-	return facts
+	return homeStack(ctx, dir).facts()
 }
 
 // menuSecrets lists every secret the hosts carry or the secrets file names, once each, noting whether it holds a

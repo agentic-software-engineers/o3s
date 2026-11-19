@@ -21,6 +21,7 @@ const fakeDocker = `#!/bin/sh
 echo "$*" >> "$WORK/docker.log"
 # Answer each question about the stack, any restart, and the daemon's security options, the way a host's engine would
 case "$*" in
+  ps*service=cage*) [ -f "$WORK/cage-up" ] && echo cage-id ;;
   ps*service=gateway*) [ -f "$WORK/stack-up" ] && echo gateway-id ;;
   ps*service=proxy*) [ -f "$WORK/stack-up" ] && echo proxy-id ;;
   restart*) echo "$2" ;;
