@@ -197,7 +197,7 @@ func newFeatureRm() *cobra.Command {
 				pkgs = append(pkgs, pkg)
 				all.hosts, all.env = append(all.hosts, gone.hosts...), append(all.env, gone.env...)
 			}
-			ok, err := confirm(cmd.InOrStdin(), out, isTerminal(cmd.InOrStdin()), yes)
+			ok, err := confirm(cmd.InOrStdin(), out, isTerminal(cmd.InOrStdin()), yes, "remove")
 			// Hand back an answer that fails to arrive
 			if err != nil {
 				return err

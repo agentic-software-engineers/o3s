@@ -289,9 +289,14 @@ func allowLines(h Home, a Answers, hosts []string) []string {
 	return lines
 }
 
-// allowSummary sums up in one line how many hosts the change allows and for how long.
+// allowSummary sums up in one line what the change allows, each host by what it covers, and for how long.
 func allowSummary(a Answers, hosts []string) string {
-	line := "Allows " + words.Count(len(hosts), "host", "hosts")
+	readings := make([]string, len(hosts))
+	// Read what every host covers
+	for i, h := range hosts {
+		readings[i] = config.Reading(h)
+	}
+	line := "Allows " + words.JoinAnd(readings)
 	// Name how long the hosts stay open
 	if d, err := config.ParseFor(chosenFor(a)); err == nil {
 		return line + " for " + spoken(d)

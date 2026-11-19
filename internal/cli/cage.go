@@ -189,7 +189,7 @@ func newCageRm() *cobra.Command {
 				}
 				fmt.Fprintln(out, "  - the stack's containers, the home's files and the projects volume staying")
 			}
-			ok, err := confirm(cmd.InOrStdin(), out, isTerminal(cmd.InOrStdin()), yes)
+			ok, err := confirm(cmd.InOrStdin(), out, isTerminal(cmd.InOrStdin()), yes, "remove")
 			// Hand back an answer that fails to arrive
 			if err != nil {
 				return err

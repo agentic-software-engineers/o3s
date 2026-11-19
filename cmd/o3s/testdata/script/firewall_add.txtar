@@ -10,6 +10,11 @@ stdout '^Allowed '${NEW_HOST@R}':'$OTHER_PORT'$'
 stdout '^Allowed '${NEXT_HOST@R}':'$OTHER_PORT'$'
 exec o3s firewall rm $NEW_HOST $NEXT_HOST --yes
 
+# A wildcard names what it covers, every name below its domain
+exec o3s firewall add $OTHER_WILDCARD
+stdout '^Allowed '${OTHER_WILDCARD@R}':'$PORT', every name below '${OTHER_HOST@R}'$'
+exec o3s firewall rm $OTHER_WILDCARD --yes
+
 # An update lists each field it changed before it confirms
 exec o3s firewall add example.com --port 22 --port 443
 stdout '^example.com$'

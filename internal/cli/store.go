@@ -70,7 +70,7 @@ func newStoreRm() *cobra.Command {
 			for _, id := range args {
 				fmt.Fprintf(out, "  - %s\n", id)
 			}
-			ok, err := confirm(cmd.InOrStdin(), out, isTerminal(cmd.InOrStdin()), yes)
+			ok, err := confirm(cmd.InOrStdin(), out, isTerminal(cmd.InOrStdin()), yes, "remove")
 			// Hand back an answer that fails to arrive
 			if err != nil {
 				return err

@@ -58,7 +58,7 @@ func selfUpdate(ctx context.Context, in io.Reader, out, errOut io.Writer, yes bo
 		return false, nil
 	}
 	fmt.Fprintf(out, "%-14s %s -> %s\n", "o3s", current, target)
-	ok, err := confirm(in, out, isTerminal(in), yes)
+	ok, err := confirm(in, out, isTerminal(in), yes, "update")
 	// Hand back an answer that fails to arrive, or go on with this binary when the user declines
 	if err != nil || !ok {
 		return false, err

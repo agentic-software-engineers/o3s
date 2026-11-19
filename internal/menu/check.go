@@ -21,14 +21,16 @@ func checkHosts(line string) (string, error) {
 	if len(hosts) == 0 {
 		return "", errEmpty
 	}
-	// Check every host
-	for _, h := range hosts {
+	readings := make([]string, len(hosts))
+	// Check every host, reading what it covers
+	for i, h := range hosts {
 		// Name the host the gateway would turn away
 		if err := config.CheckHost(h); err != nil {
 			return "", fmt.Errorf("%q is not a host name", h)
 		}
+		readings[i] = config.Reading(h)
 	}
-	return words.Count(len(hosts), "host", "hosts"), nil
+	return words.JoinAnd(readings), nil
 }
 
 // checkPorts reads ports separated by commas, naming the first one outside the TCP range.

@@ -18,7 +18,7 @@ func TestChecksReadWhatHoldsAndNameWhatBreaks(t *testing.T) {
 		good, reading string
 		bad           []string
 	}{
-		{"hosts", checkHosts, fixture.Host + " " + fixture.Subdomain, "2 hosts", []string{"", "bad host!"}},
+		{"hosts", checkHosts, fixture.Host + " " + fixture.OtherWildcard, fixture.Host + " and every name below " + fixture.OtherHost, []string{"", "bad host!"}},
 		{"ports", checkPorts, bothPortsTyped, "ports " + bothPortsTyped, []string{"", strconv.Itoa(fixture.BadPort), "ssh"}},
 		{"duration", checkFor, fixture.Duration, "open for 90 minutes", []string{"soon", "0", "-5m"}},
 		{"secret name", checkSecretName, fixture.Secret, "reads as $" + fixture.Secret, []string{"lower_case"}},

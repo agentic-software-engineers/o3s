@@ -1,7 +1,7 @@
 # Without a terminal or --yes, removing names what leaves and asks for --yes, the allowlist left as it was
 ! exec o3s firewall rm example.com
 stdout '^  - example.com:22,443$'
-stderr 'pass --yes to apply without a terminal'
+stderr 'pass --yes to remove without a terminal'
 grep '"example.com"' o3s.json
 
 # A host the user alone needs leaves the allowlist, and a host a feature still needs stays with the feature named, both at once

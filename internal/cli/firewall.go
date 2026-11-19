@@ -67,7 +67,7 @@ func newFirewallAdd() *cobra.Command {
 			}
 			// Ask before any host closes sooner than it would
 			if narrowed {
-				ok, err := confirm(cmd.InOrStdin(), out, isTerminal(cmd.InOrStdin()), yes)
+				ok, err := confirm(cmd.InOrStdin(), out, isTerminal(cmd.InOrStdin()), yes, "close sooner")
 				// Hand back an answer that fails to arrive
 				if err != nil {
 					return err
@@ -146,7 +146,7 @@ func newFirewallRm() *cobra.Command {
 				}
 				fmt.Fprintf(out, "  - %s:%s\n", name, config.JoinPorts(h.Ports))
 			}
-			ok, err := confirm(cmd.InOrStdin(), out, isTerminal(cmd.InOrStdin()), yes)
+			ok, err := confirm(cmd.InOrStdin(), out, isTerminal(cmd.InOrStdin()), yes, "remove")
 			// Hand back an answer that fails to arrive
 			if err != nil {
 				return err
@@ -291,7 +291,7 @@ func newFirewallPrune() *cobra.Command {
 				return nil
 			}
 			fmt.Fprintf(out, "Removes the expired hosts %s from %s.\n", strings.Join(names, ", "), config.File)
-			ok, err := confirm(cmd.InOrStdin(), out, isTerminal(cmd.InOrStdin()), yes)
+			ok, err := confirm(cmd.InOrStdin(), out, isTerminal(cmd.InOrStdin()), yes, "prune")
 			// Hand back an answer that fails to arrive
 			if err != nil {
 				return err
@@ -424,9 +424,14 @@ func edit(apply func(*config.Config) error) (string, error) {
 	return dir, c.Save(dir)
 }
 
-// allowed confirms a host with its ports, and its secret where it carries one.
+// allowed confirms a host with its ports, what it covers where that is more than its name, and its secret where it
+// carries one.
 func allowed(h config.Host, now time.Time) string {
 	line := fmt.Sprintf("Allowed %s:%s", h.Name, config.JoinPorts(h.Ports))
+	// Name what a wildcard or a range covers
+	if reading := config.Reading(h.Name); reading != h.Name {
+		line += ", " + reading
+	}
 	// Add the secret and where it goes
 	if h.Secret != "" {
 		line += fmt.Sprintf(" with %s in %s", h.Secret, strings.Join(h.Inject, ", "))

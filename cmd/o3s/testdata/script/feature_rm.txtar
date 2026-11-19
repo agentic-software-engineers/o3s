@@ -16,7 +16,7 @@ stdout '^Removed '${REGISTRY@R}'/features/tool$'
 exec o3s feature add $REGISTRY/features/tool
 ! exec o3s feature rm $REGISTRY/features/tool
 stdout '^  - '
-stderr 'pass --yes to apply without a terminal'
+stderr 'pass --yes to remove without a terminal'
 grep 'features/tool' .devcontainer/devcontainer.json
 exec o3s feature rm $REGISTRY/features/tool --yes
 
