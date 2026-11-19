@@ -431,21 +431,24 @@ func edit(apply func(*config.Config) error) (string, error) {
 	return dir, c.Save(dir)
 }
 
-// allowed confirms a host with its ports, what it covers where that is more than its name, and its secret where it
-// carries one.
+// allowed confirms a host with its ports, what it covers where that is more than its name, its secret where it
+// carries one, and when it closes or that its end has come.
 func allowed(h config.Host, now time.Time) string {
 	line := fmt.Sprintf("Allowed %s:%s", h.Name, config.JoinPorts(h.Ports))
 	// Name what a wildcard or a range covers
 	if reading := config.Reading(h.Name); reading != h.Name {
-		line += ", " + reading
+		line += " (" + reading + ")"
 	}
 	// Add the secret and where it goes
 	if h.Secret != "" {
-		line += fmt.Sprintf(" with %s in %s", h.Secret, strings.Join(h.Inject, ", "))
+		line += fmt.Sprintf(", with %s in %s", h.Secret, words.JoinAnd(h.Inject))
 	}
-	// Add when a host with an end closes
-	if h.Expires != "" {
-		line += " until " + config.ClosesAt(h.Expires, now)
+	// Add when a host with an end closes, or that its end has come
+	switch {
+	case h.Expired(now):
+		line += ", expired"
+	case h.Expires != "":
+		line += ", until " + config.ClosesAt(h.Expires, now)
 	}
 	return line
 }

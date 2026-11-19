@@ -12,7 +12,7 @@ exec o3s firewall rm $NEW_HOST $NEXT_HOST --yes
 
 # A wildcard names what it covers, every name below its domain
 exec o3s firewall add $OTHER_WILDCARD
-stdout '^Allowed '${OTHER_WILDCARD@R}':'$PORT', every name below '${OTHER_HOST@R}'$'
+stdout '^Allowed '${OTHER_WILDCARD@R}':'$PORT' \(every name below '${OTHER_HOST@R}'\)$'
 exec o3s firewall rm $OTHER_WILDCARD --yes
 
 # An update lists each field it changed before it confirms
@@ -23,9 +23,9 @@ stdout '^Allowed example.com:22,443$'
 
 # A secret goes where the inject sites name, or into the header
 exec o3s firewall add api.example.com --secret EXAMPLE_TOKEN --inject header --inject body
-stdout '^Allowed api.example.com:443 with EXAMPLE_TOKEN in header, body$'
+stdout '^Allowed api.example.com:443, with EXAMPLE_TOKEN in header and body$'
 exec o3s firewall add example.org --secret EXAMPLE_TOKEN
-stdout '^Allowed example.org:443 with EXAMPLE_TOKEN in header$'
+stdout '^Allowed example.org:443, with EXAMPLE_TOKEN in header$'
 
 # The file holds the hosts in apex order
 cmp o3s.json want.json
