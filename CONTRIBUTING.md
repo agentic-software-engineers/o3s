@@ -23,5 +23,8 @@
 - **Layers** run from many unit tests next to their code, through integration tests in `test/integration` that raise one component, to a few e2e tests in `test/e2e` that raise the whole stack, one package per isolation (`process`, `vm`), each layer behind its build tag.
 - **Names** state the behavior under test, a comment above each test repeats it as a sentence, and fixtures take their values from `internal/fixture`, which keeps to the names RFC 2606 and RFC 5737 reserve for examples, the same value wherever a fixture plays the same part.
 - **Bodies** check one behavior each, in setup, action and check set apart by blank lines.
-- **Checks** use the standard library and go-cmp, compare whole values, test errors by identity, and report what they got against what they wanted.
-- **Helpers** set up a named state and undo it once the test ends, and fakes live where they are used, held to the real adapter by a contract test.
+- **Checks** use the standard library, go-cmp and Charm's golden files, compare whole values, test errors by identity, and report what they got against what they wanted.
+- **Helpers** set up a named state and undo it once the test ends, and fakes live where they are used, held to the real adapter by a contract test, or in a package named for what it tests, as `menutest`, where several packages share them.
+- **Menu** paths come from `menutest.Walk`, which takes every answer of every question at least once. `TestEveryPath` drives each on the screen, `TestRules` holds every screen and plan to the menu's rules with today's breaks named in `knownBreaks`, and `FuzzMenu` presses random keys against the same rules, weekly in CI.
+- **Goldens** of the paths and screens refresh with `go test ./internal/... -update`, and a change reviews them as diffs.
+- **Walks** of the paths a change touches, at a real terminal, come before its review.
