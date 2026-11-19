@@ -138,6 +138,22 @@ const (
 	FloatingTag = "latest"
 )
 
+// Options a feature offers, one of each kind the feature spec knows.
+const (
+	// Toggle is an option that takes true or false.
+	Toggle = "debug"
+	// Choice is an option that takes one of a closed list of values.
+	Choice = "mode"
+	// ChoiceValue is the value Choice falls back to.
+	ChoiceValue = "strict"
+	// OtherChoiceValue is the other value Choice takes.
+	OtherChoiceValue = "loose"
+	// Free is an option that takes any text, with values it proposes.
+	Free = "version"
+	// Proposal is a value Free proposes beside FloatingTag.
+	Proposal = "lts"
+)
+
 // Moments, in UTC with whole seconds.
 const (
 	// NowText is the moment a test looks from, Go's own reference time, which names no day of its own.
@@ -175,52 +191,58 @@ func at(text string) time.Time {
 // Env hands every value to a test script by a name of its own, the way the script reads it.
 func Env() map[string]string {
 	return map[string]string{
-		"HOST":              Host,
-		"SUBDOMAIN":         Subdomain,
-		"OTHER_HOST":        OtherHost,
-		"OTHER_WILDCARD":    OtherWildcard,
-		"THIRD_HOST":        ThirdHost,
-		"REFUSED_NAME":      RefusedName,
-		"ABSENT_NAME":       AbsentName,
-		"NEW_HOST":          NewHost,
-		"NEXT_HOST":         NextHost,
-		"DATA_MOVED":        DataMoved,
-		"LAST_SEEN":         LastSeen,
-		"ATTEMPTS":          strconv.Itoa(Attempts),
-		"DURATION":          Duration,
-		"LOG_FILE":          LogFile,
-		"SSH_HOST":          SSHHost,
-		"ADDRESS":           Address,
-		"RANGE":             Range,
-		"PORT":              strconv.Itoa(Port),
-		"OTHER_PORT":        strconv.Itoa(OtherPort),
-		"BAD_PORT":          strconv.Itoa(BadPort),
-		"SECRET":            Secret,
-		"OTHER_SECRET":      OtherSecret,
-		"NEW_SECRET":        NewSecret,
-		"SECRET_VALUE":      SecretValue,
-		"STORE":             Store,
-		"ABSENT_STORE":      AbsentStore,
-		"FEATURE":           Feature,
-		"OTHER_FEATURE":     OtherFeature,
-		"THIRD_FEATURE":     ThirdFeature,
-		"REPO":              Repo,
-		"OTHER_REPO":        OtherRepo,
-		"NESTED_REPO":       NestedRepo,
-		"VERSION":           Version,
-		"NEWER_VERSION":     NewerVersion,
-		"CANDIDATE":         Candidate,
-		"NEXT_CANDIDATE":    NextCandidate,
-		"FURTHER_CANDIDATE": FurtherCandidate,
-		"DEV_BUILD":         DevBuild,
-		"MAJOR":             Major,
-		"NEWER_MAJOR":       NewerMajor,
-		"MINOR_TAG":         MinorTag,
-		"FLOATING_TAG":      FloatingTag,
-		"NOW":               NowText,
-		"IN_AN_HOUR":        InAnHourText,
-		"IN_TWO_HOURS":      InTwoHoursText,
-		"LONG_AGO":          LongAgoText,
-		"FAR_AHEAD":         FarAheadText,
+		"HOST":               Host,
+		"SUBDOMAIN":          Subdomain,
+		"OTHER_HOST":         OtherHost,
+		"OTHER_WILDCARD":     OtherWildcard,
+		"THIRD_HOST":         ThirdHost,
+		"REFUSED_NAME":       RefusedName,
+		"ABSENT_NAME":        AbsentName,
+		"NEW_HOST":           NewHost,
+		"NEXT_HOST":          NextHost,
+		"DATA_MOVED":         DataMoved,
+		"LAST_SEEN":          LastSeen,
+		"ATTEMPTS":           strconv.Itoa(Attempts),
+		"DURATION":           Duration,
+		"LOG_FILE":           LogFile,
+		"SSH_HOST":           SSHHost,
+		"ADDRESS":            Address,
+		"RANGE":              Range,
+		"PORT":               strconv.Itoa(Port),
+		"OTHER_PORT":         strconv.Itoa(OtherPort),
+		"BAD_PORT":           strconv.Itoa(BadPort),
+		"SECRET":             Secret,
+		"OTHER_SECRET":       OtherSecret,
+		"NEW_SECRET":         NewSecret,
+		"SECRET_VALUE":       SecretValue,
+		"STORE":              Store,
+		"ABSENT_STORE":       AbsentStore,
+		"FEATURE":            Feature,
+		"OTHER_FEATURE":      OtherFeature,
+		"THIRD_FEATURE":      ThirdFeature,
+		"REPO":               Repo,
+		"OTHER_REPO":         OtherRepo,
+		"NESTED_REPO":        NestedRepo,
+		"VERSION":            Version,
+		"NEWER_VERSION":      NewerVersion,
+		"CANDIDATE":          Candidate,
+		"NEXT_CANDIDATE":     NextCandidate,
+		"FURTHER_CANDIDATE":  FurtherCandidate,
+		"DEV_BUILD":          DevBuild,
+		"MAJOR":              Major,
+		"TOGGLE":             Toggle,
+		"CHOICE":             Choice,
+		"CHOICE_VALUE":       ChoiceValue,
+		"OTHER_CHOICE_VALUE": OtherChoiceValue,
+		"FREE":               Free,
+		"PROPOSAL":           Proposal,
+		"NEWER_MAJOR":        NewerMajor,
+		"MINOR_TAG":          MinorTag,
+		"FLOATING_TAG":       FloatingTag,
+		"NOW":                NowText,
+		"IN_AN_HOUR":         InAnHourText,
+		"IN_TWO_HOURS":       InTwoHoursText,
+		"LONG_AGO":           LongAgoText,
+		"FAR_AHEAD":          FarAheadText,
 	}
 }

@@ -66,6 +66,10 @@ func TestOnlyTestsUseTheSet(t *testing.T) {
 		if err != nil || d.IsDir() && (d.Name() == "testdata" || d.Name() == "node_modules" || strings.HasPrefix(d.Name(), ".")) {
 			return err
 		}
+		// Pass over the helper packages only tests import, named for what they test as httptest is
+		if d.IsDir() && strings.HasSuffix(d.Name(), "test") {
+			return filepath.SkipDir
+		}
 		// Look at the module's Go code alone, its tests left out
 		if d.IsDir() || !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
 			return nil
