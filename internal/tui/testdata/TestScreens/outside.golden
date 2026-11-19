@@ -135,6 +135,28 @@ OTHER_TOKEN
 
 ↑/↓ navigate · enter select · esc back
 
+──── value
+o3s  /home/ubuntu/o3s
+secret / OTHER_TOKEN / Replace the value
+
+Value for OTHER_TOKEN
+❯
+
+enter continue · esc cancel
+
+──── apply
+o3s  /home/ubuntu/o3s
+secret / OTHER_TOKEN / Replace the value / ***
+
+~ OTHER_TOKEN: value replaced
+
+Replaces the value of OTHER_TOKEN
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
 ──── apply
 o3s  /home/ubuntu/o3s
 secret / OTHER_TOKEN / Remove
