@@ -2,6 +2,7 @@ package menu
 
 import (
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -537,5 +538,17 @@ func TestAHomeInItsVMOffersItsCage(t *testing.T) {
 	// Require the removal to name the VM's disk
 	if want := "- the VM and its disk, with the home and the projects inside"; asked[2].Preview[0] != want {
 		t.Errorf("removal = %v, want %q", asked[2].Preview, want)
+	}
+}
+
+// Allowing several hosts lines up what each gets after its name and ports, so the preview reads as columns.
+func TestAllowLinesLineUp(t *testing.T) {
+	a := Answers{}.With("ports", []string{port}).With("for", []string{"1h"}).With("secret", []string{fixture.Secret}).With("inject", []string{"header"})
+
+	lines := allowLines(aHome, a, []string{fixture.NewHost, fixture.OtherWildcard})
+
+	// Require what follows each host to start at the same column
+	if at := strings.Index(lines[0], "   closes"); at < 0 || at != strings.Index(lines[1], "   closes") {
+		t.Errorf("allowLines =\n%s", strings.Join(lines, "\n"))
 	}
 }

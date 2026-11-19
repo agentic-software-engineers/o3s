@@ -276,9 +276,10 @@ func chosenSecret(a Answers) string {
 	return s
 }
 
-// allowLines shows what allowing or changing hosts does: each host with its ports and when it closes.
+// allowLines shows what allowing or changing hosts does: each host with its ports, when it closes and its secret, lined
+// up as columns.
 func allowLines(h Home, a Answers, hosts []string) []string {
-	var lines []string
+	var heads, lines []string
 	// Show every host the change reaches
 	for _, name := range hosts {
 		current, known := (&config.Config{Hosts: h.Hosts}).Find(name)
@@ -291,7 +292,8 @@ func allowLines(h Home, a Answers, hosts []string) []string {
 				ports = config.JoinPorts(current.Ports)
 			}
 		}
-		line := fmt.Sprintf("%s %s:%s", sign, name, words.Or(ports, "443"))
+		heads = append(heads, fmt.Sprintf("%s %s:%s", sign, name, words.Or(ports, "443")))
+		line := ""
 		d, err := config.ParseFor(chosenFor(a))
 		// Name when the host closes, or that it stays open for good where its end time changes
 		switch {
@@ -308,6 +310,15 @@ func allowLines(h Home, a Answers, hosts []string) []string {
 			line += "   no secret"
 		}
 		lines = append(lines, line)
+	}
+	width := 0
+	// Measure the widest host with its ports
+	for _, head := range heads {
+		width = max(width, len(head))
+	}
+	// Put every host's ports and what follows them in line
+	for i, head := range heads {
+		lines[i] = strings.TrimRight(head+strings.Repeat(" ", width-len(head))+lines[i], " ")
 	}
 	return lines
 }

@@ -54,7 +54,7 @@ o3s  /home/ubuntu/o3s
 …ample.net *.example.org / 443 / For good / New secret / NEW_TOKEN / *** / query
 
 + new.example.net:443   NEW_TOKEN in query
-+ *.example.org:443   NEW_TOKEN in query
++ *.example.org:443     NEW_TOKEN in query
 
 Allows new.example.net and every name below example.org for good
 Apply?
@@ -68,7 +68,7 @@ o3s  /home/ubuntu/o3s
 …xample.net *.example.org / 443 / For good / New secret / NEW_TOKEN / *** / body
 
 + new.example.net:443   NEW_TOKEN in body
-+ *.example.org:443   NEW_TOKEN in body
++ *.example.org:443     NEW_TOKEN in body
 
 Allows new.example.net and every name below example.org for good
 Apply?
@@ -82,7 +82,7 @@ o3s  /home/ubuntu/o3s
 …ample.org / 443 / For good / New secret / NEW_TOKEN / *** / header, query, body
 
 + new.example.net:443   NEW_TOKEN in header, query, body
-+ *.example.org:443   NEW_TOKEN in header, query, body
++ *.example.org:443     NEW_TOKEN in header, query, body
 
 Allows new.example.net and every name below example.org for good
 Apply?
