@@ -76,7 +76,7 @@ func checkStore(line string) (string, error) {
 	id := strings.TrimSpace(line)
 	// Name an id that names no repository in full
 	if config.CheckStore(id) != nil {
-		return "", fmt.Errorf("%q reads as no store, name it registry/repository as in ghcr.io/devcontainers/features", id)
+		return "", fmt.Errorf("%q reads as no store, as in ghcr.io/devcontainers/features", id)
 	}
 	return "reads as a store", nil
 }
