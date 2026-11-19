@@ -153,7 +153,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.state = running
 		return m.runNext()
 	case lineMsg:
-		m.out.add(string(msg))
+		// Redraw the last line where the command redraws it, and add a line otherwise
+		if msg.redraw {
+			m.out.redraw(msg.text)
+		} else {
+			m.out.add(msg.text)
+		}
 		return m, m.stream.next()
 	case endMsg:
 		return m.ended(msg)

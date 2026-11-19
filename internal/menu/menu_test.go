@@ -8,6 +8,7 @@ import (
 
 	"github.com/hansehart/o3s/internal/config"
 	"github.com/hansehart/o3s/internal/fixture"
+	"github.com/hansehart/o3s/internal/vm"
 )
 
 // Ports as a dialog takes them, the one a host opens by default and both a host may open.
@@ -316,10 +317,10 @@ func TestEveryOtherDialogEndsInItsCommand(t *testing.T) {
 	}.check(t, aHome)
 	dialogs{
 		{
-			"a new home inside its VM, on the real terminal for sudo and the VM",
+			"a new home inside its VM, its steps shown in the menu",
 			[][]string{{"init"}, {inVM}, {yes}},
 			[]string{"do", "isolation", "apply"},
-			[]Command{{Args: []string{"init"}, Terminal: true}},
+			[]Command{{Args: []string{"init", "--yes"}}},
 		},
 		{
 			"a new home on this machine's kernel with AppArmor",
@@ -398,36 +399,70 @@ func TestSecretStateReadsSetOrEmpty(t *testing.T) {
 	}
 }
 
-// Every cage dialog ends in its command: a shell on the real terminal, the start, the stop, and the removal once
-// confirmed, and a home in its VM opens its shell in the VM.
+// aVMHome is a folder whose home lives in its VM, the VM in the state given.
+func aVMHome(state vm.State) Home {
+	return Home{Dir: aHome.Dir, VM: state, Stack: []Fact{{Label: "VM", Value: string(state)}}, Lookup: fakeLookup{}}
+}
+
+// Every cage dialog ends in its command: the start, the stop, and the removal once confirmed, a shell in a running VM
+// on the real terminal, and init for a VM it has yet to finish.
 func TestEveryCageDialogEndsInItsCommand(t *testing.T) {
 	dialogs{
 		{"starting", [][]string{{"cage"}, {start}}, []string{"do", "action"}, []Command{{Args: []string{"cage", "start"}}}},
-		{"stopping", [][]string{{"cage"}, {stop}}, []string{"do", "action"}, []Command{{Args: []string{"cage", "stop"}}}},
 		{"removing", [][]string{{"cage"}, {remove}, {yes}}, []string{"do", "action", "apply"}, []Command{{Args: []string{"cage", "rm", "--yes"}}}},
 		{"declining the removal", [][]string{{"cage"}, {remove}, {"no"}}, []string{"do", "action", "apply"}, []Command{{Note: nothingChanged}}},
 	}.check(t, aHome)
-	inVM := Home{Dir: aHome.Dir, InVM: true, Stack: []Fact{{Label: "VM", Value: "running"}}, Lookup: fakeLookup{}}
 	dialogs{
 		{"a shell in the VM, on the real terminal", [][]string{{"cage"}, {vmShell}}, []string{"do", "action"}, []Command{{Args: []string{"cage", "shell", "--vm"}, Terminal: true}}},
-	}.check(t, inVM)
+		{"stopping the VM", [][]string{{"cage"}, {stop}}, []string{"do", "action"}, []Command{{Args: []string{"cage", "stop"}}}},
+	}.check(t, aVMHome(vm.Running))
+	dialogs{
+		{"finishing the VM", [][]string{{"cage"}, {finish}}, []string{"do", "action"}, []Command{{Args: []string{"init", "--yes"}}}},
+	}.check(t, aVMHome(vm.Unfinished))
 }
 
-// Beside a home in its VM, the main menu offers the cage and the secrets, noting the VM's state, and the removal names
-// the VM's disk.
+// The cage view offers what applies where the cage stands, and removing it always.
+func TestTheCageOffersWhatApplies(t *testing.T) {
+	running := aHome
+	running.Stack = []Fact{{Label: "Cage", Value: "running"}}
+	tests := []struct {
+		name string
+		h    Home
+		want []string
+	}{
+		{"a stopped stack", Home{Dir: aHome.Dir, Exists: true, Stack: []Fact{{Label: "Cage", Value: "stopped"}}}, []string{ide, shell, start, remove}},
+		{"a running stack", running, []string{ide, shell, stop, remove}},
+		{"an unfinished VM", aVMHome(vm.Unfinished), []string{finish, remove}},
+		{"a stopped VM", aVMHome(vm.Stopped), []string{start, remove}},
+		{"a running VM", aVMHome(vm.Running), []string{vmShell, stop, remove}},
+	}
+	// Check every state
+	for _, tt := range tests {
+		q, _ := Next(tt.h, Answers{}.With("do", []string{"cage"}))
+
+		var got []string
+		// Take every action offered
+		for _, o := range q.Options {
+			got = append(got, o.Value)
+		}
+		// Report actions that differ
+		if !cmp.Equal(tt.want, got) {
+			t.Errorf("%s: actions = %v, want %v", tt.name, got, tt.want)
+		}
+	}
+}
+
+// Beside a home in its VM, the main menu offers the cage alone, noting the VM's state, since the home's secrets live
+// in the VM, and the removal names the VM's disk.
 func TestAHomeInItsVMOffersItsCage(t *testing.T) {
-	h := Home{Dir: aHome.Dir, InVM: true, Stack: []Fact{{Label: "VM", Value: "running"}}, Lookup: fakeLookup{}}
+	h := aVMHome(vm.Running)
 
 	q, _ := Next(h, nil)
 	asked, _ := walk(t, h, []string{"cage"}, []string{remove}, []string{"no"})
 
-	// Require the cage with the VM's state, and the secrets
-	if len(q.Options) != 2 || q.Options[0].Value != "cage" || q.Options[0].Note != "VM, stack and cage · running" || q.Options[1].Value != "secret" {
+	// Require the cage alone, with the VM's state
+	if len(q.Options) != 1 || q.Options[0].Value != "cage" || q.Options[0].Note != "VM, stack and cage · running" {
 		t.Errorf("main menu = %+v", q.Options)
-	}
-	// Require the shell in the VM first among the actions
-	if asked[1].Options[0].Value != vmShell {
-		t.Errorf("actions = %+v, want the shell in the VM first", asked[1].Options)
 	}
 	// Require the removal to name the VM's disk
 	if want := "- the VM and its disk, with the home and the projects inside"; asked[2].Preview[0] != want {

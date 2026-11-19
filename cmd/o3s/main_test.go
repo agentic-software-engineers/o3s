@@ -43,20 +43,34 @@ esac
 exit 0
 `
 
-// fakeLimactl stands in for Lima, keeping its VMs in a file, so a script sees each VM o3s boots, runs commands in and deletes.
+// fakeLimactl stands in for Lima, keeping its VMs in a file, so a script sees each VM o3s boots, runs commands in and
+// deletes. Like Lima, it writes its log records as JSON on stderr and a download's progress as plain lines, and it fails
+// with a fatal record where $WORK/lima-fails holds the message.
 const fakeLimactl = `#!/bin/sh
 echo "LIMA_HOME=$LIMA_HOME $*" >> "$WORK/limactl.log"
+# Read past the global flags to the command, as Lima does
+while [ "${1#--}" != "$1" ]; do shift; done
+# Fail with the record a test asks for
+if [ -f "$WORK/lima-fails" ] && [ "$1" = start ]; then
+  printf '{"level":"fatal","msg":"%s"}\n' "$(cat "$WORK/lima-fails")" >&2
+  exit 1
+fi
 # Answer each command the way Lima does, with the VMs listed in $WORK/vms
-case "$2" in
-  list) case "$3" in --format=*) grep -qx "$4" "$WORK/vms" && echo Running || exit 1 ;; *) cat "$WORK/vms" 2>/dev/null || true ;; esac ;;
-  stop) ;;
-  start) for a in "$@"; do case "$a" in --name=*) echo "${a#--name=}" >> "$WORK/vms" ;; -) cat > "$WORK/template.yaml" ;; esac; done ;;
-  delete) grep -v "$4" "$WORK/vms" > "$WORK/vms.left"; mv "$WORK/vms.left" "$WORK/vms" ;;
-  shell) grep -qx "$3" "$WORK/vms" 2>/dev/null || { echo "instance $3 does not exist" >&2; exit 1; }; shift 3; echo "$*" >> "$WORK/vm.log"
+case "$1" in
+  list) case "$2" in --format=*) grep -qx "$3" "$WORK/vms" || exit 1; grep -qx "$3" "$WORK/stopped" 2>/dev/null && echo Stopped || echo Running ;; *) cat "$WORK/vms" 2>/dev/null || true ;; esac ;;
+  stop) echo "$2" >> "$WORK/stopped" ;;
+  start) rm -f "$WORK/stopped"; echo '{"level":"info","msg":"Starting the instance"}' >&2
+    echo '819.29 MiB / 819.29 MiB [--] 100.00%' >&2
+    for a in "$@"; do case "$a" in --name=*) echo "${a#--name=}" >> "$WORK/vms" ;; -) cat > "$WORK/template.yaml" ;; esac; done ;;
+  delete) grep -v "$3" "$WORK/vms" > "$WORK/vms.left"; mv "$WORK/vms.left" "$WORK/vms" ;;
+  shell) grep -qx "$2" "$WORK/vms" 2>/dev/null || { echo '{"level":"fatal","msg":"instance does not exist"}' >&2; exit 1; }; shift 2; echo "$*" >> "$WORK/vm.log"
     # Leave the installer and the home's setup to the log, and run any other command here
     case "$*" in *install.sh*|*"init --guest"*) ;; *) "$@" ;; esac ;;
 esac
 `
+
+// fakeQEMU stands in for QEMU's tools, which a Linux host runs the VM with.
+const fakeQEMU = "#!/bin/sh\n"
 
 // fakeCode stands in for the VS Code CLI, so a script sees what it opens.
 const fakeCode = `#!/bin/sh
@@ -145,7 +159,7 @@ func TestScripts(t *testing.T) {
 			if err := os.WriteFile(filepath.Join(bin, "devcontainer"), []byte(fakeDevcontainer), 0o755); err != nil { //nolint:gosec // the scripts run the fake CLI
 				return err
 			}
-			fakes := map[string]string{"aa-enabled": fakeAaEnabled, "limactl": fakeLimactl, "code": fakeCode, "wslpath": fakeWslpath, "cmd.exe": fakeCmd}
+			fakes := map[string]string{"aa-enabled": fakeAaEnabled, "limactl": fakeLimactl, "code": fakeCode, "wslpath": fakeWslpath, "cmd.exe": fakeCmd, "qemu-img": fakeQEMU, "qemu-system-x86_64": fakeQEMU, "qemu-system-aarch64": fakeQEMU}
 			// Write every other fake the scripts call
 			for name, script := range fakes {
 				// Hand back a fake that stays unwritten

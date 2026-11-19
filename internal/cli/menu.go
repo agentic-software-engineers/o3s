@@ -19,6 +19,7 @@ import (
 	"github.com/hansehart/o3s/internal/traffic"
 	"github.com/hansehart/o3s/internal/tui"
 	"github.com/hansehart/o3s/internal/update"
+	"github.com/hansehart/o3s/internal/vm"
 	"github.com/hansehart/o3s/internal/words"
 	"github.com/hansehart/o3s/internal/workspace"
 )
@@ -193,15 +194,14 @@ func menuHome(ctx context.Context) menu.Home {
 		}
 	}
 	h.Stack = stackFacts(ctx, dir, h.Exists)
-	// Show the VM of a home that lives in one, in place of the stack it runs inside
-	if lima, name, err := homeVM(); err == nil {
-		h.InVM = true
-		status, err := lima.Status(ctx, name)
-		// Name a VM whose state stays unknown
-		if err != nil {
-			status = "unknown"
+	// Show where the VM of a home that lives in one stands, in place of the stack it runs inside
+	if m, inVM, err := homeMachine(); inVM {
+		h.VM = vm.Absent
+		// Read the VM's state where its manager answers
+		if err == nil {
+			h.VM, _ = m.state(ctx)
 		}
-		h.Stack = []menu.Fact{{Label: "VM", Value: strings.ToLower(status)}}
+		h.Stack = []menu.Fact{{Label: "VM", Value: string(h.VM)}}
 	}
 	ws, err := workspace.Load(home.Workspace(dir))
 	// Offer every project the workspace lists

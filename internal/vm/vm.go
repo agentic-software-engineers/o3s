@@ -30,10 +30,17 @@ var Engines = []string{"qemu", "vz", "hcs"}
 // ErrNoLima asks for the VM manager a home's VM runs with.
 var ErrNoLima = errors.New("o3s runs a home's VM with Lima, put limactl on PATH (https://lima-vm.io/docs/installation/)")
 
-// Lima runs the homes' VMs, kept apart from any VMs the user runs.
+// Lima runs the homes' VMs, kept apart from any VMs the user runs, its own log records going to a log of their own.
 type Lima struct {
 	path   string
 	engine string
+	log    io.Writer
+}
+
+// LoggingTo hands back the manager writing its log records to w, which keeps them out of what the user reads.
+func (l Lima) LoggingTo(w io.Writer) Lima {
+	l.log = w
+	return l
 }
 
 // Manager picks the engine for this host, or the one the user names, and the VM manager o3s installed or one on PATH.
@@ -71,6 +78,7 @@ func Engine() (string, error) {
 		}
 		return engine, nil
 	}
+	// Take the engine the host system runs natively
 	switch runtime.GOOS {
 	case "darwin":
 		return "vz", nil
@@ -147,12 +155,25 @@ func (l Lima) Delete(ctx context.Context, name string, out io.Writer) error {
 	return l.run(ctx, nil, out, out, "delete", "--force", name)
 }
 
-// run runs the VM manager for o3s's own VMs, in its automation mode.
+// run runs the VM manager for o3s's own VMs, in its automation mode with its log records as JSON, which go to the
+// manager's log while everything else on stderr reaches errOut. A failure the manager names comes back in its words.
 func (l Lima) run(ctx context.Context, in io.Reader, out, errOut io.Writer, args ...string) error {
-	cmd := exec.CommandContext(ctx, l.path, append([]string{"--tty=false"}, args...)...) //nolint:gosec // o3s runs the limactl it found, with arguments it builds itself
+	cmd := exec.CommandContext(ctx, l.path, append([]string{"--tty=false", "--log-format=json"}, args...)...) //nolint:gosec // o3s runs the limactl it found, with arguments it builds itself
 	cmd.Env = append(os.Environ(), "LIMA_HOME="+paths.VMs())
-	cmd.Stdin, cmd.Stdout, cmd.Stderr = in, out, errOut
-	return cmd.Run()
+	log := l.log
+	// Drop the records where the manager logs nowhere
+	if log == nil {
+		log = io.Discard
+	}
+	split := &records{user: errOut, log: log}
+	cmd.Stdin, cmd.Stdout, cmd.Stderr = in, out, split
+	err := cmd.Run()
+	split.flush()
+	// Hand back a failure in the manager's own words where it named one
+	if err != nil && split.failure != "" {
+		return &Error{Msg: split.failure, Err: err}
+	}
+	return err
 }
 
 // output runs the VM manager and hands back what it printed, with its error output in the failure.

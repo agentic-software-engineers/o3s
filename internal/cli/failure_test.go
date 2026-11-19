@@ -37,3 +37,20 @@ func TestBuildFailureNamesAPlainFailure(t *testing.T) {
 		t.Errorf("buildFailure() = %v", err)
 	}
 }
+
+// A step of the VM that fails names the manager's words, the host this machine could not reach, and that init goes on
+// where it stopped.
+func TestVMFailureNamesTheCauseAndTheRetry(t *testing.T) {
+	cause := errors.New(`failed to download the image: Get "https://` + fixture.Host + `/image": dial tcp: lookup ` + fixture.Host + ` on 127.0.0.11:53: server misbehaving`)
+
+	err := vmFailure("start the VM", cause, "/state/vm.log")
+
+	want := "start the VM: " + cause.Error() + "\n" +
+		"  this machine could not reach " + fixture.Host + ", check its network\n" +
+		"  run o3s init again, it goes on where it stopped\n" +
+		"  the whole log: /state/vm.log"
+	// Report a failure named otherwise
+	if err.Error() != want {
+		t.Errorf("vmFailure() =\n%s\nwant\n%s", err, want)
+	}
+}

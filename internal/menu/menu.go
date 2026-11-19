@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/hansehart/o3s/internal/config"
+	"github.com/hansehart/o3s/internal/vm"
 )
 
 // Home is what the menu knows about the home it runs in when it starts, and where it asks the stores.
@@ -14,8 +15,8 @@ type Home struct {
 	Dir string
 	// Exists marks a folder that holds a home already.
 	Exists bool
-	// InVM marks a folder whose home lives in its VM, which holds the home's files.
-	InVM bool
+	// VM is where the VM of a home that lives in one stands, and empty for a home on this machine.
+	VM vm.State
 	// Now is the moment the menu reads the home at, which end times count from.
 	Now   time.Time
 	Hosts []config.Host
@@ -283,12 +284,28 @@ func mainMenu(h Home) Question {
 	q := Question{Key: "do", Kind: Select, Title: "What do you want to do?"}
 	// Offer every group that works here
 	for _, e := range entries {
-		// Take init outside a home, every other group inside one, the secrets in both, and the cage beside a home in its VM
-		if e.Value == "init" && !h.Exists && !h.InVM || e.Value != "init" && (h.Exists || e.Value == "secret" || h.InVM && e.Value == "cage") {
+		// Take a group that works where the menu runs
+		if works(h, e.Value) {
 			q.Options = append(q.Options, e)
 		}
 	}
 	return q
+}
+
+// works reports whether a group works where the menu runs: init outside a home, the cage beside any home, the secrets
+// on this machine, which a home in its VM keeps inside it, and every other group inside a home on this machine.
+func works(h Home, group string) bool {
+	inVM := h.VM != ""
+	// Judge each group by where it acts
+	switch group {
+	case "init":
+		return !h.Exists && !inVM
+	case "cage":
+		return h.Exists || inVM
+	case "secret":
+		return !inVM
+	}
+	return h.Exists
 }
 
 // stackState names in a word whether the cage runs, or the VM of a home that lives in one.

@@ -363,3 +363,22 @@ func TestAppShowsAShortPreviewWhole(t *testing.T) {
 		t.Errorf("view:\n%s", view)
 	}
 }
+
+// A command that redraws its line, as a progress bar does, shows the line's last state alone, the lines around it
+// kept.
+func TestAppRedrawsALineTheCommandRedraws(t *testing.T) {
+	m, _ := anApp(t, map[string]string{allowLine: `printf 'before\n10%%\r50%%\r100%%\nafter\n'`})
+
+	m, _ = drive(m, append(allowing(), enter)...)
+
+	var trimmed []string
+	// Take every line without the padding the pane fills it to the width with
+	for line := range strings.SplitSeq(stripped(m.View().Content), "\n") {
+		trimmed = append(trimmed, strings.TrimRight(line, " "))
+	}
+	view := strings.Join(trimmed, "\n")
+	// Require the bar's last state between the lines around it, its earlier states gone
+	if !strings.Contains(view, "before\n100%\nafter") || strings.Contains(view, "50%") {
+		t.Errorf("view:\n%s", view)
+	}
+}

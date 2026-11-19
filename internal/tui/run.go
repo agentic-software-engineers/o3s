@@ -2,6 +2,7 @@ package tui
 
 import (
 	"bufio"
+	"bytes"
 	"io"
 	"os"
 	"os/exec"
@@ -10,8 +11,12 @@ import (
 	tea "charm.land/bubbletea/v2"
 )
 
-// lineMsg is one line a running command printed.
-type lineMsg string
+// lineMsg is one line a running command printed, and whether it redraws the line before it, as a progress bar that
+// ends its line in a carriage return does.
+type lineMsg struct {
+	text   string
+	redraw bool
+}
 
 // ErrorFileEnv names where the menu asks a command on the real terminal to leave the reason it failed.
 const ErrorFileEnv = "O3S_ERROR_FILE"
@@ -52,19 +57,41 @@ func capture(cmd *exec.Cmd, stdin string) stream {
 			done <- err
 		}()
 		lines := bufio.NewScanner(r)
-		told := false
-		// Pass every line on as it comes, until the command closes its output
+		lines.Split(splitLines)
+		told, redraw := false, false
+		// Pass every line on as it comes, a line after a carriage return redrawing the one before, until the command
+		// closes its output
 		for lines.Scan() {
-			told = told || strings.HasPrefix(strings.TrimSpace(lines.Text()), "error:")
-			s <- lineMsg(lines.Text())
+			text, returned := strings.CutSuffix(lines.Text(), "\r")
+			told = told || strings.HasPrefix(strings.TrimSpace(text), "error:")
+			s <- lineMsg{text: text, redraw: redraw}
+			redraw = returned
 		}
 		// Name output that fails to read
 		if err := lines.Err(); err != nil {
-			s <- lineMsg("error: " + err.Error())
+			s <- lineMsg{text: "error: " + err.Error()}
 		}
 		s <- endMsg{err: <-done, told: told}
 	}()
 	return s
+}
+
+// splitLines splits output into lines at a newline, which it drops, and at a carriage return, which it keeps at the end
+// of the line, so the reader knows the next line redraws it.
+func splitLines(data []byte, atEOF bool) (int, []byte, error) {
+	// Hand back the line before the first newline or carriage return
+	if i := bytes.IndexAny(data, "\r\n"); i >= 0 {
+		// Keep a carriage return, which marks a line that the next one redraws
+		if data[i] == '\r' {
+			return i + 1, data[:i+1], nil
+		}
+		return i + 1, data[:i], nil
+	}
+	// Hand back the last line of output that ends without a newline
+	if atEOF && len(data) > 0 {
+		return len(data), data, nil
+	}
+	return 0, nil, nil
 }
 
 // inTerminalLeaving runs a command on the real terminal and keeps the reason it gives for failing.
