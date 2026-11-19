@@ -9,6 +9,7 @@ import (
 	tea "charm.land/bubbletea/v2"
 
 	"github.com/hansehart/o3s/internal/menu"
+	"github.com/hansehart/o3s/internal/menu/menutest"
 )
 
 // Keys the driver presses beside the ones the tests share.
@@ -186,4 +187,44 @@ func inTab(t *testing.T, m model, values []string) model {
 		m, _ = drive(m, enter)
 	}
 	return m
+}
+
+// requireLines requires the screen to show every line given, whole and in the order given, the way lazygit's tests
+// assert a view's lines.
+func requireLines(t *testing.T, m model, want ...string) {
+	t.Helper()
+	shown := screen(m)
+	at := 0
+	// Find every line after the one before it
+	for _, w := range want {
+		i := slices.Index(shown[at:], w)
+		// Stop at a line the screen lacks
+		if i < 0 {
+			t.Fatalf("screen lacks %q after line %d:\n%s", w, at, strings.Join(shown, "\n"))
+		}
+		at += i + 1
+	}
+}
+
+// lacksLine requires the screen to show no line that holds the text given.
+func lacksLine(t *testing.T, m model, text string) {
+	t.Helper()
+	// Check every line of the screen
+	for _, line := range screen(m) {
+		// Stop at a line that holds the text
+		if strings.Contains(line, text) {
+			t.Fatalf("screen shows %q:\n%s", text, strings.Join(screen(m), "\n"))
+		}
+	}
+}
+
+// homeNamed is the test home of the name given.
+func homeNamed(t *testing.T, name string) menu.Home {
+	t.Helper()
+	i := slices.IndexFunc(menutest.Homes(), func(h menutest.Home) bool { return h.Name == name })
+	// Stop at a home the tests lack
+	if i < 0 {
+		t.Fatalf("no home %q", name)
+	}
+	return menutest.Homes()[i].Home
 }
