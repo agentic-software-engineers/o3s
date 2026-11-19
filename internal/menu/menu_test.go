@@ -106,7 +106,7 @@ func TestTheMainMenuNotesWhatEachGroupHolds(t *testing.T) {
 		{Value: "feature", Note: "tools in the cage · 0 installed"},
 		{Value: "firewall", Note: "hosts the cage reaches · 4 allowed · 2 blocked"},
 		{Value: "project", Note: "repositories in the workspace · 1"},
-		{Value: "secret", Note: "values the proxy injects · 2"},
+		{Value: "secret", Note: "values the proxy injects · 1 set · 1 waiting"},
 		{Value: "update", Note: "the cli, the stack and the features"},
 	}
 	// Report entries that differ

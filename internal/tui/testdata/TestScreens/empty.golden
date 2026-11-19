@@ -7,7 +7,7 @@ What do you want to do?
   feature    tools in the cage · 0 installed
   firewall   hosts the cage reaches · 0 allowed · 0 blocked
   project    repositories in the workspace · 0
-  secret     values the proxy injects · 0
+  secret     values the proxy injects · 0 set · 0 waiting
   update     the cli, the stack and the features
 
 ↑/↓ navigate · type to search · enter select · esc quit
