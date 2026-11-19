@@ -1,0 +1,30 @@
+# start raises the stack and the cage of a home on this machine
+mkdir home
+cd home
+exec o3s init --guest
+exec o3s cage start
+stdout '^The cage runs$'
+grep '^up --workspace-folder ' $WORK/devcontainer.log
+
+# stop stops every container of the stack
+exec o3s cage stop
+stdout '^Stopped \d+ containers?$'
+grep '^ps -aq --filter label=com.docker.compose.project.working_dir=' $WORK/docker.log
+
+# Without a terminal or --yes, rm names what goes and asks for --yes
+! exec o3s cage rm
+stdout 'the stack''s containers, the home''s files and the projects volume staying'
+stderr 'pass --yes'
+
+# rm removes the stack's containers and keeps the home's files
+exec o3s cage rm --yes
+stdout '^Removed \d+ containers?$'
+exists o3s.json
+
+# A command in the VM needs a home with a VM
+! exec o3s cage shell --vm -- true
+stderr 'no o3s home with a VM here, run o3s init'
+
+# A command without --vm is a usage error, since the cage's own shell takes none
+! exec o3s cage shell echo hi
+stderr 'a command runs in the home''s VM, as in o3s cage shell --vm -- echo hi'

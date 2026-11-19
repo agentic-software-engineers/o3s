@@ -316,10 +316,28 @@ func TestEveryOtherDialogEndsInItsCommand(t *testing.T) {
 	}.check(t, aHome)
 	dialogs{
 		{
-			"a new home, asking sudo on the real terminal",
-			[][]string{{"init"}, {yes}},
-			[]string{"do", "init"},
+			"a new home inside its VM, on the real terminal for sudo and the VM",
+			[][]string{{"init"}, {inVM}, {yes}},
+			[]string{"do", "isolation", "apply"},
 			[]Command{{Args: []string{"init"}, Terminal: true}},
+		},
+		{
+			"a new home on this machine's kernel with AppArmor",
+			[][]string{{"init"}, {inProcess}, {on}, {yes}},
+			[]string{"do", "isolation", "apparmor", "apply"},
+			[]Command{{Args: []string{"init", "--dangerously-skip-vm"}, Terminal: true}},
+		},
+		{
+			"a new home on this machine's kernel without AppArmor",
+			[][]string{{"init"}, {inProcess}, {off}, {yes}},
+			[]string{"do", "isolation", "apparmor", "apply"},
+			[]Command{{Args: []string{"init", "--dangerously-skip-vm", "--dangerously-skip-apparmor"}, Terminal: true}},
+		},
+		{
+			"declining a new home",
+			[][]string{{"init"}, {inVM}, {"no"}},
+			[]string{"do", "isolation", "apply"},
+			[]Command{{Note: nothingChanged}},
 		},
 	}.check(t, Home{Dir: aHome.Dir})
 }
@@ -377,5 +395,42 @@ func TestSecretStateReadsSetOrEmpty(t *testing.T) {
 	// Report a state that reads otherwise
 	if SecretState(true) != "set" || SecretState(false) != "empty" {
 		t.Errorf("SecretState() = %q, %q, want set and empty", SecretState(true), SecretState(false))
+	}
+}
+
+// Every cage dialog ends in its command: a shell on the real terminal, the start, the stop, and the removal once
+// confirmed, and a home in its VM opens its shell in the VM.
+func TestEveryCageDialogEndsInItsCommand(t *testing.T) {
+	dialogs{
+		{"starting", [][]string{{"cage"}, {start}}, []string{"do", "action"}, []Command{{Args: []string{"cage", "start"}}}},
+		{"stopping", [][]string{{"cage"}, {stop}}, []string{"do", "action"}, []Command{{Args: []string{"cage", "stop"}}}},
+		{"removing", [][]string{{"cage"}, {remove}, {yes}}, []string{"do", "action", "apply"}, []Command{{Args: []string{"cage", "rm", "--yes"}}}},
+		{"declining the removal", [][]string{{"cage"}, {remove}, {"no"}}, []string{"do", "action", "apply"}, []Command{{Note: nothingChanged}}},
+	}.check(t, aHome)
+	inVM := Home{Dir: aHome.Dir, InVM: true, Stack: []Fact{{Label: "VM", Value: "running"}}, Lookup: fakeLookup{}}
+	dialogs{
+		{"a shell in the VM, on the real terminal", [][]string{{"cage"}, {vmShell}}, []string{"do", "action"}, []Command{{Args: []string{"cage", "shell", "--vm"}, Terminal: true}}},
+	}.check(t, inVM)
+}
+
+// Beside a home in its VM, the main menu offers the cage and the secrets, noting the VM's state, and the removal names
+// the VM's disk.
+func TestAHomeInItsVMOffersItsCage(t *testing.T) {
+	h := Home{Dir: aHome.Dir, InVM: true, Stack: []Fact{{Label: "VM", Value: "running"}}, Lookup: fakeLookup{}}
+
+	q, _ := Next(h, nil)
+	asked, _ := walk(t, h, []string{"cage"}, []string{remove}, []string{"no"})
+
+	// Require the cage with the VM's state, and the secrets
+	if len(q.Options) != 2 || q.Options[0].Value != "cage" || q.Options[0].Note != "VM, stack and cage · running" || q.Options[1].Value != "secret" {
+		t.Errorf("main menu = %+v", q.Options)
+	}
+	// Require the shell in the VM first among the actions
+	if asked[1].Options[0].Value != vmShell {
+		t.Errorf("actions = %+v, want the shell in the VM first", asked[1].Options)
+	}
+	// Require the removal to name the VM's disk
+	if want := "- the VM and its disk, with the home and the projects inside"; asked[2].Preview[0] != want {
+		t.Errorf("removal = %v, want %q", asked[2].Preview, want)
 	}
 }

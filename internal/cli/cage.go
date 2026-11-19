@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"text/tabwriter"
 
@@ -20,17 +21,33 @@ import (
 	"github.com/hansehart/o3s/internal/paths"
 	"github.com/hansehart/o3s/internal/rebuild"
 	"github.com/hansehart/o3s/internal/restart"
+	"github.com/hansehart/o3s/internal/vm"
+	"github.com/hansehart/o3s/internal/words"
 )
 
-// newCage builds the commands that show the home's cage and step into it.
+// newCage builds the commands that show the home's cage, start, stop and remove it, and step into it.
 func newCage() *cobra.Command {
-	c := group("cage", "Show the home's cage, or open it in VS Code or a shell", showCage)
-	c.AddCommand(newCageIDE(), newCageShell())
+	c := group("cage", "Show, start, stop or remove the home's cage, or open it in VS Code or a shell", showCage)
+	c.AddCommand(newCageStart(), newCageStop(), newCageRm(), newCageIDE(), newCageShell())
 	return c
 }
 
-// showCage writes whether each part of the home's stack runs.
+// showCage writes the state of the home's VM where it lives in one, and whether each part of its stack runs otherwise.
 func showCage(cmd *cobra.Command) error {
+	// Show the VM of a home that lives in one
+	if lima, name, err := homeVM(); !errors.Is(err, vm.ErrNoVM) {
+		// Hand back a VM out of reach
+		if err != nil {
+			return err
+		}
+		status, err := lima.Status(cmd.Context(), name)
+		// Hand back a VM whose state stays unknown
+		if err != nil {
+			return err
+		}
+		fmt.Fprintf(cmd.OutOrStdout(), "PART  STATE\nvm    %s\n", strings.ToLower(status))
+		return nil
+	}
 	dir, err := cageHome()
 	// Hand back a folder that holds no home
 	if err != nil {
@@ -93,13 +110,155 @@ func newCageIDE() *cobra.Command {
 	}
 }
 
-// newCageShell builds the command that raises the home's cage and opens a shell inside it.
-func newCageShell() *cobra.Command {
+// newCageStart builds the command that starts the home's VM where it lives in one, and raises its stack and cage otherwise.
+func newCageStart() *cobra.Command {
 	return &cobra.Command{
-		Use:   "shell",
-		Short: "Open a shell inside the home's cage",
+		Use:   "start",
+		Short: "Start the home's VM, or its stack and cage on this machine",
 		Args:  usage(cobra.NoArgs),
 		RunE: func(cmd *cobra.Command, _ []string) error {
+			// Start the VM of a home that lives in one
+			if lima, name, err := homeVM(); !errors.Is(err, vm.ErrNoVM) {
+				// Hand back a VM out of reach
+				if err != nil {
+					return err
+				}
+				// Hand back a VM that fails to start
+				if err := lima.Start(cmd.Context(), name, cmd.ErrOrStderr()); err != nil {
+					return fmt.Errorf("start the VM %s: %w", name, err)
+				}
+				fmt.Fprintf(cmd.OutOrStdout(), "The VM %s runs\n", name)
+				return nil
+			}
+			dir, err := cageHome()
+			// Hand back a folder that holds no home
+			if err != nil {
+				return err
+			}
+			// Hand back a cage that fails to come up
+			if _, err := raise(cmd, dir); err != nil {
+				return err
+			}
+			fmt.Fprintln(cmd.OutOrStdout(), "The cage runs")
+			return nil
+		},
+	}
+}
+
+// newCageStop builds the command that stops the home's VM where it lives in one, and its stack and cage otherwise.
+func newCageStop() *cobra.Command {
+	return &cobra.Command{
+		Use:   "stop",
+		Short: "Stop the home's VM, or its stack and cage on this machine",
+		Args:  usage(cobra.NoArgs),
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			// Stop the VM of a home that lives in one
+			if lima, name, err := homeVM(); !errors.Is(err, vm.ErrNoVM) {
+				// Hand back a VM out of reach
+				if err != nil {
+					return err
+				}
+				// Hand back a VM that keeps running
+				if err := lima.Stop(cmd.Context(), name, cmd.ErrOrStderr()); err != nil {
+					return fmt.Errorf("stop the VM %s: %w", name, err)
+				}
+				fmt.Fprintf(cmd.OutOrStdout(), "Stopped the VM %s\n", name)
+				return nil
+			}
+			dir, err := cageHome()
+			// Hand back a folder that holds no home
+			if err != nil {
+				return err
+			}
+			n, err := restart.Stop(cmd.Context(), dir)
+			// Hand back a stack that keeps running
+			if err != nil {
+				return err
+			}
+			fmt.Fprintf(cmd.OutOrStdout(), "Stopped %s\n", words.Count(n, "container", "containers"))
+			return nil
+		},
+	}
+}
+
+// newCageRm builds the command that removes the home's VM with its disk, or its stack's containers, once the user agrees.
+func newCageRm() *cobra.Command {
+	var yes bool
+	cmd := &cobra.Command{
+		Use:   "rm",
+		Short: "Remove the home's VM with its disk, or its stack's containers on this machine",
+		Args:  usage(cobra.NoArgs),
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			out := cmd.OutOrStdout()
+			lima, name, vmErr := homeVM()
+			// Hand back a VM out of reach
+			if vmErr != nil && !errors.Is(vmErr, vm.ErrNoVM) {
+				return vmErr
+			}
+			dir, err := workingHome()
+			// Hand back a working folder that stays unknown
+			if err != nil {
+				return err
+			}
+			// Name what goes with the VM, or with the stack on this machine
+			if vmErr == nil {
+				fmt.Fprintf(out, "  - the VM %s and its disk, with the home and the projects inside\n", name)
+			} else {
+				// Hand back a folder that holds no home
+				if _, err := cageHome(); err != nil {
+					return err
+				}
+				fmt.Fprintln(out, "  - the stack's containers, the home's files and the projects volume staying")
+			}
+			ok, err := confirm(cmd.InOrStdin(), out, isTerminal(cmd.InOrStdin()), yes)
+			// Hand back an answer that fails to arrive
+			if err != nil {
+				return err
+			}
+			// Leave the cage as it was when the user declines
+			if !ok {
+				fmt.Fprintln(out, "Left the cage as it was")
+				return nil
+			}
+			// Delete the VM of a home that lives in one
+			if vmErr == nil {
+				// Hand back a VM that stays
+				if err := lima.Delete(cmd.Context(), name, cmd.ErrOrStderr()); err != nil {
+					return fmt.Errorf("delete the VM %s: %w", name, err)
+				}
+				fmt.Fprintf(out, "Deleted the VM %s\n", name)
+				return nil
+			}
+			n, err := restart.Remove(cmd.Context(), dir)
+			// Hand back containers that stay
+			if err != nil {
+				return err
+			}
+			fmt.Fprintf(out, "Removed %s\n", words.Count(n, "container", "containers"))
+			return nil
+		},
+	}
+	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "remove without asking")
+	return cmd
+}
+
+// newCageShell builds the command that raises the home's cage and opens a shell inside it, or opens a shell or runs a
+// command in the home's VM.
+func newCageShell() *cobra.Command {
+	var inVM bool
+	cmd := &cobra.Command{
+		Use:   "shell [--vm [command] [args...]]",
+		Short: "Open a shell inside the home's cage, or with --vm a shell or a command in the home's VM",
+		Args:  usage(cobra.ArbitraryArgs),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			// Open a shell or run a command in the home's VM
+			if inVM {
+				return inTheVM(cmd, args)
+			}
+			// Turn away a command, which runs in the VM alone
+			if len(args) > 0 {
+				return fmt.Errorf("%w: a command runs in the home's VM, as in o3s cage shell --vm -- %s", ErrUsage, strings.Join(args, " "))
+			}
 			dir, err := cageHome()
 			// Hand back a folder that holds no home
 			if err != nil {
@@ -113,6 +272,23 @@ func newCageShell() *cobra.Command {
 			return syscall.Exec(c.cli, c.exec("bash"), os.Environ()) //nolint:gosec // o3s hands the terminal to the devcontainer CLI it found, with the command line it builds itself
 		},
 	}
+	cmd.Flags().BoolVar(&inVM, "vm", false, "open the shell in the home's VM, or run the command that follows there")
+	return cmd
+}
+
+// inTheVM opens a shell in the home's VM, or runs a command there, failing with the command's own exit code.
+func inTheVM(cmd *cobra.Command, args []string) error {
+	lima, name, err := homeVM()
+	// Hand back why the VM stays out of reach
+	if err != nil {
+		return err
+	}
+	err = lima.Exec(cmd.Context(), name, cmd.InOrStdin(), cmd.OutOrStdout(), cmd.ErrOrStderr(), args...)
+	// Fail with the exit code of a command that ran and failed
+	if exit, ok := errors.AsType[*exec.ExitError](err); ok {
+		return errExit{code: exit.ExitCode()}
+	}
+	return err
 }
 
 // cageHome finds the home a cage command works on, and turns away a folder that holds none.

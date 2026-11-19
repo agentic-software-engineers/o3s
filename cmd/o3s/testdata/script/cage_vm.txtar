@@ -1,46 +1,59 @@
-# vm start creates the home's VM, named by the folder's ID, from the template in o3s's own VM folder
+# cage start creates the home's VM, named by the folder's ID, from the template in o3s's own VM folder
 cd home
-exec o3s vm start
+exec o3s cage start
 stdout '^The VM o3s-0123456789ab runs$'
 grep 'LIMA_HOME=\S+/\.local/share/o3s/vm --tty=false start --name=o3s-0123456789ab --vm-type=qemu --timeout=30m0s -$' $WORK/limactl.log
 grep 'plain: true' $WORK/template.yaml
 ! exists o3s.json
 
 # Starting again starts the VM the home has
-exec o3s vm start
+exec o3s cage start
 grep 'tty=false start o3s-0123456789ab$' $WORK/limactl.log
 
 # A command in the VM runs with its exit code passed on
-exec o3s vm shell -- echo inside
+exec o3s cage shell --vm -- echo inside
 stdout '^inside$'
-! exec o3s vm shell -- sh -c 'exit 7'
+! exec o3s cage shell --vm -- sh -c 'exit 7'
 [exec:sh] ! stderr 'error'
 
+# Bare cage shows the VM's state
+exec o3s cage
+stdout '^vm +running$'
+
 # stop stops the VM
-exec o3s vm stop
+exec o3s cage stop
 stdout '^Stopped the VM o3s-0123456789ab$'
 grep 'tty=false stop o3s-0123456789ab$' $WORK/limactl.log
 
+# Without a terminal or --yes, rm names the VM's disk and asks for --yes
+! exec o3s cage rm
+stdout 'the VM o3s-0123456789ab and its disk, with the home and the projects inside'
+stderr 'pass --yes'
+
+# A command outside the cage's own finds the way into the VM, where the home's files live
+! exec o3s firewall
+stderr 'this home lives in its VM, run its commands there: o3s cage shell --vm'
+
 # rm deletes the VM, after which nothing runs in it
-exec o3s vm rm
+exec o3s cage rm --yes
 stdout '^Deleted the VM o3s-0123456789ab$'
-! exec o3s vm shell -- true
+! exec o3s cage shell --vm -- true
 stderr 'does not exist'
 
 # The engine that needs a DNS server gets one
 env O3S_ENGINE=hcs
-exec o3s vm start
+exec o3s cage start
 grep 'vm-type=hcs --timeout=30m0s --dns=8.8.8.8 -$' $WORK/limactl.log
 
 # An unknown engine is turned away
 env O3S_ENGINE=firecracker
-! exec o3s vm start
+! exec o3s cage start
 stderr 'O3S_ENGINE=firecracker, where o3s boots a VM with qemu, vz, hcs'
 env O3S_ENGINE=
 
 # A host that needs the VM manager gets pointed at its installation
 env PATH=$O3S_DIR
-! exec o3s vm start
+! exec o3s cage start
 stderr 'put limactl on PATH'
 
 -- home/.o3s/id --

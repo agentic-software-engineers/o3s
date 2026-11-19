@@ -13,6 +13,7 @@ import (
 	"github.com/hansehart/o3s/internal/registry"
 	"github.com/hansehart/o3s/internal/secrets"
 	"github.com/hansehart/o3s/internal/tui"
+	"github.com/hansehart/o3s/internal/vm"
 )
 
 // ErrUsage marks a command line with missing or malformed arguments.
@@ -44,6 +45,7 @@ func Run(ctx context.Context, args []string, s Streams) int {
 	if exit, ok := errors.AsType[errExit](err); ok {
 		return exit.code
 	}
+	err = inItsVM(err)
 	fmt.Fprintf(s.Err, "error: %v\n", err)
 	// Leave the error where the menu asks for it, which outlasts the terminal it printed on
 	if file := os.Getenv(tui.ErrorFileEnv); file != "" {
@@ -55,6 +57,20 @@ func Run(ctx context.Context, args []string, s Streams) int {
 		return 2
 	}
 	return 1
+}
+
+// inItsVM names the way into the home's VM where a command finds no home in a folder whose home lives there.
+func inItsVM(err error) error {
+	dir, werr := workingHome()
+	// Keep the error of a folder without a home in a VM
+	if !errors.Is(err, config.ErrNoHome) || werr != nil {
+		return err
+	}
+	// Keep the error of a folder whose home has no VM
+	if _, ferr := vm.Find(dir); ferr != nil {
+		return err
+	}
+	return errors.New("this home lives in its VM, run its commands there: o3s cage shell --vm")
 }
 
 // isUsage reports whether an error comes from the command line rather than from the home's files.

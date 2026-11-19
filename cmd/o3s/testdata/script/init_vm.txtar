@@ -11,12 +11,12 @@ grep '^O3S_RELEASE_URL=file:///tmp/o3s-release sh /tmp/o3s-release/install.sh$' 
 grep 'init --guest' $WORK/vm.log
 
 # The VM commands find the home's VM by its ID, wherever the folder moves
-exec o3s vm shell -- echo inside
+exec o3s cage shell --vm -- echo inside
 stdout '^inside$'
 cd $WORK
 mv home moved
 cd moved
-exec o3s vm shell -- echo still
+exec o3s cage shell --vm -- echo still
 stdout '^still$'
 
 # Release files that differ from their checksums stay out of the VM
@@ -34,7 +34,7 @@ stderr 'O3S_RELEASE_URL'
 # The VM commands need a home with a VM
 mkdir $WORK/empty
 cd $WORK/empty
-! exec o3s vm shell -- true
+! exec o3s cage shell --vm -- true
 stderr 'no o3s home with a VM here, run o3s init'
 
 # --dangerously-skip-vm makes the home on this host, records the choice, and warns on every start
