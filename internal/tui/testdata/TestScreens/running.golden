@@ -33,7 +33,8 @@ Cage
 o3s  /home/ubuntu/o3s
 cage / Remove
 
-- the stack's containers, the home's files and the projects volume staying
+- the stack's containers
+= the home's files and the projects volume stay
 
 Removes the cage
 Apply?

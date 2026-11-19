@@ -23,7 +23,8 @@ stdout '^The cage is stopped already$'
 
 # Without a terminal or --yes, rm names what goes and asks for --yes
 ! exec o3s cage rm
-stdout 'the stack''s containers, the home''s files and the projects volume staying'
+stdout '^  - the stack''s containers$'
+stdout '^  = the home''s files and the projects volume stay$'
 stderr 'pass --yes'
 
 # rm removes the stack's containers and keeps the home's files
