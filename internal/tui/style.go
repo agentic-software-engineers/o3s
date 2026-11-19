@@ -15,4 +15,15 @@ var (
 	added     = lipgloss.NewStyle().Foreground(lipgloss.Color("2"))
 	removed   = lipgloss.NewStyle().Foreground(lipgloss.Color("1"))
 	separator = dim.Render(" / ")
+	tabOn     = lipgloss.NewStyle().Foreground(lipgloss.Color("0")).Background(accent).Bold(true)
+)
+
+// Sizes the screen holds to, whatever the terminal reports.
+const (
+	// chromeLines are the lines the header, the trail, the gaps and the hint take around the body.
+	chromeLines = 5
+	// minPaneLines keeps room to read output on the smallest screen.
+	minPaneLines = 3
+	// fieldMargin leaves room beside a text field, and minFieldWidth keeps it wide enough to type in.
+	fieldMargin, minFieldWidth = 4, 10
 )

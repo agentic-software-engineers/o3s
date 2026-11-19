@@ -5,7 +5,6 @@ import tea "charm.land/bubbletea/v2"
 // Keys the tests press.
 var (
 	space = tea.KeyPressMsg{Code: tea.KeySpace, Text: " "}
-	tab   = tea.KeyPressMsg{Code: tea.KeyTab}
 	enter = tea.KeyPressMsg{Code: tea.KeyEnter}
 	esc   = tea.KeyPressMsg{Code: tea.KeyEscape}
 	down  = tea.KeyPressMsg{Code: tea.KeyDown}

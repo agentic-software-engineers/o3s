@@ -4,6 +4,12 @@ stdout '^Allowed example.com:443$'
 ! stdout '~'
 ! stderr .
 
+# Several hosts join at once, each on the ports and for the time given
+exec o3s firewall add one.example.net two.example.net --port 22
+stdout '^Allowed one.example.net:22$'
+stdout '^Allowed two.example.net:22$'
+exec o3s firewall rm one.example.net two.example.net --yes
+
 # An update lists each field it changed before it confirms
 exec o3s firewall add example.com --port 22 --port 443
 stdout '^example.com$'

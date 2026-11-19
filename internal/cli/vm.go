@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os/exec"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -22,7 +23,7 @@ func (e errExit) Error() string {
 
 // newVM builds the commands that run the home's VM.
 func newVM() *cobra.Command {
-	c := group("vm", "Run the VM the home lives in")
+	c := group("vm", "Show and run the VM the home lives in", showVM)
 	c.AddCommand(
 		newVMLifecycle("start", "Create the home's VM where it is missing and start it", "The VM %s runs\n", vm.Lima.Start),
 		newVMShell(),
@@ -74,6 +75,22 @@ func newVMShell() *cobra.Command {
 			return err
 		},
 	}
+}
+
+// showVM writes the state of the home's VM.
+func showVM(cmd *cobra.Command) error {
+	lima, name, err := homeVM()
+	// Hand back a VM manager o3s fails to find
+	if err != nil {
+		return err
+	}
+	status, err := lima.Status(cmd.Context(), name)
+	// Hand back a VM whose state stays unknown
+	if err != nil {
+		return err
+	}
+	fmt.Fprintf(cmd.OutOrStdout(), "VM %s %s\n", name, strings.ToLower(status))
+	return nil
 }
 
 // homeVM finds the VM manager and the name of the working folder's VM.

@@ -1,7 +1,16 @@
-# init makes the home inside its VM, and leaves this folder an ID to find the VM by
+# Without the VM preview, init makes the home in this folder, as it always has
+mkdir plain
+cd plain
+exec o3s init
+exists o3s.json
+! exists .o3s/id
+! exists $WORK/limactl.log
+
+# With the VM preview, init makes the home inside its VM, and leaves this folder an ID to find the VM by
+env O3S_PREVIEW=vm
 env O3S_RELEASE_URL=file://$WORK/release
-mkdir home
-cd home
+mkdir $WORK/home
+cd $WORK/home
 exec o3s init
 exists .o3s/id
 ! exists o3s.json
@@ -36,6 +45,20 @@ mkdir $WORK/empty
 cd $WORK/empty
 ! exec o3s vm shell -- true
 stderr 'no o3s home with a VM here, run o3s init'
+
+# The preview flag turns the preview on for the command alone, as O3S_PREVIEW=1 turns on every preview
+env O3S_PREVIEW=
+env O3S_RELEASE_URL=file://$WORK/release
+mkdir $WORK/flagged
+cd $WORK/flagged
+exec o3s init --preview
+exists .o3s/id
+env O3S_PREVIEW=1
+mkdir $WORK/all
+cd $WORK/all
+exec o3s init
+exists .o3s/id
+env O3S_PREVIEW=vm
 
 # --dangerously-skip-vm makes the home on this host, records the choice, and warns on every start
 mkdir $WORK/process

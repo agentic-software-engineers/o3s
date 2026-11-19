@@ -3,17 +3,19 @@
 package process_test
 
 import (
+	"strconv"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/hansehart/o3s/internal/fixture"
 	"github.com/hansehart/o3s/test/stacktest"
 )
 
-// The data a host moves through the gateway shows in the allowlist, and a name the cage was refused shows in the log.
+// The data a host moves through the gateway shows beside it, and a name the cage was refused shows among the blocked names.
 func TestTheFirewallShowsTrafficAndBlockedNames(t *testing.T) {
 	t.Setenv("O3S_TRAFFIC_INTERVAL", "1")
-	_, err := stacktest.O3s(t, "firewall", "add", "github.com", "--port", "443")
+	_, err := stacktest.O3s(t, "firewall", "add", "github.com", "--port", strconv.Itoa(fixture.Port))
 	// Stop when the host stays closed
 	if err != nil {
 		t.Fatalf("o3s firewall add = %v", err)
@@ -28,22 +30,19 @@ func TestTheFirewallShowsTrafficAndBlockedNames(t *testing.T) {
 		t.Fatalf("curl https://github.com in the cage = %v", err)
 	}
 	// Ask for a name the policy leaves out, which the gateway refuses
-	_, _ = stacktest.ContainerExec(t, raised.ContainerID, "getent", "hosts", "blocked.example")
+	_, _ = stacktest.ContainerExec(t, raised.ContainerID, "getent", "hosts", fixture.RefusedName)
 
-	listed := waitForO3s(t, []string{"firewall", "ls"}, func(out string) bool {
-		return strings.Contains(out, "github.com") && !strings.Contains(firstLine(out, "github.com"), " – ") && !strings.Contains(firstLine(out, "github.com"), " 0 B ")
-	})
-	logged := waitForO3s(t, []string{"firewall", "log"}, func(out string) bool {
-		return strings.Contains(out, "blocked.example")
+	shown := waitForO3s(t, []string{"firewall"}, func(out string) bool {
+		return strings.Contains(out, "github.com") && !strings.Contains(firstLine(out, "github.com"), " – ") && !strings.Contains(firstLine(out, "github.com"), " 0 B ") && strings.Contains(out, fixture.RefusedName)
 	})
 
 	// Report an allowed host whose data is missing
-	if !strings.Contains(firstLine(listed, "github.com"), " ago") {
-		t.Errorf("o3s firewall ls = %q, want github.com with its data and when it last moved any", listed)
+	if !strings.Contains(firstLine(shown, "github.com"), " ago") {
+		t.Errorf("o3s firewall = %q, want github.com with its data and when it last moved any", shown)
 	}
-	// Report a refused name missing from the log
-	if !strings.Contains(logged, "blocked.example") {
-		t.Errorf("o3s firewall log = %q, want blocked.example among the blocked names", logged)
+	// Report a refused name missing from the blocked names
+	if !strings.Contains(shown, fixture.RefusedName) {
+		t.Errorf("o3s firewall = %q, want %s among the blocked names", shown, fixture.RefusedName)
 	}
 }
 
@@ -79,7 +78,7 @@ func firstLine(out, host string) string {
 // A host allowed for a set time is reachable until its end and refused after it, without a restart in between.
 func TestATimedHostClosesAtItsEnd(t *testing.T) {
 	opened := time.Now()
-	_, err := stacktest.O3s(t, "firewall", "add", "github.com", "--port", "443", "--for", "90s")
+	_, err := stacktest.O3s(t, "firewall", "add", "github.com", "--port", strconv.Itoa(fixture.Port), "--for", "90s")
 	// Stop when the host stays closed
 	if err != nil {
 		t.Fatalf("o3s firewall add --for 90s = %v", err)

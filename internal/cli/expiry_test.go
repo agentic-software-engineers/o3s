@@ -4,6 +4,8 @@ import (
 	"errors"
 	"testing"
 	"time"
+
+	"github.com/hansehart/o3s/internal/fixture"
 )
 
 // A duration reads as seconds alone or in Go's form, and anything else as no time.
@@ -35,10 +37,10 @@ func TestNarrowsComparesTheEnds(t *testing.T) {
 		old, next string
 		want      bool
 	}{
-		{"", "2026-11-16T19:00:00Z", true},
-		{"2026-11-16T20:00:00Z", "2026-11-16T19:00:00Z", true},
-		{"2026-11-16T19:00:00Z", "2026-11-16T20:00:00Z", false},
-		{"2026-11-16T19:00:00Z", "", false},
+		{"", fixture.InAnHourText, true},
+		{fixture.InTwoHoursText, fixture.InAnHourText, true},
+		{fixture.InAnHourText, fixture.InTwoHoursText, false},
+		{fixture.InAnHourText, "", false},
 		{"", "", false},
 	}
 	// Judge every pair of ends
@@ -54,12 +56,12 @@ func TestNarrowsComparesTheEnds(t *testing.T) {
 
 // The time left reads in its largest whole unit, expired once the end has come, and empty without an end.
 func TestUntilWritesTheTimeLeft(t *testing.T) {
-	now := time.Date(2026, 11, 16, 18, 0, 0, 0, time.UTC)
-	tests := map[string]string{"": "", "2026-11-16T17:00:00Z": "expired", "2026-11-16T18:00:30Z": "in 30s", "2026-11-16T18:52:00Z": "in 52m", "2026-11-16T21:00:00Z": "in 3h", "2026-11-19T18:00:00Z": "in 3d"}
+	after := func(d time.Duration) string { return fixture.Now.Add(d).Format(time.RFC3339) }
+	tests := map[string]string{"": "", after(-time.Hour): "expired", after(30 * time.Second): "in 30s", after(52 * time.Minute): "in 52m", after(3 * time.Hour): "in 3h", after(72 * time.Hour): "in 3d"}
 	// Write every end
 	for end, want := range tests {
 		// Report an end written wrong
-		if got := until(end, now); got != want {
+		if got := until(end, fixture.Now); got != want {
 			t.Errorf("until(%q) = %q, want %q", end, got, want)
 		}
 	}

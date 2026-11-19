@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
+	"github.com/hansehart/o3s/internal/fixture"
 	"github.com/hansehart/o3s/internal/home"
 )
 
@@ -59,8 +60,8 @@ func TestInitWritesTheBinaryAsTheStartHook(t *testing.T) {
 	tests := []struct {
 		version, executable, want string
 	}{
-		{"1.0.0", "/home/ubuntu/.local/bin/o3s", `"initializeCommand": ["/home/ubuntu/.local/bin/o3s", "init"]`},
-		{"1.0.0-rc.1", "/home/ubuntu/.local/bin/o3s-rc", `"initializeCommand": ["/home/ubuntu/.local/bin/o3s-rc", "init"]`},
+		{fixture.Version, "/home/ubuntu/.local/bin/o3s", `"initializeCommand": ["/home/ubuntu/.local/bin/o3s", "init"]`},
+		{fixture.Candidate, "/home/ubuntu/.local/bin/o3s-rc", `"initializeCommand": ["/home/ubuntu/.local/bin/o3s-rc", "init"]`},
 		{"dev", "/tmp/go-build/o3s", `"initializeCommand": "o3s init"`},
 	}
 	// Check every kind of build

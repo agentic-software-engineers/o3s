@@ -1,5 +1,5 @@
-# Every feature shows its tag and the hosts it needs, read from the home alone
-exec o3s feature ls
+# Piped, every feature shows its tag and the hosts it needs, read from the home alone
+exec o3s feature
 stdout '^FEATURE +VERSION +HOSTS$'
 stdout '^registry\.example\.com/features/tool +2 +example\.com, api\.example\.com$'
 

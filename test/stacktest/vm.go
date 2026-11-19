@@ -18,6 +18,7 @@ import (
 // The folders sit below a short temporary folder, since the VM manager keeps sockets there and socket paths are capped in length.
 func AVMHost(tb testing.TB) string {
 	tb.Helper()
+	tb.Setenv("O3S_PREVIEW", "vm")
 	base := ""
 	// Keep the folder short on hosts with Unix sockets
 	if runtime.GOOS != "windows" {

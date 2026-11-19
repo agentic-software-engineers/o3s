@@ -9,16 +9,17 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	"github.com/charmbracelet/x/term"
 	"github.com/spf13/cobra"
 
 	"github.com/hansehart/o3s/internal/config"
 	"github.com/hansehart/o3s/internal/secrets"
 )
 
-// newSecret builds the commands that store, remove and list the values the proxy injects.
+// newSecret builds the commands that show, store and remove the values the proxy injects.
 func newSecret() *cobra.Command {
-	s := group("secret", "Store or remove the values the proxy injects")
-	s.AddCommand(newSecretAdd(), newSecretRm(), newSecretLs())
+	s := group("secret", "Show, store or remove the values the proxy injects", showSecrets)
+	s.AddCommand(newSecretAdd(), newSecretRm())
 	return s
 }
 
@@ -26,7 +27,7 @@ func newSecret() *cobra.Command {
 func newSecretAdd() *cobra.Command {
 	var noBindHint bool
 	cmd := &cobra.Command{
-		Use:   "add <NAME>",
+		Use:   "add <name>",
 		Short: "Store a secret's value, read from stdin",
 		Args:  usage(cobra.ExactArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -73,69 +74,91 @@ func newSecretAdd() *cobra.Command {
 	return cmd
 }
 
-// newSecretRm builds the command that removes a secret's value.
+// newSecretRm builds the command that removes secrets' values, once the user agrees.
 func newSecretRm() *cobra.Command {
-	return &cobra.Command{
-		Use:   "rm <NAME>",
-		Short: "Remove a secret's value",
-		Args:  usage(cobra.ExactArgs(1)),
+	var yes bool
+	cmd := &cobra.Command{
+		Use:   "rm <name>...",
+		Short: "Remove secrets' values",
+		Args:  usage(cobra.MinimumNArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			name := args[0]
 			path, store, err := loadSecrets()
 			// Hand back a secrets file that fails to load
 			if err != nil {
 				return err
 			}
-			// Turn away a name the file lacks
-			if !store.Remove(name) {
-				return fmt.Errorf("%w %s", secrets.ErrUnknown, name)
+			out := cmd.OutOrStdout()
+			// Name every value that leaves and the hosts that stop receiving it
+			for _, name := range args {
+				// Turn away a name the file lacks
+				if _, ok := store.Value(name); !ok {
+					return fmt.Errorf("%w %s", secrets.ErrUnknown, name)
+				}
+				line := "  - " + name
+				// Name the hosts that stop receiving the value
+				if hosts := hostsNaming(name); len(hosts) > 0 {
+					line += ", " + joinAnd(hosts) + " stop receiving it"
+				}
+				fmt.Fprintln(out, line)
+			}
+			ok, err := confirm(cmd.InOrStdin(), out, isTerminal(cmd.InOrStdin()), yes)
+			// Hand back an answer that fails to arrive
+			if err != nil {
+				return err
+			}
+			// Leave the secrets as they were when the user declines
+			if !ok {
+				fmt.Fprintln(out, "Left the secrets as they were")
+				return nil
+			}
+			// Remove every value the command names
+			for _, name := range args {
+				store.Remove(name)
 			}
 			// Hand back a secrets file that fails to save
 			if err := store.Save(path); err != nil {
 				return err
 			}
-			fmt.Fprintf(cmd.OutOrStdout(), "Removed %s\n", name)
+			// Name every value that left
+			for _, name := range args {
+				fmt.Fprintf(out, "Removed %s\n", name)
+			}
 			return nil
 		},
 	}
+	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "remove without asking")
+	return cmd
 }
 
-// newSecretLs builds the command that lists every secret, whether it is set, and its hosts.
-func newSecretLs() *cobra.Command {
-	return &cobra.Command{
-		Use:   "ls",
-		Short: "List the secrets",
-		Args:  usage(cobra.NoArgs),
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			_, store, err := loadSecrets()
-			// Hand back a secrets file that fails to load
-			if err != nil {
-				return err
-			}
-			names := store.Names()
-			c, _ := homeConfig()
-			// Add the names the home's hosts carry, stored or not
-			for _, h := range c.Hosts {
-				// Add a name the file is yet to hold
-				if h.Secret != "" && !slices.Contains(names, h.Secret) {
-					names = append(names, h.Secret)
-				}
-			}
-			slices.Sort(names)
-			w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 2, ' ', 0)
-			fmt.Fprintln(w, "NAME\tVALUE\tHOSTS")
-			// Write a row per name
-			for _, name := range names {
-				state := "empty"
-				// Show that a value is stored, never the value
-				if _, ok := store.Value(name); ok {
-					state = "set"
-				}
-				fmt.Fprintf(w, "%s\t%s\t%s\n", name, state, strings.Join(hostsNaming(name), ", "))
-			}
-			return w.Flush()
-		},
+// showSecrets writes every secret, whether it holds a value, and the hosts that carry it.
+func showSecrets(cmd *cobra.Command) error {
+	_, store, err := loadSecrets()
+	// Hand back a secrets file that fails to load
+	if err != nil {
+		return err
 	}
+	names := store.Names()
+	c, _ := homeConfig()
+	// Add the names the home's hosts carry, stored or not
+	for _, h := range c.Hosts {
+		// Add a name the file is yet to hold
+		if h.Secret != "" && !slices.Contains(names, h.Secret) {
+			names = append(names, h.Secret)
+		}
+	}
+	slices.Sort(names)
+	w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 2, ' ', 0)
+	fmt.Fprintln(w, "NAME\tVALUE\tHOSTS")
+	// Write a row per name
+	for _, name := range names {
+		state := "empty"
+		// Show that a value is stored, never the value
+		if _, ok := store.Value(name); ok {
+			state = "set"
+		}
+		fmt.Fprintf(w, "%s\t%s\t%s\n", name, state, strings.Join(hostsNaming(name), ", "))
+	}
+	return w.Flush()
 }
 
 // loadSecrets finds and reads the secrets file the stack mounts into the proxy.
@@ -184,6 +207,5 @@ func isTerminal(stream any) bool {
 	if !ok {
 		return false
 	}
-	info, err := f.Stat()
-	return err == nil && info.Mode()&os.ModeCharDevice != 0
+	return term.IsTerminal(f.Fd())
 }

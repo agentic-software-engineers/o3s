@@ -27,8 +27,9 @@ var (
 	}
 )
 
-// selfUpdate brings the binary to the newest release of its channel and hands the rest of the update to it, and reports whether it did.
-func selfUpdate(ctx context.Context, in io.Reader, out, errOut io.Writer, yes bool) (bool, error) {
+// selfUpdate brings the binary to the newest release of its channel and hands the parts of the update left to it, and
+// reports whether it did. It ends with the binary where no part is left.
+func selfUpdate(ctx context.Context, in io.Reader, out, errOut io.Writer, yes bool, rest []string) (bool, error) {
 	current := version()
 	// Leave a dev build to the way it was built
 	if !release.IsRelease(current) {
@@ -73,11 +74,6 @@ func selfUpdate(ctx context.Context, in io.Reader, out, errOut io.Writer, yes bo
 	if err != nil {
 		return false, err
 	}
-	verified, err := release.Verify(ctx, bin)
-	// Hand back a release whose attestation fails to verify
-	if err != nil {
-		return false, err
-	}
 	dest := path
 	// Give a plain o3s from before the channels the name of the stable channel
 	if filepath.Base(path) == "o3s" {
@@ -95,17 +91,40 @@ func selfUpdate(ctx context.Context, in io.Reader, out, errOut io.Writer, yes bo
 		}
 	}
 	fmt.Fprintf(out, "Updated o3s to %s\n", target)
-	// Show how to check the attestation where gh checked none
-	if !verified {
-		fmt.Fprintf(out, "Verify its build attestation with: %s\n", release.VerifyHint(dest))
+	fmt.Fprintf(out, "Verify its build attestation with: %s\n", release.VerifyHint(dest))
+	_ = os.RemoveAll(dir)
+	// End where the binary was all the update named
+	if rest == nil {
+		return true, nil
 	}
-	args := []string{dest, "update"}
+	args := append([]string{dest, "update"}, rest...)
 	// Pass the answer on to the new binary's own question
 	if yes {
 		args = append(args, "--yes")
 	}
-	_ = os.RemoveAll(dir)
 	return true, restartAs(dest, args)
+}
+
+// newerRelease reads the release the binary's channel would update to and the binary's own, and whether that release
+// is newer.
+func newerRelease(ctx context.Context) (string, string, bool) {
+	current := version()
+	path, err := executable()
+	// Report nothing newer for a dev build or a binary whose file stays unknown
+	if !release.IsRelease(current) || err != nil {
+		return "", current, false
+	}
+	channel, _ := release.ChannelOf(path)
+	// Report nothing newer for a binary pinned to its version
+	if channel == release.Pinned {
+		return "", current, false
+	}
+	target, err := newestOf(ctx, channel)
+	// Report nothing newer where the releases stay out of reach
+	if err != nil {
+		return "", current, false
+	}
+	return target, current, release.Newer(target, current)
 }
 
 // newestOf reads the release a channel updates to: the latest stable release, or the newest release candidates included.

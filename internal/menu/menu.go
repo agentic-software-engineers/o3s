@@ -1,10 +1,11 @@
-// Package menu leads through the dialogs of bare o3s, each ending in the command line the CLI runs.
+// Package menu leads through the views and dialogs of bare o3s, each ending in the command lines the CLI runs.
 package menu
 
 import (
+	"fmt"
 	"slices"
-	"strconv"
 	"strings"
+	"time"
 
 	"github.com/hansehart/o3s/internal/config"
 )
@@ -13,32 +14,75 @@ import (
 type Home struct {
 	Dir string
 	// Exists marks a folder that holds a home already.
-	Exists   bool
-	Hosts    []config.Host
-	Secrets  []Secret
-	Stores   []string
-	Features []string
+	Exists bool
+	// Now is the moment the menu reads the home at, which end times count from.
+	Now   time.Time
+	Hosts []config.Host
+	// Traffic is what the gateway recorded for each allowed host, by name.
+	Traffic map[string]Traffic
+	Secrets []Secret
+	Stores  []string
+	// Installed are the features the cage installs, in the order it installs them.
+	Installed []Installed
 	// Blocked are the names the gateway refused, each noting how often and when.
 	Blocked []Option
+	// Running marks a stack whose gateway answers, which alone knows what it blocked.
+	Running bool
+	// Stack names whether each part of the stack runs.
+	Stack []Fact
 	// Projects are the projects the workspace lists, as host/owner/name.
 	Projects []string
 	Lookup   Lookup
 }
 
-// Lookup asks the stores what they offer and works out what a feature changes in the home.
+// Traffic is what the gateway recorded for one host, as the screen shows it.
+type Traffic struct {
+	Data, Seen string
+}
+
+// Installed is a feature the cage installs, with the tag it follows and the options it sets.
+type Installed struct {
+	Package, Tag string
+	Options      map[string]string
+}
+
+// Lookup asks the stores what they offer and works out what a change brings to the home.
 type Lookup interface {
-	// Features lists the ids of the features a store offers.
-	Features(store string) ([]string, error)
+	// Catalog lists the features a store offers.
+	Catalog(store string) ([]Offer, error)
 	// Add shows what adding a feature brings.
 	Add(id string) (Preview, error)
 	// Remove shows what leaves with a feature.
 	Remove(pkg string) (Preview, error)
+	// Updates lists every part with a newer version: o3s, the stack and each feature.
+	Updates() ([]Update, error)
+}
+
+// Offer is a feature a store offers, with how it names it and what it does.
+type Offer struct {
+	ID, Name, Description string
+}
+
+// Update is a part with a newer version: the name update takes it by, how the screen names it, and what changes.
+type Update struct {
+	Target, Name, Change string
 }
 
 // Preview is the lines that show a change before it applies, and the secrets it waits for.
 type Preview struct {
 	Lines   []string
 	Waiting []string
+	// Options are the settings the feature offers for the user to set.
+	Options []FeatureOption
+	// Features, Hosts and Env count what the change adds or takes away.
+	Features, Hosts, Env int
+}
+
+// FeatureOption is a setting a feature offers, with the values it takes and the one it falls back to.
+type FeatureOption struct {
+	Name, Type, Default string
+	Enum, Proposals     []string
+	Description         string
 }
 
 // Secret is a secret the home knows, and whether it holds a value.
@@ -61,22 +105,77 @@ const (
 	Hidden
 	// Confirm takes yes or no.
 	Confirm
+	// View shows a group's tabs and takes the tab with the row or the key the user picks in it.
+	View
 )
 
 // Question is one step of a dialog.
 type Question struct {
-	Key     string
-	Kind    Kind
-	Title   string
+	Key   string
+	Kind  Kind
+	Title string
+	// About says in one line what the question is about.
+	About   string
 	Options []Option
 	Default []string
 	Preview []string
+	// Summary sums up the preview in one line, which stays in view beside the question.
+	Summary string
+	// Facts are the labeled facts a detail shows above its actions.
+	Facts []Fact
+	// Example shows the form a line of text takes.
+	Example string
+	// Check reads a line of text as the user types it, in plain words where it holds, and names the rule it breaks
+	// otherwise.
+	Check func(string) (string, error)
+	// Numbered numbers the options, so a digit picks one.
+	Numbered bool
+	// Tabs are the tabs a view shows. A view's default names the tab it opens at and the row it starts on.
+	Tabs []Tab
 }
 
-// Option is one choice of a question, with a note shown beside it.
+// Fact is one labeled fact a detail shows.
+type Fact struct {
+	Label, Value string
+}
+
+// Tab is one tab of a view: what it holds, what it says while it holds nothing, and how its rows answer.
+type Tab struct {
+	Name, About, Empty string
+	Options            []Option
+	// Multi marks a tab whose rows the user marks and hands back together, the ones in Marked marked from the start.
+	Multi  bool
+	Marked []string
+	// Reorder lets the user move a row up or down.
+	Reorder bool
+	// Keys are the single keys the tab acts on beside Enter.
+	Keys []Key
+}
+
+// Key is a single key a tab acts on, the help it shows, and the value it answers with.
+type Key struct {
+	Key, Help, Value string
+}
+
+// Option is one choice of a question, shown by its label with its columns lined up and a line that says what it is.
 type Option struct {
 	Value string
+	// Label is how the option shows, its value where it has none.
+	Label string
 	Note  string
+	// Columns line up beside the label across the rows of a list.
+	Columns []string
+	// Detail says in a line below the option what it is.
+	Detail string
+}
+
+// Shown is how an option shows, its label or else its value.
+func (o Option) Shown() string {
+	// Take the label where the option has one
+	if o.Label != "" {
+		return o.Label
+	}
+	return o.Value
 }
 
 // Answer is what the user gave one question.
@@ -123,31 +222,26 @@ type Command struct {
 	Args  []string
 	Stdin *string
 	Note  string
-	// Terminal marks a command that needs the real terminal: to ask for sudo, to restart as another binary, or to hand it to a shell.
+	// Terminal marks a command that needs the real terminal: to ask for sudo or to hand it to a shell.
 	Terminal bool
+	// Quiet marks a command whose success shows as the view it changed, without its output.
+	Quiet bool
 }
 
-// Answers the dialogs give.
+// Values a dialog answers with beside the rows it shows.
 const (
 	none  = "none"
-	fresh = "new"
-	other = "other"
+	fresh = "+new"
+	typed = "+type"
 	yes   = "yes"
+	add   = "+add"
+	back  = "+back"
 	// always keeps a host open without an end time.
 	always = "always"
 )
 
-// entries are the groups of the main menu, each with what it does.
-var entries = []Option{
-	{Value: "init", Note: "make this folder a home"},
-	{Value: "firewall", Note: "allow hosts the cage reaches"},
-	{Value: "secret", Note: "values the proxy injects"},
-	{Value: "store", Note: "where features come from"},
-	{Value: "feature", Note: "tools in the cage"},
-	{Value: "project", Note: "repositories in the workspace"},
-	{Value: "cage", Note: "open VS Code or a shell"},
-	{Value: "update", Note: "binary, stack and features"},
-}
+// nothingChanged is the note a declined change ends in.
+const nothingChanged = "Nothing changed."
 
 // Next hands back the question a dialog asks next, or reports that it asks nothing more.
 func Next(h Home, a Answers) (Question, bool) {
@@ -159,8 +253,32 @@ func Plan(h Home, a Answers) []Command {
 	return plan(h, a)
 }
 
-// mainMenu offers the groups that work where the menu runs: inside a home every group but init, outside one init and the secrets.
+// Open is the answers that open the menu at a group's view, the stores opening at the feature view's Stores tab.
+func Open(path ...string) Answers {
+	var a Answers
+	// Open at the group the path names
+	if len(path) > 0 {
+		a = a.With("do", []string{path[0]})
+	}
+	// Open at the feature view's Stores tab for the stores
+	if len(path) > 1 && path[0] == "feature" && path[1] == "store" {
+		a = a.With("tab", []string{storesTab})
+	}
+	return a
+}
+
+// mainMenu offers the groups that work where the menu runs, each noting what it holds: inside a home every group but
+// init, outside one init and the secrets.
 func mainMenu(h Home) Question {
+	entries := []Option{
+		{Value: "init", Note: "make this folder a home"},
+		{Value: "cage", Note: "VM, stack and cage · " + stackState(h)},
+		{Value: "feature", Note: fmt.Sprintf("tools in the cage · %d installed", len(h.Installed))},
+		{Value: "firewall", Note: fmt.Sprintf("hosts the cage reaches · %d allowed · %d blocked", len(h.Hosts), len(h.Blocked))},
+		{Value: "project", Note: fmt.Sprintf("repositories in the workspace · %d", len(h.Projects))},
+		{Value: "secret", Note: fmt.Sprintf("values the proxy injects · %d", len(h.Secrets))},
+		{Value: "update", Note: "o3s, the stack and the features"},
+	}
 	q := Question{Key: "do", Kind: Select, Title: "What do you want to do?"}
 	// Offer every group that works here
 	for _, e := range entries {
@@ -172,435 +290,104 @@ func mainMenu(h Home) Question {
 	return q
 }
 
+// stackState names in a word whether the cage runs.
+func stackState(h Home) string {
+	// Read the cage's own part of the stack
+	for _, f := range h.Stack {
+		// Name the state of the cage
+		if f.Label == "Cage" {
+			return f.Value
+		}
+	}
+	return "stopped"
+}
+
 // next hands back the question a dialog asks next, or reports that it asks nothing more.
 func next(h Home, a Answers) (Question, bool) {
 	// Ask what to do first
 	if !a.has("do") {
 		return mainMenu(h), false
 	}
-	do := a.get("do")
-	// Ask for the confirmation a new home needs
-	if do == "init" {
-		return ask(a, Question{Key: "init", Kind: Confirm, Title: "Create an o3s home in " + h.Dir + "?"})
-	}
-	// Run the update without a further question
-	if do == "update" {
-		return Question{}, true
-	}
-	// Ask whether the cage opens in the editor or in a shell, then run it
-	if do == "cage" {
-		return ask(a, choose("action", "Action", "ide", "shell"))
-	}
-	// Ask which action of the firewall comes next, which may also show its log or its blocked hosts
-	if do == "firewall" && !a.has("action") {
-		return choose("action", "Action", "add", "rm", "ls", "log", "blocked", "prune"), false
-	}
-	// Ask which action of the projects comes next, which may also create one
-	if do == "project" && !a.has("action") {
-		return choose("action", "Action", "add", "create", "rm", "ls"), false
-	}
-	// Ask which action of the group comes next
-	if !a.has("action") {
-		return choose("action", "Action", "add", "rm", "ls"), false
-	}
-	action := a.get("action")
-	// List or prune without a further question, since the CLI names what prune removes
-	if action == "ls" || action == "log" || action == "prune" {
-		return Question{}, true
-	}
 	// Follow the dialog of the group
-	switch do {
-	case "firewall":
-		return firewall(h, a, action)
-	case "secret":
-		return secret(h, a, action)
+	switch a.get("do") {
+	case "init":
+		return ask(a, Question{Key: "init", Kind: Confirm, Title: "Apply?", Summary: "Creates an o3s home in " + h.Dir, Default: []string{yes}})
+	case "cage":
+		return cageDialog(h, a)
 	case "feature":
-		return feature(h, a, action)
+		return featureDialog(h, a)
+	case "firewall":
+		return firewallDialog(h, a)
 	case "project":
-		return projectDialog(h, a, action)
-	default:
-		return store(h, a, action)
-	}
-}
-
-// firewall asks what adding or removing a host needs.
-func firewall(h Home, a Answers, action string) (Question, bool) {
-	// Ask which blocked hosts to allow, then their ports
-	if action == "blocked" {
-		// End the dialog where nothing is blocked
-		if len(h.Blocked) == 0 {
-			return Question{}, true
-		}
-		// Ask for the hosts first, as many as the user likes
-		if !a.has("blocked") {
-			return Question{Key: "blocked", Kind: Multi, Title: "Blocked", Options: h.Blocked}, false
-		}
-		// End the dialog where the user chose no host
-		if len(a.all("blocked")) == 0 {
-			return Question{}, true
-		}
-		return ask(a, Question{Key: "ports", Kind: Input, Title: "Ports", Default: []string{"443"}})
-	}
-	// Ask which of the user's hosts to remove
-	if action == "rm" {
-		return pick(a, "host", "Host", userHosts(h))
-	}
-	// Ask which host to allow
-	if !a.has("host") {
-		return Question{Key: "host", Kind: Input, Title: "Host"}, false
-	}
-	current, known := (&config.Config{Hosts: h.Hosts}).Find(a.get("host"))
-	// Ask for the ports, offering the host's own or the HTTPS port
-	if !a.has("ports") {
-		ports := "443"
-		// Offer the ports the host opens already
-		if known {
-			ports = joinInts(current.Ports)
-		}
-		return Question{Key: "ports", Kind: Input, Title: "Ports", Default: []string{ports}}, false
-	}
-	// Ask for the secret, offering the host's own or none
-	if !a.has("secret") {
-		q := Question{Key: "secret", Kind: Select, Title: "Secret", Options: []Option{{Value: none}}, Default: []string{none}}
-		q.Options = append(q.Options, secretOptions(h)...)
-		q.Options = append(q.Options, Option{Value: fresh})
-		// Offer the secret the host carries already
-		if known && current.Secret != "" {
-			q.Default = []string{current.Secret}
-		}
-		return q, false
-	}
-	// Ask for the name of a new secret
-	if a.get("secret") == fresh && !a.has("secretName") {
-		return Question{Key: "secretName", Kind: Input, Title: "Secret name"}, false
-	}
-	// Ask where the secret goes, offering the host's own sites or the header
-	if firewallSecret(a) != "" && !a.has("inject") {
-		sites := []string{"header"}
-		// Offer the sites the host uses already
-		if known && len(current.Inject) > 0 {
-			sites = current.Inject
-		}
-		return Question{Key: "inject", Kind: Multi, Title: "Inject", Options: []Option{{Value: "header"}, {Value: "query"}, {Value: "body"}}, Default: sites}, false
-	}
-	return ask(a, Question{Key: "for", Kind: Input, Title: "For", Default: []string{always}})
-}
-
-// secret asks what storing or removing a secret needs.
-func secret(h Home, a Answers, action string) (Question, bool) {
-	// Ask which stored secret to remove
-	if action == "rm" {
-		var stored []string
-		// Offer every secret that holds a value
-		for _, s := range h.Secrets {
-			// Take a secret with a value
-			if s.Set {
-				stored = append(stored, s.Name)
-			}
-		}
-		return pick(a, "name", "Name", stored)
-	}
-	// Ask which secret to store
-	if !a.has("name") {
-		options := append(secretOptions(h), Option{Value: other})
-		return Question{Key: "name", Kind: Select, Title: "Name", Options: options}, false
-	}
-	// Ask for the name of another secret
-	if a.get("name") == other && !a.has("secretName") {
-		return Question{Key: "secretName", Kind: Input, Title: "Secret name"}, false
-	}
-	return ask(a, Question{Key: "value", Kind: Hidden, Title: "Value"})
-}
-
-// store asks what adding or removing a store needs.
-func store(h Home, a Answers, action string) (Question, bool) {
-	// Ask which store to remove
-	if action == "rm" {
-		return pick(a, "store", "Store", h.Stores)
-	}
-	return ask(a, Question{Key: "store", Kind: Input, Title: "Store"})
-}
-
-// projectDialog asks what cloning, creating or removing a project needs.
-func projectDialog(h Home, a Answers, action string) (Question, bool) {
-	// Ask which project to remove
-	if action == "rm" {
-		return pick(a, "project", "Project", h.Projects)
-	}
-	// Ask for the name of a new empty project
-	if action == "create" {
-		return ask(a, Question{Key: "project", Kind: Input, Title: "Repository"})
-	}
-	return ask(a, Question{Key: "project", Kind: Input, Title: "Repository"})
-}
-
-// projectPlan builds the command a project dialog leads to, removal at the real terminal, where the user types the name.
-func projectPlan(a Answers, action string) []Command {
-	// Name that no project is there to remove
-	if !a.has("project") {
-		return []Command{{Note: "No project to remove"}}
-	}
-	return []Command{{Args: []string{"project", action, a.get("project")}, Terminal: action == "rm"}}
-}
-
-// plan builds the command lines the answers lead to, in the order they run.
-func plan(h Home, a Answers) []Command {
-	do, action := a.get("do"), a.get("action")
-	// Build the commands of the dialog
-	switch {
-	case do == "init":
-		// Leave when the user declines
-		if a.get("init") != yes {
-			return nil
-		}
-		return []Command{{Args: []string{"init"}, Terminal: true}}
-	case do == "update":
-		return []Command{{Args: []string{"update"}, Terminal: true}}
-	case do == "cage":
-		return []Command{{Args: []string{"cage", action}, Terminal: action == "shell"}}
-	case action == "ls" || action == "log":
-		return []Command{{Args: []string{do, action}}}
-	case do == "firewall" && action == "prune":
-		return []Command{{Args: []string{"firewall", "prune"}, Terminal: true}}
-	case do == "firewall" && action == "blocked":
-		return blockedPlan(a)
-	case do == "feature":
-		return featurePlan(h, a, action)
-	case do == "project":
-		return projectPlan(a, action)
-	case action == "rm":
-		return []Command{remove(a, do)}
-	case do == "firewall":
-		args := []string{"firewall", "add", a.get("host"), "--port", a.get("ports")}
-		// Name the secret and where it goes
-		if s := firewallSecret(a); s != "" {
-			args = append(args, "--secret", s, "--inject", strings.Join(a.all("inject"), ","))
-		}
-		limit := a.get("for")
-		// Keep the host open for the time given, letting the CLI ask at the real terminal before a known host closes sooner
-		if limit != "" && limit != always {
-			_, known := (&config.Config{Hosts: h.Hosts}).Find(a.get("host"))
-			return []Command{{Args: append(args, "--for", limit), Terminal: known}}
-		}
-		return []Command{{Args: args}}
-	case do == "secret":
-		name := a.get("name")
-		// Take the name the user typed for another secret
-		if name == other {
-			name = a.get("secretName")
-		}
-		value := a.get("value")
-		return []Command{{Args: []string{"secret", "add", name}, Stdin: &value}}
-	default:
-		return []Command{{Args: []string{"store", "add", a.get("store")}}}
-	}
-}
-
-// feature asks what adding or removing a feature needs, showing the change before it applies.
-func feature(h Home, a Answers, action string) (Question, bool) {
-	// Ask which installed feature to remove, and confirm what leaves with it
-	if action == "rm" {
-		// Ask for the feature first
-		if q, done := pick(a, "feature", "Feature", h.Features); !done || !a.has("feature") {
-			return q, done
-		}
-		pv, err := h.Lookup.Remove(a.get("feature"))
-		// End the dialog where the change stays unknown
-		if err != nil {
-			return Question{}, true
-		}
-		return ask(a, apply(pv))
-	}
-	// End the dialog where no store is there to choose
-	if len(h.Stores) == 0 {
-		return Question{}, true
-	}
-	// Ask which store to take a feature from
-	if !a.has("store") {
-		return choose("store", "Store", h.Stores...), false
-	}
-	ids, err := h.Lookup.Features(a.get("store"))
-	// End the dialog where the store stays out of reach
-	if err != nil {
-		return Question{}, true
-	}
-	// Ask which of the store's features to add, as many as the user likes
-	if !a.has("feature") {
-		q := choose("feature", "Features", ids...)
-		q.Kind = Multi
-		return q, false
-	}
-	// End the dialog where the user chose no feature
-	if len(a.all("feature")) == 0 {
-		return Question{}, true
-	}
-	pv, err := previewAll(h, a)
-	// End the dialog where the change stays unknown
-	if err != nil {
-		return Question{}, true
-	}
-	// Confirm what the feature brings
-	if !a.has("apply") {
-		return apply(pv), false
-	}
-	// End the dialog where the user declines
-	if a.get("apply") != yes {
-		return Question{}, true
-	}
-	// Ask for the value of every secret the feature waits for
-	for _, name := range pv.Waiting {
-		// Ask for a value not yet given
-		if !a.has("value:" + name) {
-			return Question{Key: "value:" + name, Kind: Hidden, Title: "Value for " + name + " (empty to skip)"}, false
-		}
+		return projectDialog(h, a)
+	case "secret":
+		return secretDialog(h, a)
+	case "update":
+		return updateDialog(h, a)
 	}
 	return Question{}, true
 }
 
-// featurePlan builds the commands a feature dialog leads to, or the note that explains why it runs none.
-func featurePlan(h Home, a Answers, action string) []Command {
-	// Remove the feature the user confirmed
-	if action == "rm" {
-		// Name that nothing is installed to remove
-		if !a.has("feature") {
-			return []Command{{Note: "No feature to remove"}}
+// plan builds the command lines the answers lead to, in the order they run.
+func plan(h Home, a Answers) []Command {
+	// Build the commands of the group's dialog
+	switch a.get("do") {
+	case "init":
+		// End where the user declines
+		if a.get("init") != yes {
+			return declined()
 		}
-		// Name a change that stays unknown
-		if _, err := h.Lookup.Remove(a.get("feature")); err != nil {
-			return []Command{{Note: "error: " + err.Error()}}
-		}
-		// Leave when the user declines
-		if a.get("apply") != yes {
-			return nil
-		}
-		return []Command{{Args: []string{"feature", "rm", a.get("feature"), "--no-preview"}}}
+		return []Command{{Args: []string{"init"}, Terminal: true}}
+	case "cage":
+		return cagePlan(a)
+	case "feature":
+		return featurePlan(h, a)
+	case "firewall":
+		return firewallPlan(h, a)
+	case "project":
+		return projectPlan(a)
+	case "secret":
+		return secretPlan(a)
+	case "update":
+		return updatePlan(h, a)
 	}
-	// Name that no store is there to choose
-	if !a.has("store") {
-		return []Command{{Note: "No store to choose from"}}
-	}
-	// Name a store out of reach
-	if _, err := h.Lookup.Features(a.get("store")); err != nil {
-		return []Command{{Note: "error: " + err.Error()}}
-	}
-	// Name that the user chose no feature
-	if len(a.all("feature")) == 0 {
-		return []Command{{Note: "No feature chosen"}}
-	}
-	pv, err := previewAll(h, a)
-	// Name a change that stays unknown
-	if err != nil {
-		return []Command{{Note: "error: " + err.Error()}}
-	}
-	// Leave when the user declines
-	if a.get("apply") != yes {
-		return nil
-	}
-	var cmds []Command
-	// Store every value the user gave, so the feature finds it in place
-	for _, name := range pv.Waiting {
-		value := a.get("value:" + name)
-		// Leave a skipped secret waiting
-		if value != "" {
-			cmds = append(cmds, Command{Args: []string{"secret", "add", name, "--no-bind-hint"}, Stdin: &value})
-		}
-	}
-	return append(cmds, Command{Args: append(append([]string{"feature", "add"}, chosenIDs(a)...), "--no-preview")})
+	return nil
 }
 
-// chosenIDs hands back the full id of every feature chosen, in the order the answer holds them.
-func chosenIDs(a Answers) []string {
-	var ids []string
-	// Prefix every chosen feature with its store
-	for _, f := range a.all("feature") {
-		ids = append(ids, a.get("store")+"/"+f)
+// view hands back what the user picked in a view: the tab and the values the row or the key answered with.
+func view(a Answers) (string, []string) {
+	v := a.all("view")
+	// Read a view not yet answered as empty
+	if len(v) == 0 {
+		return "", nil
 	}
-	return ids
+	return v[0], v[1:]
 }
 
-// previewAll joins what every chosen feature brings, each secret they wait for named once.
-func previewAll(h Home, a Answers) (Preview, error) {
-	var all Preview
-	// Preview every chosen feature in turn
-	for _, id := range chosenIDs(a) {
-		pv, err := h.Lookup.Add(id)
-		// Hand back a change that stays unknown
-		if err != nil {
-			return Preview{}, err
-		}
-		all.Lines = append(all.Lines, pv.Lines...)
-		// Take each waiting secret once
-		for _, name := range pv.Waiting {
-			// Keep a secret taken already out of the list
-			if !slices.Contains(all.Waiting, name) {
-				all.Waiting = append(all.Waiting, name)
-			}
-		}
-	}
-	return all, nil
+// declined is the note a change ends in where the user says no.
+func declined() []Command {
+	return []Command{{Note: nothingChanged}}
 }
 
-// apply asks to apply a change, showing it above the question.
-func apply(pv Preview) Question {
-	return Question{Key: "apply", Kind: Confirm, Title: "Apply?", Preview: pv.Lines}
+// confirmed reports whether the user said yes to the change.
+func confirmed(a Answers) bool {
+	return a.get("apply") == yes
 }
 
-// remove builds the removal a dialog chose, or the note that nothing was there to remove.
-func remove(a Answers, do string) Command {
-	keys := map[string]string{"firewall": "host", "secret": "name", "store": "store"}
-	nouns := map[string]string{"firewall": "host", "secret": "secret", "store": "store"}
-	// Name what was missing when there was nothing to choose
-	if !a.has(keys[do]) {
-		return Command{Note: "No " + nouns[do] + " to remove"}
-	}
-	return Command{Args: []string{do, "rm", a.get(keys[do])}}
-}
-
-// blockedPlan allows every blocked host the user chose on the ports given, or notes that none was there to choose.
-func blockedPlan(a Answers) []Command {
-	// Name that nothing was blocked or chosen
-	if len(a.all("blocked")) == 0 {
-		return []Command{{Note: "No blocked host"}}
-	}
-	var cmds []Command
-	// Allow every chosen host
-	for _, host := range a.all("blocked") {
-		cmds = append(cmds, Command{Args: []string{"firewall", "add", host, "--port", a.get("ports")}})
-	}
-	return cmds
-}
-
-// firewallSecret hands back the secret a host is to carry, and empty for none.
-func firewallSecret(a Answers) string {
-	s := a.get("secret")
-	// Take the name the user typed for a new secret
-	if s == fresh {
-		return a.get("secretName")
-	}
-	// Read none as no secret
-	if s == none {
-		return ""
-	}
-	return s
-}
-
-// choose builds a question that takes one of plain options.
-func choose(key, title string, values ...string) Question {
-	q := Question{Key: key, Kind: Select, Title: title}
-	// Offer every value
-	for _, v := range values {
-		q.Options = append(q.Options, Option{Value: v})
+// apply asks to apply a change, showing it above the question and summing it up beside it. A change that takes
+// something away starts on no.
+func apply(lines []string, summary string, removes bool) Question {
+	q := Question{Key: "apply", Kind: Confirm, Title: "Apply?", Preview: lines, Summary: summary, Default: []string{yes}}
+	// Start a removal on no, so Enter alone keeps everything
+	if removes {
+		q.Default = []string{"no"}
 	}
 	return q
 }
 
-// pick asks for one of the values once, and ends the dialog where there is nothing to choose.
-func pick(a Answers, key, title string, values []string) (Question, bool) {
-	// End the dialog where nothing is there to choose
-	if len(values) == 0 {
-		return Question{}, true
-	}
-	return ask(a, choose(key, title, values...))
+// detail asks what to do with one row of a view, showing its facts above its actions.
+func detail(title string, facts []Fact, actions ...Option) Question {
+	return Question{Key: "action", Kind: Select, Title: title, Facts: facts, Options: append(actions, Option{Value: back, Label: "Back"})}
 }
 
 // ask hands back a question until it is answered, and then ends the dialog.
@@ -612,40 +399,20 @@ func ask(a Answers, q Question) (Question, bool) {
 	return q, false
 }
 
-// secretOptions offers every secret the home knows, noting whether it holds a value.
-func secretOptions(h Home) []Option {
-	var out []Option
-	// Offer every secret with its state
-	for _, s := range h.Secrets {
-		note := "empty"
-		// Note a secret that holds a value
-		if s.Set {
-			note = "set"
-		}
-		out = append(out, Option{Value: s.Name, Note: note})
+// count writes a number with the word that fits it.
+func count(n int, one, many string) string {
+	// Take the singular for a single one
+	if n == 1 {
+		return "1 " + one
 	}
-	return out
+	return fmt.Sprintf("%d %s", n, many)
 }
 
-// userHosts lists the hosts the user needs, which removing may drop.
-func userHosts(h Home) []string {
-	var out []string
-	// Look at every host
-	for _, host := range h.Hosts {
-		// Take a host the user added
-		if slices.Contains(host.By, "user") {
-			out = append(out, host.Name)
-		}
+// joinAnd joins names the way a sentence lists them.
+func joinAnd(names []string) string {
+	// Join a single name as it stands, and the last of several with and
+	if len(names) < 2 {
+		return strings.Join(names, "")
 	}
-	return out
-}
-
-// joinInts writes numbers as one comma-separated value.
-func joinInts(ns []int) string {
-	parts := make([]string, len(ns))
-	// Write every number
-	for i, n := range ns {
-		parts[i] = strconv.Itoa(n)
-	}
-	return strings.Join(parts, ",")
+	return strings.Join(names[:len(names)-1], ", ") + " and " + names[len(names)-1]
 }

@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"path"
+	"slices"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -13,19 +15,28 @@ import (
 	"github.com/hansehart/o3s/internal/update"
 )
 
-// newUpdate builds the command that brings the home to the stack the binary ships and to what its stores offer.
+// newUpdate builds the command that brings the binary, the home's stack and its features up to date, all of them or
+// the ones named.
 func newUpdate() *cobra.Command {
 	var yes bool
 	cmd := &cobra.Command{
-		Use:   "update",
-		Short: "Bring the home's stack and features up to date",
-		Args:  usage(cobra.NoArgs),
-		RunE: func(cmd *cobra.Command, _ []string) error {
+		Use:   "update [o3s|stack|<feature>...]",
+		Short: "Bring o3s, the home's stack and its features up to date, all of them or the ones named",
+		Args:  usage(cobra.ArbitraryArgs),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			t := readTargets(args)
 			out := cmd.OutOrStdout()
-			done, err := selfUpdate(cmd.Context(), cmd.InOrStdin(), out, cmd.ErrOrStderr(), yes)
-			// Leave the home to the new binary, which carries the update on
-			if err != nil || done {
-				return err
+			// Bring the binary up first where the update takes it in
+			if t.binary {
+				done, err := selfUpdate(cmd.Context(), cmd.InOrStdin(), out, cmd.ErrOrStderr(), yes, t.rest())
+				// Leave the home to the new binary, which carries the update on
+				if err != nil || done {
+					return err
+				}
+			}
+			// End an update that takes in the binary alone
+			if !t.stack && len(t.features) == 0 && !t.all {
+				return nil
 			}
 			dir, err := workingHome()
 			// Hand back a working folder that stays unknown
@@ -34,6 +45,11 @@ func newUpdate() *cobra.Command {
 			}
 			plan, err := update.Check(cmd.Context(), dir)
 			// Hand back a home that fails to compare
+			if err != nil {
+				return err
+			}
+			plan, err = t.narrow(plan)
+			// Hand back a feature the update finds nothing for
 			if err != nil {
 				return err
 			}
@@ -82,6 +98,76 @@ func newUpdate() *cobra.Command {
 	}
 	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "apply without asking")
 	return cmd
+}
+
+// targets are the parts an update brings up to date: every part where none is named, or the binary, the stack and
+// the features named.
+type targets struct {
+	all, binary, stack bool
+	features           []string
+}
+
+// readTargets reads the parts a command line names, every part where it names none.
+func readTargets(args []string) targets {
+	// Take every part where the command names none
+	if len(args) == 0 {
+		return targets{all: true, binary: true, stack: true}
+	}
+	var t targets
+	// Sort every named part into the binary, the stack or a feature
+	for _, arg := range args {
+		// Take the part the word names
+		switch arg {
+		case "o3s":
+			t.binary = true
+		case "stack":
+			t.stack = true
+		default:
+			t.features = append(t.features, arg)
+		}
+	}
+	return t
+}
+
+// rest are the arguments that carry the update on in a new binary: the parts left once the binary is up to date,
+// and none where the binary was all the update named.
+func (t targets) rest() []string {
+	// Carry every part on where the command named none
+	if t.all {
+		return []string{}
+	}
+	var out []string
+	// Carry the stack on where the command named it
+	if t.stack {
+		out = append(out, "stack")
+	}
+	return append(out, t.features...)
+}
+
+// narrow keeps the parts of a plan the update names, and turns away a feature the plan finds nothing for.
+func (t targets) narrow(p update.Plan) (update.Plan, error) {
+	// Keep the whole plan where the command named no part
+	if t.all {
+		return p, nil
+	}
+	// Leave the stack out where the command named none
+	if !t.stack {
+		p.Images, p.Files = nil, nil
+	}
+	var features []update.FeatureChange
+	// Keep every feature the command names
+	for _, name := range t.features {
+		i := slices.IndexFunc(p.Features, func(fc update.FeatureChange) bool {
+			return fc.Package == name || path.Base(fc.Package) == name || packageOfKey(name) == fc.Package
+		})
+		// Turn away a name the update finds no feature change for
+		if i < 0 {
+			return update.Plan{}, fmt.Errorf("%w: %s is up to date or not installed, the names update takes are o3s, stack and the features it lists", ErrUsage, name)
+		}
+		features = append(features, p.Features[i])
+	}
+	p.Features = features
+	return p, nil
 }
 
 // show prints every change an update makes, and warns on stderr about what it leaves for want of a store.

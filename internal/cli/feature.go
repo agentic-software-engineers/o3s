@@ -2,6 +2,8 @@ package cli
 
 import (
 	"fmt"
+	"io"
+	"maps"
 	"slices"
 	"strings"
 	"text/tabwriter"
@@ -14,16 +16,18 @@ import (
 	"github.com/hansehart/o3s/internal/secrets"
 )
 
-// newFeature builds the commands that add, remove and list the features the cage installs.
+// newFeature builds the commands that show, add, configure, order and remove the features the cage installs,
+// and the stores they come from.
 func newFeature() *cobra.Command {
-	f := group("feature", "Add or remove the features the cage installs")
-	f.AddCommand(newFeatureAdd(), newFeatureRm(), newFeatureLs())
+	f := group("feature", "Show, add, configure, order or remove the features the cage installs", showFeatures)
+	f.AddCommand(newFeatureAdd(), newFeatureConfigure(), newFeatureOrder(), newFeatureRm(), newStore())
 	return f
 }
 
 // newFeatureAdd builds the command that adds features with the hosts and env they need, saved together.
 func newFeatureAdd() *cobra.Command {
 	var noPreview bool
+	var options []string
 	cmd := &cobra.Command{
 		Use:   "add <id>...",
 		Short: "Add features with the hosts and env they need",
@@ -32,6 +36,10 @@ func newFeatureAdd() *cobra.Command {
 			setups, err := resolveAll(cmd, args)
 			// Hand back a feature its store fails to offer
 			if err != nil {
+				return err
+			}
+			// Hand back an option no feature here takes as given
+			if err := applyOptions(setups, options); err != nil {
 				return err
 			}
 			dir, c, dc, err := loadHome()
@@ -56,6 +64,10 @@ func newFeatureAdd() *cobra.Command {
 				for _, e := range s.Env {
 					dc.SetEnv(e.Name, e.Value)
 				}
+			}
+			// Hand back an install order the features break
+			if err := reorder(cmd, dc, nil); err != nil {
+				return err
 			}
 			// Hand back a home that fails to save
 			if err := saveHome(dir, c, dc); err != nil {
@@ -108,6 +120,7 @@ func newFeatureAdd() *cobra.Command {
 		},
 	}
 	previewFlag(cmd, &noPreview)
+	cmd.Flags().StringArrayVar(&options, "option", nil, "set an option the feature offers, as name=value or id:name=value, repeatable")
 	return cmd
 }
 
@@ -132,12 +145,97 @@ func resolveAll(cmd *cobra.Command, ids []string) ([]registry.Setup, error) {
 	return setups, nil
 }
 
-// newFeatureRm builds the command that removes a feature with its env and the hosts it alone needs.
+// newFeatureRm builds the command that removes features with their env and the hosts they alone need, once the
+// user agrees.
 func newFeatureRm() *cobra.Command {
-	var noPreview bool
+	var noPreview, yes bool
 	cmd := &cobra.Command{
-		Use:   "rm <id>",
-		Short: "Remove a feature with its env and the hosts it alone needs",
+		Use:   "rm <id>...",
+		Short: "Remove features with their env and the hosts they alone need",
+		Args:  usage(cobra.MinimumNArgs(1)),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			dir, c, dc, err := loadHome()
+			// Hand back a home that fails to load
+			if err != nil {
+				return err
+			}
+			out := cmd.OutOrStdout()
+			var r registry.Resolver
+			var pkgs []string
+			var all removalOf
+			// Take every feature off the home, collecting what leaves with each
+			for _, id := range args {
+				ref, err := registry.ParseRef(id)
+				// Hand back an id that names no feature
+				if err != nil {
+					return err
+				}
+				pkg := ref.Package()
+				// Turn away a feature the home lacks
+				if !dc.RemoveFeature(pkg) {
+					return fmt.Errorf("%w %s", registry.ErrUnknownFeature, pkg)
+				}
+				s, err := r.Resolve(cmd.Context(), ref)
+				// Hand back a feature whose env stays unknown, the files left as they were
+				if err != nil {
+					return err
+				}
+				gone := removal(c, dc, s)
+				c.Release(pkg)
+				// Drop every variable the feature set
+				for _, e := range gone.env {
+					dc.RemoveEnv(e.Name)
+				}
+				// Show what leaves with the feature, unless the menu showed it already
+				if !noPreview {
+					// Print every line of the change
+					for _, line := range rmLines(pkg, gone) {
+						fmt.Fprintln(out, line)
+					}
+				}
+				pkgs = append(pkgs, pkg)
+				all.hosts, all.env = append(all.hosts, gone.hosts...), append(all.env, gone.env...)
+			}
+			ok, err := confirm(cmd.InOrStdin(), out, isTerminal(cmd.InOrStdin()), yes)
+			// Hand back an answer that fails to arrive
+			if err != nil {
+				return err
+			}
+			// Leave the home as it was when the user declines
+			if !ok {
+				fmt.Fprintln(out, "Left the features as they were")
+				return nil
+			}
+			// Hand back an install order the remaining features break
+			if err := reorder(cmd, dc, nil); err != nil {
+				return err
+			}
+			// Hand back a home that fails to save
+			if err := saveHome(dir, c, dc); err != nil {
+				return err
+			}
+			// Name every feature that left
+			for _, pkg := range pkgs {
+				fmt.Fprintf(out, "Removed %s\n", pkg)
+			}
+			// Restart the stack where the allowlist changed
+			if len(all.hosts) > 0 {
+				return restartStack(cmd, dir)
+			}
+			return nil
+		},
+	}
+	previewFlag(cmd, &noPreview)
+	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "remove without asking")
+	return cmd
+}
+
+// newFeatureConfigure builds the command that shows or sets the options of an installed feature.
+func newFeatureConfigure() *cobra.Command {
+	var options []string
+	cmd := &cobra.Command{
+		Use:   "configure <id>",
+		Short: "Show or set the options of an installed feature",
 		Args:  usage(cobra.ExactArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ref, err := registry.ParseRef(args[0])
@@ -145,85 +243,225 @@ func newFeatureRm() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			pkg := ref.Package()
 			dir, c, dc, err := loadHome()
 			// Hand back a home that fails to load
 			if err != nil {
 				return err
 			}
+			key, ok := installedKey(dc, ref.Package())
 			// Turn away a feature the home lacks
-			if !dc.RemoveFeature(pkg) {
-				return fmt.Errorf("%w %s", registry.ErrUnknownFeature, pkg)
+			if !ok {
+				return fmt.Errorf("%w %s", registry.ErrUnknownFeature, ref.Package())
 			}
-			s, err := new(registry.Resolver).Resolve(cmd.Context(), ref)
-			// Hand back a feature whose env stays unknown, the files left as they were
+			installed, _ := registry.ParseRef(key)
+			s, err := new(registry.Resolver).Resolve(cmd.Context(), installed)
+			// Hand back a feature its store fails to offer
 			if err != nil {
 				return err
 			}
-			r := removal(c, dc, s)
-			c.Release(pkg)
-			// Drop every variable the feature set
-			for _, e := range r.env {
-				dc.RemoveEnv(e.Name)
+			had := dc.FeatureOptions(ref.Package())
+			out := cmd.OutOrStdout()
+			// Show the options and the values they hold where the command sets none
+			if len(options) == 0 {
+				return showOptions(out, s.Offered, had)
+			}
+			setups := []registry.Setup{s}
+			// Hand back an option the feature takes none of as given
+			if err := applyOptions(setups, options); err != nil {
+				return err
+			}
+			dc.SetFeature(ref.Package(), key, setups[0].Options)
+			// Hand back a home that fails to save
+			if err := saveHome(dir, c, dc); err != nil {
+				return err
+			}
+			fmt.Fprintln(out, ref.Package())
+			// Show every option the command set, with its value before and after
+			for _, name := range slices.Sorted(maps.Keys(setups[0].Options)) {
+				// Leave out the folder o3s sets itself
+				if name == registry.StateDir {
+					continue
+				}
+				fmt.Fprintf(out, "  ~ %s %s -> %v\n", name, valueOrDefault(had, name, s.Offered), setups[0].Options[name])
+			}
+			fmt.Fprintln(out, "Rebuild the cage to apply it")
+			return nil
+		},
+	}
+	cmd.Flags().StringArrayVar(&options, "option", nil, "set an option the feature offers, as name=value, repeatable")
+	return cmd
+}
+
+// newFeatureOrder builds the command that puts features first in the order the cage installs them.
+func newFeatureOrder() *cobra.Command {
+	return &cobra.Command{
+		Use:   "order <id>...",
+		Short: "Install these features first, in this order, and the rest after them",
+		Args:  usage(cobra.MinimumNArgs(1)),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			var first []string
+			// Read every feature the command puts first
+			for _, id := range args {
+				ref, err := registry.ParseRef(id)
+				// Hand back an id that names no feature
+				if err != nil {
+					return err
+				}
+				first = append(first, ref.Package())
+			}
+			dir, c, dc, err := loadHome()
+			// Hand back a home that fails to load
+			if err != nil {
+				return err
+			}
+			// Hand back an order the features break
+			if err := reorder(cmd, dc, first); err != nil {
+				return err
 			}
 			// Hand back a home that fails to save
 			if err := saveHome(dir, c, dc); err != nil {
 				return err
 			}
 			out := cmd.OutOrStdout()
-			// Show what leaves with the feature, unless the menu showed it already
-			if !noPreview {
-				// Print every line of the change
-				for _, line := range rmLines(pkg, r) {
-					fmt.Fprintln(out, line)
-				}
+			// Show the order the cage installs the features in
+			for i, pkg := range dc.InstallOrder() {
+				fmt.Fprintf(out, "%d. %s\n", i+1, pkg)
 			}
-			fmt.Fprintf(out, "Removed %s\n", pkg)
-			// Restart the stack where the allowlist changed
-			if len(r.hosts) > 0 {
-				return restartStack(cmd, dir)
-			}
+			fmt.Fprintln(out, "Rebuild the cage to apply it")
 			return nil
 		},
 	}
-	previewFlag(cmd, &noPreview)
-	return cmd
 }
 
-// newFeatureLs builds the command that lists every feature with its tag and the hosts it needs.
-func newFeatureLs() *cobra.Command {
-	return &cobra.Command{
-		Use:   "ls",
-		Short: "List the features with their version and the hosts they need",
-		Args:  usage(cobra.NoArgs),
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			_, c, dc, err := loadHome()
-			// Hand back a home that fails to load
-			if err != nil {
-				return err
-			}
-			w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 3, ' ', 0)
-			fmt.Fprintln(w, "FEATURE\tVERSION\tHOSTS")
-			// Write one row per feature
-			for _, key := range dc.Features() {
-				pkg, tag := key, "latest"
-				// Split the tag off a feature a store offers
-				if ref, err := registry.ParseRef(key); err == nil && ref.Tag != "" {
-					pkg, tag = ref.Package(), ref.Tag
-				}
-				var hosts []string
-				// List the hosts the feature needs
-				for _, h := range c.Hosts {
-					// Take a host that names the feature among its reasons
-					if slices.Contains(h.By, pkg) {
-						hosts = append(hosts, h.Name)
-					}
-				}
-				fmt.Fprintf(w, "%s\t%s\t%s\n", pkg, tag, strings.Join(hosts, ", "))
-			}
-			return w.Flush()
-		},
+// showFeatures writes every feature in the order the cage installs them, with its tag and the hosts it needs.
+func showFeatures(cmd *cobra.Command) error {
+	_, c, dc, err := loadHome()
+	// Hand back a home that fails to load
+	if err != nil {
+		return err
 	}
+	w := tabwriter.NewWriter(cmd.OutOrStdout(), 0, 0, 2, ' ', 0)
+	fmt.Fprintln(w, "FEATURE\tVERSION\tHOSTS")
+	// Write one row per feature, in the order the cage installs them
+	for _, key := range inInstallOrder(dc) {
+		pkg, tag := key, "latest"
+		// Split the tag off a feature a store offers
+		if ref, err := registry.ParseRef(key); err == nil && ref.Tag != "" {
+			pkg, tag = ref.Package(), ref.Tag
+		}
+		var hosts []string
+		// List the hosts the feature needs
+		for _, h := range c.Hosts {
+			// Take a host that names the feature among its reasons
+			if slices.Contains(h.By, pkg) {
+				hosts = append(hosts, h.Name)
+			}
+		}
+		fmt.Fprintf(w, "%s\t%s\t%s\n", pkg, tag, strings.Join(hosts, ", "))
+	}
+	return w.Flush()
+}
+
+// inInstallOrder lists the config's features in the order the cage installs them: the order the config fixes,
+// then any it leaves out, as the config holds them.
+func inInstallOrder(dc *devcontainer.Config) []string {
+	keys := dc.Features()
+	var out []string
+	// Take the features the order names, in its order
+	for _, pkg := range dc.InstallOrder() {
+		// Take the feature of that package, whatever its tag
+		if i := slices.IndexFunc(keys, func(k string) bool { return packageOfKey(k) == pkg }); i >= 0 {
+			out = append(out, keys[i])
+		}
+	}
+	// Take every feature the order leaves out
+	for _, k := range keys {
+		// Take a feature not taken yet
+		if !slices.Contains(out, k) {
+			out = append(out, k)
+		}
+	}
+	return out
+}
+
+// reorder fixes the order the cage installs the config's features in, the ones named first in front and every
+// feature behind the ones it installs after, as their stores tell.
+func reorder(cmd *cobra.Command, dc *devcontainer.Config, first []string) error {
+	var r registry.Resolver
+	var features []string
+	after := map[string][]string{}
+	// Read what every installed feature installs after, from the order it stands in
+	for _, key := range inInstallOrder(dc) {
+		ref, err := registry.ParseRef(key)
+		// Leave a feature no store offers out of the order
+		if err != nil {
+			continue
+		}
+		features = append(features, ref.Package())
+		// Take what the feature follows where its store answers
+		if s, err := r.Resolve(cmd.Context(), ref); err == nil {
+			after[ref.Package()] = s.After
+		}
+	}
+	order, err := devcontainer.Ordered(features, after, first)
+	// Hand back an order the features break
+	if err != nil {
+		return fmt.Errorf("%w: %w", ErrUsage, err)
+	}
+	dc.SetInstallOrder(order)
+	return nil
+}
+
+// installedKey finds the key a feature of a package holds in the config, and whether it holds one.
+func installedKey(dc *devcontainer.Config, pkg string) (string, bool) {
+	i := slices.IndexFunc(dc.Features(), func(k string) bool { return packageOfKey(k) == pkg })
+	// Report a package the config lacks
+	if i < 0 {
+		return "", false
+	}
+	return dc.Features()[i], true
+}
+
+// packageOfKey reads the package of a feature key, and the key itself where no store offers it.
+func packageOfKey(key string) string {
+	// Take the package of a feature a store offers
+	if ref, err := registry.ParseRef(key); err == nil {
+		return ref.Package()
+	}
+	return key
+}
+
+// showOptions writes the options a feature offers, the value each holds and the one it falls back to.
+func showOptions(out io.Writer, offered []registry.Option, had map[string]any) error {
+	w := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
+	fmt.Fprintln(w, "OPTION\tVALUE\tDEFAULT")
+	// Write a row per option, leaving out the folder o3s sets itself
+	for _, o := range offered {
+		// Leave out the option o3s sets itself
+		if o.Name == registry.StateDir {
+			continue
+		}
+		value := "–"
+		// Show the value the config gives the option
+		if v, ok := had[o.Name]; ok {
+			value = fmt.Sprint(v)
+		}
+		fmt.Fprintf(w, "%s\t%s\t%s\n", o.Name, value, o.Default)
+	}
+	return w.Flush()
+}
+
+// valueOrDefault writes the value an option holds, or the one it falls back to where the config gives none.
+func valueOrDefault(had map[string]any, name string, offered []registry.Option) string {
+	// Take the value the config gives the option
+	if v, ok := had[name]; ok {
+		return fmt.Sprint(v)
+	}
+	// Take the option's own fallback
+	if i := slices.IndexFunc(offered, func(o registry.Option) bool { return o.Name == name }); i >= 0 {
+		return orNone(offered[i].Default)
+	}
+	return "none"
 }
 
 // addLines shows what a feature brings, and lists the secrets it waits for.

@@ -5,6 +5,7 @@ package devcontainer
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"strings"
@@ -57,13 +58,26 @@ func (c *Config) Features() []string {
 	return keys
 }
 
-// SetFeature names a feature with its options, in the place of any tag of the same package.
-func (c *Config) SetFeature(pkg, key string, options map[string]string) {
-	// Write a feature without options as an empty object
-	if options == nil {
-		options = map[string]string{}
+// SetFeature names a feature with its options, in the place of any tag of the same package, keeping the options it already holds that the new ones leave out.
+func (c *Config) SetFeature(pkg, key string, options map[string]any) {
+	merged := c.FeatureOptions(pkg)
+	maps.Copy(merged, options)
+	c.set("features", func(m hujson.ObjectMember) bool { return samePackage(name(m), pkg) }, key, merged)
+}
+
+// FeatureOptions hands back the options a feature holds whatever its tag, and none for a feature the config lacks.
+func (c *Config) FeatureOptions(pkg string) map[string]any {
+	options := map[string]any{}
+	// Read the options of the feature of that package
+	for _, m := range c.find("features").Members {
+		// Take the options of the matching feature
+		if samePackage(name(m), pkg) {
+			v := m.Value.Clone()
+			v.Standardize()
+			_ = json.Unmarshal(v.Pack(), &options)
+		}
 	}
-	c.set("features", func(m hujson.ObjectMember) bool { return samePackage(name(m), pkg) }, key, options)
+	return options
 }
 
 // RemoveFeature drops a feature whatever its tag and reports whether the config named it.

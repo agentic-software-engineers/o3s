@@ -13,21 +13,23 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/hansehart/o3s/internal/fixture"
 )
 
 // script is the installer under test.
 const script = "../../install.sh"
 
 // stub stands in for the o3s binary of a release.
-const stub = "#!/bin/sh\necho o3s version 1.0.0\n"
+const stub = "#!/bin/sh\necho o3s version " + fixture.Version + "\n"
 
 // tools are the commands install.sh may use beyond the ones a test fakes.
 var tools = []string{"sh", "curl", "sha256sum", "mktemp", "install", "rm", "mkdir", "grep", "cat", "ln", "head", "sed", "tar", "tr", "dirname"}
 
 // feed is a releases feed whose newest entry is a release candidate.
 const feed = `<feed>
-<link href="https://github.com/hansehart/o3s/releases/tag/v1.1.0-rc.1"/>
-<link href="https://github.com/hansehart/o3s/releases/tag/v1.0.0"/>
+<link href="https://github.com/hansehart/o3s/releases/tag/v` + fixture.Candidate + `"/>
+<link href="https://github.com/hansehart/o3s/releases/tag/v` + fixture.Version + `"/>
 </feed>
 `
 
@@ -137,7 +139,7 @@ func TestInstallPutsTheBinaryInPlace(t *testing.T) {
 		t.Errorf("install.sh left o3s-latest %v and o3s linking to %q, want both\n%s", h.installed(), link, out)
 	}
 	// Require every line a user needs next
-	for _, want := range []string{"Installed o3s version 1.0.0", "export PATH=", "gh attestation verify", "--signer-workflow hansehart/o3s/.github/workflows/publish.yaml", "o3s init"} {
+	for _, want := range []string{"Installed o3s version " + fixture.Version, "export PATH=", "gh attestation verify", "--signer-workflow hansehart/o3s/.github/workflows/publish.yaml", "o3s init"} {
 		// Report a line the output lacks
 		if !strings.Contains(out, want) {
 			t.Errorf("install.sh output lacks %q:\n%s", want, out)
@@ -180,33 +182,24 @@ func TestInstallTurnsAwayAnUnsupportedHost(t *testing.T) {
 	}
 }
 
-// A logged-in gh verifies the attestation against this repo's publish workflow, and a failed check stops the install.
-func TestInstallVerifiesTheAttestationWithGh(t *testing.T) {
-	tests := []struct {
-		name   string
-		verify string
-		ok     bool
-	}{
-		{"a verified build", "exit 0", true},
-		{"a build that fails to verify", "exit 1", false},
+// The checksum alone decides the install, the way other installers decide it, and the attestation stays a command the user runs, even where gh is logged in.
+func TestInstallLeavesTheAttestationToTheUser(t *testing.T) {
+	gh := "echo \"$*\" >> \"$HOME/gh.log\"\nexit 1\n"
+	h := aHost(t, "Linux", "x86_64", map[string]string{"gh": gh})
+
+	out, err := h.install(t, aRelease(t, false))
+
+	// Require the install to pass on its checksum alone
+	if err != nil || !h.installed() {
+		t.Fatalf("install.sh = %v, installed %v, want it installed\n%s", err, h.installed(), out)
 	}
-	// Check every outcome
-	for _, tt := range tests {
-		gh := "echo \"$*\" >> \"$HOME/gh.log\"\ncase \"$1\" in auth) exit 0 ;; attestation) " + tt.verify + " ;; esac\n"
-		h := aHost(t, "Linux", "x86_64", map[string]string{"gh": gh})
-
-		out, err := h.install(t, aRelease(t, false))
-
-		// Require the outcome gh decides
-		if (err == nil) != tt.ok || h.installed() != tt.ok {
-			t.Errorf("%s: install.sh = %v, installed %v, want ok %v\n%s", tt.name, err, h.installed(), tt.ok, out)
-		}
-		calls, _ := os.ReadFile(filepath.Join(h.home, "gh.log"))
-		want := "attestation verify o3s-linux-amd64 --repo hansehart/o3s --signer-workflow hansehart/o3s/.github/workflows/publish.yaml"
-		// Require gh asked about this repo's publish workflow
-		if !strings.Contains(string(calls), want) {
-			t.Errorf("%s: gh calls lack %q:\n%s", tt.name, want, calls)
-		}
+	// Require the command that checks the attestation by hand
+	if !strings.Contains(out, "gh attestation verify") {
+		t.Errorf("install.sh output lacks the command to verify the attestation:\n%s", out)
+	}
+	// Require gh left alone
+	if calls, err := os.ReadFile(filepath.Join(h.home, "gh.log")); err == nil {
+		t.Errorf("install.sh ran gh: %s", calls)
 	}
 }
 
@@ -275,8 +268,8 @@ func TestInstallNamesTheChannelsBinary(t *testing.T) {
 		binary     string
 		mentioning string
 	}{
-		{[]string{"--rc"}, "o3s-rc", "1.1.0-rc.1"},
-		{[]string{"--version", "1.0.0"}, "o3s-1.0.0", "o3s-1.0.0 init"},
+		{[]string{"--rc"}, "o3s-rc", fixture.Candidate},
+		{[]string{"--version", fixture.Version}, "o3s-" + fixture.Version, "o3s-" + fixture.Version + " init"},
 	}
 	// Install every channel on a fresh host
 	for _, tt := range tests {
@@ -327,7 +320,7 @@ func TestInstallKeepsTheLimaItInstalled(t *testing.T) {
 	h := aHost(t, "Darwin", "arm64", map[string]string{})
 	prefix := aLima(t, h)
 
-	out, err := h.run(t, aRelease(t, false), "--no-devcontainer")
+	out, err := h.run(t, aRelease(t, false), "--no-devcontainer", "--preview")
 
 	// Require the install to keep Lima
 	if err != nil || !strings.Contains(out, "Found Lima in "+prefix) {
@@ -347,7 +340,7 @@ func TestInstallStopsOnATamperedLima(t *testing.T) {
 	t.Cleanup(s.Close)
 	h.env = append(h.env, "O3S_LIMA_URL="+s.URL)
 
-	out, err := h.run(t, aRelease(t, false), "--no-devcontainer")
+	out, err := h.run(t, aRelease(t, false), "--no-devcontainer", "--preview")
 
 	_, unpacked := os.Stat(filepath.Join(h.home, ".local", "share", "o3s", "lima", "bin", "limactl"))
 	// Require a stop that names the checksum, with Lima left out
@@ -361,10 +354,37 @@ func TestInstallNamesTheMissingQEMU(t *testing.T) {
 	h := aHost(t, "Linux", "x86_64", map[string]string{})
 	aLima(t, h)
 
-	out, err := h.run(t, aRelease(t, false), "--no-devcontainer")
+	out, err := h.run(t, aRelease(t, false), "--no-devcontainer", "--preview")
 
 	// Require the install to finish and name QEMU's packages
 	if err != nil || !strings.Contains(out, "QEMU") || !strings.Contains(out, "qemu-system-x86") {
 		t.Errorf("install.sh without QEMU = %v, want a hint naming QEMU\n%s", err, out)
+	}
+}
+
+// Without the VM preview, the install leaves Lima and QEMU alone, as the VM is off by default.
+func TestInstallLeavesLimaToTheVMPreview(t *testing.T) {
+	h := aHost(t, "Linux", "x86_64", map[string]string{})
+
+	out, err := h.run(t, aRelease(t, false), "--no-devcontainer")
+
+	_, unpacked := os.Stat(filepath.Join(h.home, ".local", "share", "o3s", "lima"))
+	// Require o3s in place, with neither Lima nor a word about it or QEMU
+	if err != nil || !h.installed() || unpacked == nil || strings.Contains(out, "Installed Lima") || strings.Contains(out, "Found Lima") || strings.Contains(out, "Install QEMU") {
+		t.Errorf("install.sh without the preview = %v, Lima unpacked %v, want o3s alone\n%s", err, unpacked == nil, out)
+	}
+}
+
+// O3S_PREVIEW turns the VM preview on for the install, as --preview does.
+func TestInstallReadsTheVMPreviewFromTheEnvironment(t *testing.T) {
+	h := aHost(t, "Linux", "x86_64", map[string]string{})
+	aLima(t, h)
+	h.env = append(h.env, "O3S_PREVIEW=vm")
+
+	out, err := h.run(t, aRelease(t, false), "--no-devcontainer")
+
+	// Require the install to take the Lima step
+	if err != nil || !strings.Contains(out, "Found Lima in") {
+		t.Errorf("install.sh with O3S_PREVIEW=vm = %v, want the Lima step\n%s", err, out)
 	}
 }

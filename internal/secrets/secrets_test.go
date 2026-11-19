@@ -2,12 +2,15 @@ package secrets_test
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 
+	"github.com/hansehart/o3s/internal/fixture"
 	"github.com/hansehart/o3s/internal/secrets"
 )
 
@@ -42,15 +45,15 @@ func load(t *testing.T, path string) secrets.Store {
 
 // Reading follows the proxy, the last set value winning. A value with a line break counts as none.
 func TestValueReadsLikeTheProxy(t *testing.T) {
-	path := aSecretsFile(t, header+"\nEXAMPLE_TOKEN = \"first\"\nEXAMPLE_TOKEN='second'\nEXAMPLE_TOKEN=\nBROKEN=a\rb\n")
+	path := aSecretsFile(t, header+fmt.Sprintf("\n%[1]s = \"first\"\n%[1]s='second'\n%[1]s=\nBROKEN=a\rb\n", fixture.Secret))
 	s := load(t, path)
 
-	got, ok := s.Value("EXAMPLE_TOKEN")
+	got, ok := s.Value(fixture.Secret)
 	broken, brokenOK := s.Value("BROKEN")
 
 	// Require the last value that holds anything
 	if !ok || got != "second" {
-		t.Errorf("Value(EXAMPLE_TOKEN) = %q, %v, want %q, true", got, ok, "second")
+		t.Errorf("Value(%s) = %q, %v, want %q, true", fixture.Secret, got, ok, "second")
 	}
 	// Require a value with a line break to count as none
 	if brokenOK || broken != "" {
@@ -60,43 +63,43 @@ func TestValueReadsLikeTheProxy(t *testing.T) {
 
 // Setting a name fills a line that holds it without a value, and keeps every other line as it was.
 func TestSetFillsALineWithoutAValue(t *testing.T) {
-	path := aSecretsFile(t, header+"EXAMPLE_TOKEN=\n")
+	path := aSecretsFile(t, header+fixture.Secret+"=\n")
 	s := load(t, path)
 
-	replaced, err := s.Set("EXAMPLE_TOKEN", "s3cr3t")
+	replaced, err := s.Set(fixture.Secret, fixture.SecretValue)
 
 	// Stop when the value is turned away
 	if err != nil {
-		t.Fatalf("Set(EXAMPLE_TOKEN) = %v", err)
+		t.Fatalf("Set(%s) = %v", fixture.Secret, err)
 	}
 	// Require a line without a value to count as no earlier value
 	if replaced {
-		t.Errorf("Set(EXAMPLE_TOKEN) replaced = true, want false for a line without a value")
+		t.Errorf("Set(%s) replaced = true, want false for a line without a value", fixture.Secret)
 	}
 	// Require the line filled and the header kept
-	if diff := cmp.Diff(header+"EXAMPLE_TOKEN=s3cr3t\n", s.String()); diff != "" {
-		t.Errorf("Set(EXAMPLE_TOKEN) file (-want +got):\n%s", diff)
+	if diff := cmp.Diff(header+fixture.Secret+"="+fixture.SecretValue+"\n", s.String()); diff != "" {
+		t.Errorf("Set(%s) file (-want +got):\n%s", fixture.Secret, diff)
 	}
 }
 
 // Setting a name that holds a value replaces it, drops later lines that could shadow it, and says so.
 func TestSetReplacesAValueAndItsShadows(t *testing.T) {
-	path := aSecretsFile(t, header+"EXAMPLE_TOKEN=old\nEXAMPLE_TOKEN=older\n")
+	path := aSecretsFile(t, header+fmt.Sprintf("%[1]s=old\n%[1]s=older\n", fixture.Secret))
 	s := load(t, path)
 
-	replaced, err := s.Set("EXAMPLE_TOKEN", "new")
+	replaced, err := s.Set(fixture.Secret, "new")
 
 	// Stop when the value is turned away
 	if err != nil {
-		t.Fatalf("Set(EXAMPLE_TOKEN) = %v", err)
+		t.Fatalf("Set(%s) = %v", fixture.Secret, err)
 	}
 	// Require the rotation reported
 	if !replaced {
-		t.Errorf("Set(EXAMPLE_TOKEN) replaced = false, want true")
+		t.Errorf("Set(%s) replaced = false, want true", fixture.Secret)
 	}
 	// Require one line holding the new value
-	if diff := cmp.Diff(header+"EXAMPLE_TOKEN=new\n", s.String()); diff != "" {
-		t.Errorf("Set(EXAMPLE_TOKEN) file (-want +got):\n%s", diff)
+	if diff := cmp.Diff(header+fixture.Secret+"=new\n", s.String()); diff != "" {
+		t.Errorf("Set(%s) file (-want +got):\n%s", fixture.Secret, diff)
 	}
 }
 
@@ -105,15 +108,15 @@ func TestSetAppendsANewName(t *testing.T) {
 	path := aSecretsFile(t, header)
 	s := load(t, path)
 
-	_, err := s.Set("EXAMPLE_TOKEN", "s3cr3t")
+	_, err := s.Set(fixture.Secret, fixture.SecretValue)
 
 	// Stop when the value is turned away
 	if err != nil {
-		t.Fatalf("Set(EXAMPLE_TOKEN) = %v", err)
+		t.Fatalf("Set(%s) = %v", fixture.Secret, err)
 	}
 	// Require the name after the header
-	if diff := cmp.Diff(header+"EXAMPLE_TOKEN=s3cr3t\n", s.String()); diff != "" {
-		t.Errorf("Set(EXAMPLE_TOKEN) file (-want +got):\n%s", diff)
+	if diff := cmp.Diff(header+fixture.Secret+"="+fixture.SecretValue+"\n", s.String()); diff != "" {
+		t.Errorf("Set(%s) file (-want +got):\n%s", fixture.Secret, diff)
 	}
 }
 
@@ -122,10 +125,10 @@ func TestSetTurnsAwayWhatTheProxyRefuses(t *testing.T) {
 	tests := []struct {
 		name, secret, value string
 	}{
-		{name: "empty value", secret: "EXAMPLE_TOKEN", value: "  "},
-		{name: "line break", secret: "EXAMPLE_TOKEN", value: "a\nb"},
-		{name: "carriage return", secret: "EXAMPLE_TOKEN", value: "a\rb"},
-		{name: "lowercase name", secret: "example_token", value: "s3cr3t"},
+		{name: "empty value", secret: fixture.Secret, value: "  "},
+		{name: "line break", secret: fixture.Secret, value: "a\nb"},
+		{name: "carriage return", secret: fixture.Secret, value: "a\rb"},
+		{name: "lowercase name", secret: strings.ToLower(fixture.Secret), value: fixture.SecretValue},
 	}
 	// Check every case against its own empty file
 	for _, tt := range tests {
@@ -144,25 +147,25 @@ func TestSetTurnsAwayWhatTheProxyRefuses(t *testing.T) {
 
 // Removing a name drops every line of it and keeps the rest.
 func TestRemoveDropsEveryLineOfAName(t *testing.T) {
-	path := aSecretsFile(t, header+"EXAMPLE_TOKEN=a\nOTHER_TOKEN=b\nEXAMPLE_TOKEN=\n")
+	path := aSecretsFile(t, header+fmt.Sprintf("%[1]s=a\n%[2]s=b\n%[1]s=\n", fixture.Secret, fixture.OtherSecret))
 	s := load(t, path)
 
-	ok := s.Remove("EXAMPLE_TOKEN")
+	ok := s.Remove(fixture.Secret)
 
 	// Require the name gone and the rest kept
-	if diff := cmp.Diff(header+"OTHER_TOKEN=b\n", s.String()); !ok || diff != "" {
-		t.Errorf("Remove(EXAMPLE_TOKEN) = %v, file (-want +got):\n%s", ok, diff)
+	if diff := cmp.Diff(header+fixture.OtherSecret+"=b\n", s.String()); !ok || diff != "" {
+		t.Errorf("Remove(%s) = %v, file (-want +got):\n%s", fixture.Secret, ok, diff)
 	}
 }
 
 // Names lists every name the file holds, with or without a value, in order.
 func TestNamesListsEveryName(t *testing.T) {
-	s := load(t, aSecretsFile(t, header+"OTHER_TOKEN=b\nEXAMPLE_TOKEN=\n"))
+	s := load(t, aSecretsFile(t, header+fmt.Sprintf("%s=b\n%s=\n", fixture.OtherSecret, fixture.Secret)))
 
 	got := s.Names()
 
 	// Require both names, sorted
-	if diff := cmp.Diff([]string{"EXAMPLE_TOKEN", "OTHER_TOKEN"}, got); diff != "" {
+	if diff := cmp.Diff([]string{fixture.Secret, fixture.OtherSecret}, got); diff != "" {
 		t.Errorf("Names() (-want +got):\n%s", diff)
 	}
 }
@@ -172,7 +175,7 @@ func TestSaveKeepsTheFileToItsOwner(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "o3s", secrets.File)
 	s := load(t, path)
 	// Stop when the value is turned away
-	if _, err := s.Set("EXAMPLE_TOKEN", "s3cr3t"); err != nil {
+	if _, err := s.Set(fixture.Secret, fixture.SecretValue); err != nil {
 		t.Fatalf("Setup: %v", err)
 	}
 
@@ -188,9 +191,9 @@ func TestSaveKeepsTheFileToItsOwner(t *testing.T) {
 	if file.Mode().Perm() != 0o600 || dir.Mode().Perm() != 0o700 {
 		t.Errorf("Save(%q) modes = file %v, folder %v, want 0600 and 0700", path, file.Mode().Perm(), dir.Mode().Perm())
 	}
-	got, _ := load(t, path).Value("EXAMPLE_TOKEN")
+	got, _ := load(t, path).Value(fixture.Secret)
 	// Require the value to read back
-	if got != "s3cr3t" {
-		t.Errorf("Value after Save = %q, want %q", got, "s3cr3t")
+	if got != fixture.SecretValue {
+		t.Errorf("Value after Save = %q, want %q", got, fixture.SecretValue)
 	}
 }

@@ -16,14 +16,26 @@
   "prBodyDefinitions": {
     "Age": "{{#if newVersion}}{{{newVersionAgeInDays}}} days{{/if}}"
   },
+  "osvVulnerabilityAlerts": true,
   "vulnerabilityAlerts": {
-    "addLabels": ["security"]
+    "addLabels": ["security"],
+    "semanticCommitType": "fix"
   },
   "packageRules": [
     {
-      "description": "Dependency bumps change what the images are built from.",
+      "description": "Tooling bumps change how the repo is built.",
       "matchPackageNames": ["*"],
       "semanticCommitType": "build"
+    },
+    {
+      "description": "Workflow bumps change the pipeline.",
+      "matchManagers": ["github-actions"],
+      "semanticCommitType": "ci"
+    },
+    {
+      "description": "Bumps of the binary, the images and the stack ship to users, so they release.",
+      "matchManagers": ["docker-compose", "dockerfile", "gomod"],
+      "semanticCommitType": "fix"
     },
     {
       "description": "Images tracking a rolling tag do not need a digest pin.",

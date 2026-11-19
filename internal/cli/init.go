@@ -14,6 +14,7 @@ import (
 	"github.com/hansehart/o3s/internal/home"
 	"github.com/hansehart/o3s/internal/host"
 	"github.com/hansehart/o3s/internal/paths"
+	"github.com/hansehart/o3s/internal/preview"
 	"github.com/hansehart/o3s/internal/release"
 	"github.com/hansehart/o3s/internal/secrets"
 	"github.com/hansehart/o3s/internal/vm"
@@ -32,8 +33,8 @@ func newInit() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			// Make the home inside its VM, where this folder holds no home of its own and the VM stays chosen
-			if !guest && !skipVM && !home.Exists(dir) {
+			// Make the home inside its VM, where the VM preview is on, this folder holds no home of its own, and the VM stays chosen
+			if preview.Enabled(preview.VM) && !guest && !skipVM && !home.Exists(dir) {
 				return initVM(cmd, dir)
 			}
 			secretsFile, err := secrets.Path()
@@ -255,7 +256,7 @@ func nextSteps(out io.Writer) {
 	fmt.Fprintf(out, "\nNext steps:\n")
 	w := tabwriter.NewWriter(out, 0, 0, 3, ' ', 0)
 	fmt.Fprintf(w, "  o3s firewall add <host> --port 443\tallow a host\n")
-	fmt.Fprintf(w, "  echo \"$TOKEN\" | o3s secret add <NAME>\tstore a secret\n")
+	fmt.Fprintf(w, "  echo \"$TOKEN\" | o3s secret add <name>\tstore a secret\n")
 	fmt.Fprintln(w, "  o3s cage ide\topen it in the cage")
 	_ = w.Flush()
 }

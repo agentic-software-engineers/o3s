@@ -1,0 +1,41 @@
+# An option the feature offers lands in its entry, a boolean as a boolean, beside the folder o3s gives it
+exec o3s feature add $REGISTRY/features/tool --option mode=loose --option debug=true
+grep '"mode": "loose"' .devcontainer/devcontainer.json
+grep '"debug": true' .devcontainer/devcontainer.json
+grep '"stateDir": "/home/ubuntu/features/' .devcontainer/devcontainer.json
+
+# Adding the feature again keeps the options set before, and takes the ones given anew
+exec o3s feature add $REGISTRY/features/tool --option version=lts
+grep '"mode": "loose"' .devcontainer/devcontainer.json
+grep '"version": "lts"' .devcontainer/devcontainer.json
+
+# A value outside the option's choices is a usage error that names them
+! exec o3s feature add $REGISTRY/features/tool --option mode=fast
+stderr 'invalid value "fast" for mode, want strict or loose'
+! exec o3s feature add $REGISTRY/features/tool --option debug=maybe
+stderr 'invalid value "maybe" for debug, want true or false'
+stderr 'Run ''o3s feature add --help'' for usage.'
+
+# An option no feature offers, or one without a value, is a usage error
+! exec o3s feature add $REGISTRY/features/tool --option color=red
+stderr 'no feature here offers the option color'
+! exec o3s feature add $REGISTRY/features/tool --option mode
+stderr 'invalid option "mode", want name=value or id:name=value'
+
+# An option two features offer needs the feature's id
+! exec o3s feature add $REGISTRY/features/tool $REGISTRY/features/go --option version=1.0.0
+stderr 'tool and go both offer the option version, name one as in --option go:version=1.0.0'
+exec o3s feature add $REGISTRY/features/tool $REGISTRY/features/go --option go:version=1.0.0
+grep '"version": "1.0.0"' .devcontainer/devcontainer.json
+
+# The folder o3s gives a feature stays o3s's own
+! exec o3s feature add $REGISTRY/features/tool --option stateDir=/tmp
+stderr 'stateDir is set by o3s'
+
+-- o3s.json --
+{"$schema": "./.devcontainer/o3s.schema.json", "stores": [], "hosts": []}
+-- .devcontainer/devcontainer.json --
+{
+    "features": {},
+    "containerEnv": {}
+}

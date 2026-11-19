@@ -5,6 +5,12 @@ exec o3s init --guest
 exec o3s cage shell
 cmpenv $WORK/devcontainer.log $WORK/want.log
 
+# Without the devcontainer CLI the shell points at the installer that brings it
+env PATH=$O3S_DIR
+! exec o3s cage shell
+stderr 'o3s cage shell runs the devcontainer CLI, which install.sh installs unless run with --no-devcontainer'
+env PATH=$WORK/.bin:$O3S_DIR
+
 # A folder without an o3s home points at the command that starts one
 cd $WORK
 ! exec o3s cage shell
