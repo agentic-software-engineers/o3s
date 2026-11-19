@@ -29,6 +29,11 @@ func newText(q menu.Question) text {
 		in.EchoMode = textinput.EchoPassword
 		in.EchoCharacter = '•'
 	}
+	// Complete the line to the values the question suggests
+	if len(q.Suggestions) > 0 {
+		in.ShowSuggestions = true
+		in.SetSuggestions(q.Suggestions)
+	}
 	// Start from the default of a shown question, so Enter keeps it
 	if q.Kind == menu.Input && len(q.Default) > 0 {
 		in.SetValue(q.Default[0])
@@ -90,7 +95,11 @@ func (t text) View(width, _ int) string {
 	return strings.Join(lines, "\n")
 }
 
-// Keys are the keys of a text field.
+// Keys are the keys of a text field, with completing where the question suggests values.
 func (t text) Keys() []key.Binding {
+	// Name completing where the question suggests values
+	if len(t.q.Suggestions) > 0 {
+		return []key.Binding{keyComplete, keyContinue, keyCancel}
+	}
 	return []key.Binding{keyContinue, keyCancel}
 }

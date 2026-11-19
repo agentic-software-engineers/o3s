@@ -132,16 +132,21 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.out.size(m.width, m.paneHeight())
 		return m, nil
 	case homeMsg:
-		start := m.cfg.Start
+		start, crumbs, kinds := m.cfg.Start, m.crumbs, m.kinds
 		// Open at the view a change came from, where it asks to
 		if m.resume != nil {
 			start, m.resume = m.resume, nil
 		}
 		m.home, m.answers, m.crumbs, m.kinds = menu.Home(msg), nil, nil, nil
-		// Open at the answers the menu starts with
-		for _, a := range start {
+		// Open at the answers the menu starts with, each shown and kept as the dialog gave it where it gave it before
+		for i, a := range start {
+			crumb, kind := strings.Join(a.Values, ", "), menu.Select
+			// Keep how the dialog showed an answer it gave before
+			if i < len(kinds) && i < len(crumbs) {
+				crumb, kind = crumbs[i], kinds[i]
+			}
 			m.answers = m.answers.With(a.Key, a.Values)
-			m.crumbs, m.kinds = append(m.crumbs, strings.Join(a.Values, ", ")), append(m.kinds, menu.Select)
+			m.crumbs, m.kinds = append(m.crumbs, crumb), append(m.kinds, kind)
 		}
 		m.state = loading
 		return m, m.ask()
@@ -378,12 +383,16 @@ func (m model) path() []string {
 	return g[0].Values[:1]
 }
 
-// group is the answers that open the view of the group the dialog runs in, the answers the menu started with where they
-// name the same group, and none at the main menu.
+// group is the answers that open the view a change came from: the last view the dialog answered, else the group's
+// own view, which the answers the menu started with open where they name the same group, and none at the main menu.
 func (m model) group() menu.Answers {
 	// Open the main menu where the dialog names no group
 	if len(m.answers) == 0 || m.answers[0].Key != "do" {
 		return nil
+	}
+	// Open the last view the dialog answered, past the group's own
+	if i := m.lastView(); i > 1 {
+		return slices.Clone(m.answers[:i])
 	}
 	// Open where the menu started where it started at this group
 	if len(m.cfg.Start) > 0 && m.cfg.Start[0].Values[0] == m.answers[0].Values[0] {
@@ -392,20 +401,32 @@ func (m model) group() menu.Answers {
 	return m.answers[:1]
 }
 
-// place is where the group's view opens again: the tab the user picked in and the row, the one a new order names.
+// place is where the view a change came from opens again: the tab the user picked in and the row, the one a new
+// order names.
 func (m model) place() []string {
-	// Look for the answer the view took
-	for _, a := range m.answers {
-		// Read the tab and the row from the view's answer
-		if a.Key == "view" && len(a.Values) > 0 {
-			// Read the row a new order names
-			if len(a.Values) > 2 && a.Values[1] == menu.Order {
-				return []string{a.Values[0], a.Values[2]}
-			}
-			return a.Values[:min(len(a.Values), 2)]
+	i := m.lastView()
+	// Name no place where the dialog answered no view
+	if i < 0 || len(m.answers[i].Values) == 0 {
+		return nil
+	}
+	v := m.answers[i].Values
+	// Read the row a new order names
+	if len(v) > 2 && v[1] == menu.Order {
+		return []string{v[0], v[2]}
+	}
+	return v[:min(len(v), 2)]
+}
+
+// lastView is where the last answer a view took stands among the answers, and -1 where no view took one.
+func (m model) lastView() int {
+	// Look back from the last answer for one a view took
+	for i, kind := range slices.Backward(m.kinds) {
+		// Take an answer a view took
+		if kind == menu.View {
+			return i
 		}
 	}
-	return nil
+	return -1
 }
 
 // echoed writes a command line the way a shell takes it: a value with a space or a sign the shell reads quoted, and a

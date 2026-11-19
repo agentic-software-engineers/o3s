@@ -94,16 +94,16 @@ func TestEveryFeatureDialogEndsInItsCommand(t *testing.T) {
 	value := fixture.SecretValue
 	dialogs{
 		{
-			"configuring the tool, its mode back to strict",
-			[][]string{{"feature"}, {installedTab, toolPkg}, {configure}, {"true"}, {"strict"}, {fixture.FloatingTag}, {yes}},
-			[]string{"do", "view", "action", "option:debug", "option:mode", "option:version", "apply"},
-			[]Command{{Args: []string{"feature", "configure", toolPkg, "--option", "debug=true", "--option", "mode=strict"}}},
+			"setting one option of the tool, quietly",
+			[][]string{{"feature"}, {installedTab, toolPkg}, {configure}, {"Options", "debug"}, {"true"}},
+			[]string{"do", "view", "action", "options", "option:debug"},
+			[]Command{{Args: []string{"feature", "configure", toolPkg, "--option", "debug=true"}, Quiet: true}},
 		},
 		{
-			"configuring the tool without a change",
-			[][]string{{"feature"}, {installedTab, toolPkg}, {configure}, {"false"}, {"loose"}, {fixture.FloatingTag}, {yes}},
-			[]string{"do", "view", "action", "option:debug", "option:mode", "option:version", "apply"},
-			[]Command{{Note: nothingChanged}},
+			"keeping the value an option holds",
+			[][]string{{"feature"}, {installedTab, toolPkg}, {configure}, {"Options", "mode"}, {"loose"}},
+			[]string{"do", "view", "action", "options", "option:mode"},
+			nil,
 		},
 		{
 			"removing the tool",
@@ -185,9 +185,14 @@ func TestMarkingFeaturesConfirmsTheWholeChange(t *testing.T) {
 
 // An option asks the way it takes its value, starting from the value the feature holds and marking it.
 func TestOptionsAskFromTheValueTheyHold(t *testing.T) {
-	asked, _ := walk(t, aHomeWithTheTool(), []string{"feature"}, []string{installedTab, toolPkg}, []string{configure}, []string{"false"}, []string{"loose"}, []string{fixture.FloatingTag}, []string{"no"})
+	configuring := Answers{}.With("do", []string{"feature"}).With("view", []string{installedTab, toolPkg}).With("action", []string{configure})
+	ask := func(name string) Question {
+		q, _ := Next(aHomeWithTheTool(), configuring.With("options", []string{"Options", name}))
+		return q
+	}
 
-	debug, mode, version := asked[3], asked[4], asked[5]
+	debug, mode, version := ask("debug"), ask("mode"), ask("version")
+
 	// Require a boolean as a choice of true and false, from its fallback
 	if debug.Kind != Select || debug.Default[0] != "false" || debug.About != "Log every step" {
 		t.Errorf("debug = %+v", debug)
@@ -196,9 +201,25 @@ func TestOptionsAskFromTheValueTheyHold(t *testing.T) {
 	if mode.Kind != Select || mode.Default[0] != "loose" || mode.Options[1].Note != "current" {
 		t.Errorf("mode = %+v", mode)
 	}
-	// Require a line of text with its proposals as the example
-	if version.Kind != Input || version.Example != fixture.FloatingTag+"  lts" {
+	// Require a line of text with its proposals as the example and the values it completes to
+	if version.Kind != Input || version.Example != fixture.FloatingTag+"  lts" || !cmp.Equal([]string{fixture.FloatingTag, "lts"}, version.Suggestions) {
 		t.Errorf("version = %+v", version)
+	}
+}
+
+// A feature's options show in one view, each with the value the feature sets, its default and what it does.
+func TestTheOptionsViewShowsEveryOption(t *testing.T) {
+	got, _ := Next(aHomeWithTheTool(), Answers{}.With("do", []string{"feature"}).With("view", []string{installedTab, toolPkg}).With("action", []string{configure}))
+
+	// Require one row per option with its value, default and description
+	want := []Option{
+		{Value: "debug", Columns: []string{"–", "false"}, Detail: "Log every step"},
+		{Value: "mode", Columns: []string{"loose", "strict"}},
+		{Value: "version", Columns: []string{"–", fixture.FloatingTag}},
+	}
+	// Report a view that differs
+	if diff := cmp.Diff(want, got.Tabs[0].Options); got.Kind != View || diff != "" {
+		t.Errorf("options view %v (-want +got):\n%s", got.Kind, diff)
 	}
 }
 
