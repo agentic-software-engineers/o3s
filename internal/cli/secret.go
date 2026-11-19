@@ -59,11 +59,12 @@ func newSecretAdd() *cobra.Command {
 				return err
 			}
 			out := cmd.OutOrStdout()
-			// Report a rotation without the value
+			stored := "Stored"
+			// Name a value that replaced the one the secret held, without either value
 			if replaced {
-				fmt.Fprintf(out, "%s\n  ~ value replaced\n", name)
+				stored = "Replaced"
 			}
-			fmt.Fprintf(out, "Stored %s\n", name)
+			fmt.Fprintf(out, "%s %s\n", stored, name)
 			// Point a name no host carries at the command that binds it, unless a feature binds it next
 			if !noBindHint && len(hostsNaming(name)) == 0 {
 				fmt.Fprintf(out, "Bind it to a host with: o3s firewall add <host> --secret %s\n", name)

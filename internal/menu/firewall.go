@@ -98,9 +98,9 @@ func hostDialog(h Home, a Answers, name string) (Question, bool) {
 	case changePorts:
 		steps = []func(Home, Answers) (Question, bool){portsQuestion}
 	case changeEnd:
-		steps = []func(Home, Answers) (Question, bool){forQuestion(false)}
+		steps = []func(Home, Answers) (Question, bool){forQuestion(true)}
 	case changeSecret:
-		steps = []func(Home, Answers) (Question, bool){secretQuestion(false)}
+		steps = []func(Home, Answers) (Question, bool){secretQuestion(true)}
 	case remove:
 		return ask(a, apply(removeLines(h, name), "Removes "+name, true))
 	default:
@@ -177,9 +177,13 @@ func secretQuestion(withNone bool) func(Home, Answers) (Question, bool) {
 		if a.get("secret") == fresh && !a.has("secretName") {
 			return Question{Key: "secretName", Kind: Input, Title: "Secret name", About: "An uppercase env name, the way the proxy reads it.", Example: "GH_TOKEN", Check: checkSecretName}, true
 		}
+		// Ask the value of a new secret, so the hosts carry it from the start
+		if name := chosenSecret(a); a.get("secret") == fresh && !a.has(valueKey(name)) {
+			return valueQuestion(name), true
+		}
 		// Ask where the secret goes
 		if chosenSecret(a) != "" && !a.has("inject") {
-			return Question{Key: "inject", Kind: Multi, Title: "Where the secret goes", Options: []Option{{Value: "header"}, {Value: "query"}, {Value: "body"}}, Default: []string{"header"}}, true
+			return injectQuestion(), true
 		}
 		return Question{}, false
 	}
@@ -196,18 +200,23 @@ func firewallPlan(_ Home, a Answers) []Command {
 	if !confirmed(a) {
 		return declined()
 	}
+	var cmds []Command
+	// Store the value of a new secret first, so the hosts find it in place
+	if a.get("secret") == fresh {
+		cmds = storeValue(a, chosenSecret(a))
+	}
 	// Build the command of what the user picked
 	switch {
 	case tab == "Blocked":
-		return []Command{{Args: allowArgs(a, picked)}}
+		return append(cmds, Command{Args: allowArgs(a, picked)})
 	case picked[0] == add:
-		return []Command{{Args: allowArgs(a, strings.Fields(a.get("hosts")))}}
+		return append(cmds, Command{Args: allowArgs(a, strings.Fields(a.get("hosts")))})
 	case picked[0] == prune:
 		return []Command{{Args: []string{"firewall", "prune", "--yes"}}}
 	case a.get("action") == remove:
 		return []Command{{Args: []string{"firewall", "rm", picked[0], "--yes"}}}
 	}
-	return []Command{{Args: allowArgs(a, picked[:1])}}
+	return append(cmds, Command{Args: allowArgs(a, picked[:1])})
 }
 
 // allowArgs builds the command line that allows hosts with what the dialog asked: ports, time and secret.
@@ -217,13 +226,20 @@ func allowArgs(a Answers, hosts []string) []string {
 	if ports := chosenPorts(a); ports != "" {
 		args = append(args, "--port", ports)
 	}
-	// Name the time the user chose, keeping a host open for good where the user said so
-	if limit := chosenFor(a); limit != "" && limit != always {
+	limit := chosenFor(a)
+	// Name the time the user chose, opening a host for good again where its end time changes to none
+	switch {
+	case limit == always && a.get("action") == changeEnd:
+		args = append(args, "--for", config.OpenForGood)
+	case limit != "" && limit != always:
 		args = append(args, "--for", limit)
 	}
-	// Name the secret and where it goes
-	if s := chosenSecret(a); s != "" {
+	// Name the secret and where it goes, or take a host's secret off where its secret changes to none
+	switch s := chosenSecret(a); {
+	case s != "":
 		args = append(args, "--secret", s, "--inject", strings.Join(a.all("inject"), ","))
+	case a.get("secret") == none && a.get("action") == changeSecret:
+		args = append(args, "--secret", config.WithoutSecret)
 	}
 	return append(args, "--yes")
 }
@@ -260,9 +276,10 @@ func chosenSecret(a Answers) string {
 	return s
 }
 
-// allowLines shows what allowing or changing hosts does: each host with its ports and when it closes.
+// allowLines shows what allowing or changing hosts does: each host with its ports, when it closes and its secret, lined
+// up as columns.
 func allowLines(h Home, a Answers, hosts []string) []string {
-	var lines []string
+	var heads, lines []string
 	// Show every host the change reaches
 	for _, name := range hosts {
 		current, known := (&config.Config{Hosts: h.Hosts}).Find(name)
@@ -275,16 +292,33 @@ func allowLines(h Home, a Answers, hosts []string) []string {
 				ports = config.JoinPorts(current.Ports)
 			}
 		}
-		line := fmt.Sprintf("%s %s:%s", sign, name, words.Or(ports, "443"))
-		// Name when the host closes
-		if d, err := config.ParseFor(chosenFor(a)); err == nil {
+		heads = append(heads, fmt.Sprintf("%s %s:%s", sign, name, words.Or(ports, "443")))
+		line := ""
+		d, err := config.ParseFor(chosenFor(a))
+		// Name when the host closes, or that it stays open for good where its end time changes
+		switch {
+		case err == nil:
 			line += "   closes at " + config.ClosesAt(config.EndTime(h.Now.Add(d)), h.Now)
+		case chosenFor(a) == always && a.get("action") == changeEnd:
+			line += "   open for good"
 		}
-		// Name the secret the host carries
-		if s := chosenSecret(a); s != "" {
+		// Name the secret the host carries, or that it carries none where its secret changes
+		switch s := chosenSecret(a); {
+		case s != "":
 			line += "   " + s + " in " + strings.Join(a.all("inject"), ", ")
+		case a.get("secret") == none && a.get("action") == changeSecret:
+			line += "   no secret"
 		}
 		lines = append(lines, line)
+	}
+	width := 0
+	// Measure the widest host with its ports
+	for _, head := range heads {
+		width = max(width, len(head))
+	}
+	// Put every host's ports and what follows them in line
+	for i, head := range heads {
+		lines[i] = strings.TrimRight(head+strings.Repeat(" ", width-len(head))+lines[i], " ")
 	}
 	return lines
 }
@@ -410,4 +444,9 @@ func SecretState(set bool) string {
 // waits reports whether a host's secret waits for its value.
 func waits(h Home, secret string) bool {
 	return secret != "" && !slices.ContainsFunc(h.Secrets, func(s Secret) bool { return s.Name == secret && s.Set })
+}
+
+// injectQuestion asks where the proxy puts a secret in a host's requests, the header from the start.
+func injectQuestion() Question {
+	return Question{Key: "inject", Kind: Multi, Title: "Where the secret goes", Options: []Option{{Value: "header"}, {Value: "query"}, {Value: "body"}}, Default: []string{"header"}}
 }

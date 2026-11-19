@@ -95,8 +95,8 @@ func (p Path) with(key string, values []string) Path {
 	return p
 }
 
-// edge names an answer within the dialog it is given in: the group, the tab and the action picked before it, the
-// question, and the answer.
+// edge names an answer within the dialog it is given in: the group, the tab and the row and the action picked before
+// it, the question, and the answer, so a row that offers other answers is walked on its own.
 func edge(a menu.Answers, key string, values []string) string {
 	var dialog []string
 	// Name the dialog by the answers that pick it
@@ -106,7 +106,7 @@ func edge(a menu.Answers, key string, values []string) string {
 		case "do", "action":
 			dialog = append(dialog, x.Key+"="+strings.Join(x.Values, ","))
 		case "view":
-			dialog = append(dialog, "view="+x.Values[0])
+			dialog = append(dialog, "view="+strings.Join(x.Values[:min(len(x.Values), 2)], ","))
 		}
 	}
 	return strings.Join(dialog, " ") + " | " + key + "=" + strings.Join(values, ",")

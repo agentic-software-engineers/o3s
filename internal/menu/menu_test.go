@@ -2,6 +2,7 @@ package menu
 
 import (
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -105,7 +106,7 @@ func TestTheMainMenuNotesWhatEachGroupHolds(t *testing.T) {
 		{Value: "feature", Note: "tools in the cage · 0 installed"},
 		{Value: "firewall", Note: "hosts the cage reaches · 4 allowed · 2 blocked"},
 		{Value: "project", Note: "repositories in the workspace · 1"},
-		{Value: "secret", Note: "values the proxy injects · 2"},
+		{Value: "secret", Note: "values the proxy injects · 1 set · 1 waiting"},
 		{Value: "update", Note: "the cli, the stack and the features"},
 	}
 	// Report entries that differ
@@ -161,6 +162,8 @@ func TestTheFirewallViewShowsTheHostsAndTheRefusedNames(t *testing.T) {
 
 // Every firewall dialog ends in the command line the CLI runs for it, asking for --yes where the menu asked already.
 func TestEveryFirewallDialogEndsInItsCommand(t *testing.T) {
+	value := fixture.SecretValue
+
 	dialogs{
 		{
 			"a new host on the HTTPS port for good",
@@ -169,10 +172,19 @@ func TestEveryFirewallDialogEndsInItsCommand(t *testing.T) {
 			[]Command{{Args: []string{"firewall", "add", fixture.NewHost, "--port", port, "--yes"}}},
 		},
 		{
-			"two hosts on typed ports for a typed time with a new secret in two sites",
-			[][]string{{"firewall"}, {"Allowed", add}, {fixture.NewHost + " " + fixture.NextHost}, {typed}, {strconv.Itoa(fixture.OtherPort) + ", " + port}, {typed}, {fixture.Duration}, {fresh}, {fixture.NewSecret}, {"header", "body"}, {yes}},
-			[]string{"do", "view", "hosts", "ports", "portsTyped", "for", "forTyped", "secret", "secretName", "inject", "apply"},
-			[]Command{{Args: []string{"firewall", "add", fixture.NewHost, fixture.NextHost, "--port", bothPorts, "--for", fixture.Duration, "--secret", fixture.NewSecret, "--inject", "header,body", "--yes"}}},
+			"two hosts on typed ports for a typed time with a new secret, its value given, in two sites",
+			[][]string{{"firewall"}, {"Allowed", add}, {fixture.NewHost + " " + fixture.NextHost}, {typed}, {strconv.Itoa(fixture.OtherPort) + ", " + port}, {typed}, {fixture.Duration}, {fresh}, {fixture.NewSecret}, {value}, {"header", "body"}, {yes}},
+			[]string{"do", "view", "hosts", "ports", "portsTyped", "for", "forTyped", "secret", "secretName", "value:" + fixture.NewSecret, "inject", "apply"},
+			[]Command{
+				{Args: []string{"secret", "add", fixture.NewSecret, "--no-bind-hint"}, Stdin: &value},
+				{Args: []string{"firewall", "add", fixture.NewHost, fixture.NextHost, "--port", bothPorts, "--for", fixture.Duration, "--secret", fixture.NewSecret, "--inject", "header,body", "--yes"}},
+			},
+		},
+		{
+			"a host with a new secret left waiting",
+			[][]string{{"firewall"}, {"Allowed", add}, {fixture.NewHost}, {port}, {always}, {fresh}, {fixture.NewSecret}, {""}, {"header"}, {yes}},
+			[]string{"do", "view", "hosts", "ports", "for", "secret", "secretName", "value:" + fixture.NewSecret, "inject", "apply"},
+			[]Command{{Args: []string{"firewall", "add", fixture.NewHost, "--port", port, "--secret", fixture.NewSecret, "--inject", "header", "--yes"}}},
 		},
 		{
 			"two refused names for an hour",
@@ -191,6 +203,18 @@ func TestEveryFirewallDialogEndsInItsCommand(t *testing.T) {
 			[][]string{{"firewall"}, {"Allowed", fixture.Host}, {changeEnd}, {"8h"}, {yes}},
 			[]string{"do", "view", "action", "for", "apply"},
 			[]Command{{Args: []string{"firewall", "add", fixture.Host, "--for", "8h", "--yes"}}},
+		},
+		{
+			"a host opened for good again",
+			[][]string{{"firewall"}, {"Allowed", fixture.ThirdHost}, {changeEnd}, {always}, {yes}},
+			[]string{"do", "view", "action", "for", "apply"},
+			[]Command{{Args: []string{"firewall", "add", fixture.ThirdHost, "--for", config.OpenForGood, "--yes"}}},
+		},
+		{
+			"a host's secret taken off",
+			[][]string{{"firewall"}, {"Allowed", fixture.Subdomain}, {changeSecret}, {none}, {yes}},
+			[]string{"do", "view", "action", "secret", "apply"},
+			[]Command{{Args: []string{"firewall", "add", fixture.Subdomain, "--secret", config.WithoutSecret, "--yes"}}},
 		},
 		{
 			"a host's secret",
@@ -255,16 +279,34 @@ func TestEveryOtherDialogEndsInItsCommand(t *testing.T) {
 	value := fixture.SecretValue
 	dialogs{
 		{
-			"a new secret bound to a host",
-			[][]string{{"secret"}, {"Secrets", add}, {fixture.NewSecret}, {value}, {yes}, {fixture.Host}},
-			[]string{"do", "view", "name", "value", "bind", "host"},
-			[]Command{{Args: []string{"secret", "add", fixture.NewSecret, "--no-bind-hint"}, Stdin: &value}, {Args: []string{"firewall", "add", fixture.Host, "--secret", fixture.NewSecret, "--yes"}}},
+			"a new secret bound to a host, into the sites chosen",
+			[][]string{{"secret"}, {"Secrets", add}, {fixture.NewSecret}, {value}, {yes}, {fixture.Host}, {"header", "body"}, {yes}},
+			[]string{"do", "view", "name", "value", "bind", "host", "inject", "apply"},
+			[]Command{{Args: []string{"secret", "add", fixture.NewSecret, "--no-bind-hint"}, Stdin: &value}, {Args: []string{"firewall", "add", fixture.Host, "--secret", fixture.NewSecret, "--inject", "header,body", "--yes"}}},
+		},
+		{
+			"a new secret stored and its binding declined",
+			[][]string{{"secret"}, {"Secrets", add}, {fixture.NewSecret}, {value}, {yes}, {fixture.Subdomain}, {"header"}, {"no"}},
+			[]string{"do", "view", "name", "value", "bind", "host", "inject", "apply"},
+			[]Command{{Args: []string{"secret", "add", fixture.NewSecret, "--no-bind-hint"}, Stdin: &value}},
 		},
 		{
 			"a new secret bound later",
 			[][]string{{"secret"}, {"Secrets", add}, {fixture.NewSecret}, {value}, {notNow}},
 			[]string{"do", "view", "name", "value", "bind"},
 			[]Command{{Args: []string{"secret", "add", fixture.NewSecret, "--no-bind-hint"}, Stdin: &value}},
+		},
+		{
+			"a value replacing the one a secret holds, confirmed",
+			[][]string{{"secret"}, {"Secrets", fixture.OtherSecret}, {setValue}, {value}, {yes}},
+			[]string{"do", "view", "action", "value", "apply"},
+			[]Command{{Args: []string{"secret", "add", fixture.OtherSecret, "--no-bind-hint"}, Stdin: &value}},
+		},
+		{
+			"a value replacing the one a secret holds, declined",
+			[][]string{{"secret"}, {"Secrets", fixture.OtherSecret}, {setValue}, {value}, {"no"}},
+			[]string{"do", "view", "action", "value", "apply"},
+			[]Command{{Note: nothingChanged}},
 		},
 		{
 			"a value for a secret a host carries",
@@ -514,5 +556,17 @@ func TestAHomeInItsVMOffersItsCage(t *testing.T) {
 	// Require the removal to name the VM's disk
 	if want := "- the VM and its disk, with the home and the projects inside"; asked[2].Preview[0] != want {
 		t.Errorf("removal = %v, want %q", asked[2].Preview, want)
+	}
+}
+
+// Allowing several hosts lines up what each gets after its name and ports, so the preview reads as columns.
+func TestAllowLinesLineUp(t *testing.T) {
+	a := Answers{}.With("ports", []string{port}).With("for", []string{"1h"}).With("secret", []string{fixture.Secret}).With("inject", []string{"header"})
+
+	lines := allowLines(aHome, a, []string{fixture.NewHost, fixture.OtherWildcard})
+
+	// Require what follows each host to start at the same column
+	if at := strings.Index(lines[0], "   closes"); at < 0 || at != strings.Index(lines[1], "   closes") {
+		t.Errorf("allowLines =\n%s", strings.Join(lines, "\n"))
 	}
 }

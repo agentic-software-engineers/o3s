@@ -7,7 +7,7 @@ What do you want to do?
   feature    tools in the cage · 2 installed
   firewall   hosts the cage reaches · 4 allowed · 1 blocked
   project    repositories in the workspace · 1
-  secret     values the proxy injects · 2
+  secret     values the proxy injects · 1 set · 1 waiting
   update     the cli, the stack and the features
 
 ↑/↓ navigate · type to search · enter select · esc quit
@@ -265,7 +265,7 @@ The cage reaches only these hosts.
 
 ──── apply
 o3s  /home/ubuntu/o3s
-firewall / Allowed / +prune
+firewall / Allowed / prune expired
 
 - example.net   expired Jan 1 00:00
 
@@ -354,7 +354,7 @@ o3s  /home/ubuntu/o3s
 … host / new.example.net *.example.org / 443 / For good / EXAMPLE_TOKEN / header
 
 + new.example.net:443   EXAMPLE_TOKEN in header
-+ *.example.org:443   EXAMPLE_TOKEN in header
++ *.example.org:443     EXAMPLE_TOKEN in header
 
 Allows new.example.net and every name below example.org for good
 Apply?
@@ -368,7 +368,7 @@ o3s  /home/ubuntu/o3s
 …a host / new.example.net *.example.org / 443 / For good / EXAMPLE_TOKEN / query
 
 + new.example.net:443   EXAMPLE_TOKEN in query
-+ *.example.org:443   EXAMPLE_TOKEN in query
++ *.example.org:443     EXAMPLE_TOKEN in query
 
 Allows new.example.net and every name below example.org for good
 Apply?
@@ -382,7 +382,7 @@ o3s  /home/ubuntu/o3s
 … a host / new.example.net *.example.org / 443 / For good / EXAMPLE_TOKEN / body
 
 + new.example.net:443   EXAMPLE_TOKEN in body
-+ *.example.org:443   EXAMPLE_TOKEN in body
++ *.example.org:443     EXAMPLE_TOKEN in body
 
 Allows new.example.net and every name below example.org for good
 Apply?
@@ -396,7 +396,7 @@ o3s  /home/ubuntu/o3s
 …xample.net *.example.org / 443 / For good / EXAMPLE_TOKEN / header, query, body
 
 + new.example.net:443   EXAMPLE_TOKEN in header, query, body
-+ *.example.org:443   EXAMPLE_TOKEN in header, query, body
++ *.example.org:443     EXAMPLE_TOKEN in header, query, body
 
 Allows new.example.net and every name below example.org for good
 Apply?
@@ -421,7 +421,7 @@ o3s  /home/ubuntu/o3s
 … a host / new.example.net *.example.org / 443 / For good / OTHER_TOKEN / header
 
 + new.example.net:443   OTHER_TOKEN in header
-+ *.example.org:443   OTHER_TOKEN in header
++ *.example.org:443     OTHER_TOKEN in header
 
 Allows new.example.net and every name below example.org for good
 Apply?
@@ -441,9 +441,19 @@ e.g. GH_TOKEN
 
 enter continue · esc cancel
 
-──── inject
+──── value:NEW_TOKEN
 o3s  /home/ubuntu/o3s
 … host / new.example.net *.example.org / 443 / For good / New secret / NEW_TOKEN
+
+Value for NEW_TOKEN
+Empty leaves it waiting, echo "$TOKEN" | o3s secret add NEW_TOKEN sets it later.
+❯
+
+enter continue · esc cancel
+
+──── inject
+o3s  /home/ubuntu/o3s
+…/ new.example.net *.example.org / 443 / For good / New secret / NEW_TOKEN / ***
 
 Where the secret goes
 ❯ [x] header
@@ -454,10 +464,10 @@ Where the secret goes
 
 ──── apply
 o3s  /home/ubuntu/o3s
-…ew.example.net *.example.org / 443 / For good / New secret / NEW_TOKEN / header
+…mple.net *.example.org / 443 / For good / New secret / NEW_TOKEN / *** / header
 
 + new.example.net:443   NEW_TOKEN in header
-+ *.example.org:443   NEW_TOKEN in header
++ *.example.org:443     NEW_TOKEN in header
 
 Allows new.example.net and every name below example.org for good
 Apply?
@@ -483,7 +493,7 @@ o3s  /home/ubuntu/o3s
 … / Allowed / Allow a host / new.example.net *.example.org / 443 / 1 hour / None
 
 + new.example.net:443   closes at 16:04
-+ *.example.org:443   closes at 16:04
++ *.example.org:443     closes at 16:04
 
 Allows new.example.net and every name below example.org for 1 hour
 Apply?
@@ -509,7 +519,7 @@ o3s  /home/ubuntu/o3s
 …/ Allowed / Allow a host / new.example.net *.example.org / 443 / 8 hours / None
 
 + new.example.net:443   closes at 23:04
-+ *.example.org:443   closes at 23:04
++ *.example.org:443     closes at 23:04
 
 Allows new.example.net and every name below example.org for 8 hours
 Apply?
@@ -535,7 +545,7 @@ o3s  /home/ubuntu/o3s
 …l / Allowed / Allow a host / new.example.net *.example.org / 443 / 1 day / None
 
 + new.example.net:443   closes at Jan 3 15:04
-+ *.example.org:443   closes at Jan 3 15:04
++ *.example.org:443     closes at Jan 3 15:04
 
 Allows new.example.net and every name below example.org for 1 day
 Apply?
@@ -572,7 +582,7 @@ o3s  /home/ubuntu/o3s
 …low a host / new.example.net *.example.org / 443 / Type a duration / 90m / None
 
 + new.example.net:443   closes at 16:34
-+ *.example.org:443   closes at 16:34
++ *.example.org:443     closes at 16:34
 
 Allows new.example.net and every name below example.org for 90 minutes
 Apply?
@@ -757,12 +767,26 @@ o3s  /home/ubuntu/o3s
 firewall / Allowed / example.com / Set an end time
 
 For how long
-❯ 1. 1 hour
-  2. 8 hours
-  3. 1 day
-  4. Type a duration…   e.g. 90m, 2h30m
+❯ 1. For good
+  2. 1 hour
+  3. 8 hours
+  4. 1 day
+  5. Type a duration…   e.g. 90m, 2h30m
 
-↑/↓ navigate · 1-4 choose · enter select · esc back
+↑/↓ navigate · 1-5 choose · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.com / Set an end time / For good
+
+~ example.com:22,443   open for good
+
+Changes example.com
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
 
 ──── apply
 o3s  /home/ubuntu/o3s
@@ -832,11 +856,25 @@ o3s  /home/ubuntu/o3s
 firewall / Allowed / example.com / Change secret
 
 Secret the proxy injects
-❯ 1. EXAMPLE_TOKEN   empty
-  2. OTHER_TOKEN     set
-  3. New secret…
+❯ 1. None
+  2. EXAMPLE_TOKEN   empty
+  3. OTHER_TOKEN     set
+  4. New secret…
 
-↑/↓ navigate · 1-3 choose · enter select · esc back
+↑/↓ navigate · 1-4 choose · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.com / Change secret / None
+
+~ example.com:22,443   no secret
+
+Changes example.com
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
 
 ──── inject
 o3s  /home/ubuntu/o3s
@@ -936,9 +974,19 @@ e.g. GH_TOKEN
 
 enter continue · esc cancel
 
-──── inject
+──── value:NEW_TOKEN
 o3s  /home/ubuntu/o3s
 firewall / Allowed / example.com / Change secret / New secret / NEW_TOKEN
+
+Value for NEW_TOKEN
+Empty leaves it waiting, echo "$TOKEN" | o3s secret add NEW_TOKEN sets it later.
+❯
+
+enter continue · esc cancel
+
+──── inject
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.com / Change secret / New secret / NEW_TOKEN / ***
 
 Where the secret goes
 ❯ [x] header
@@ -949,7 +997,7 @@ Where the secret goes
 
 ──── apply
 o3s  /home/ubuntu/o3s
-…ewall / Allowed / example.com / Change secret / New secret / NEW_TOKEN / header
+…/ Allowed / example.com / Change secret / New secret / NEW_TOKEN / *** / header
 
 ~ example.com:22,443   NEW_TOKEN in header
 
@@ -1018,6 +1066,302 @@ Apply?
 
 ↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
 
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Allowed / api.example.com / Change ports / 22, 443
+
+~ api.example.com:22,443
+
+Changes api.example.com
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── portsTyped
+o3s  /home/ubuntu/o3s
+firewall / Allowed / api.example.com / Change ports / Type ports
+
+Ports
+Ports from 1 to 65535, separated by commas.
+e.g. 22, 443, 8443
+❯
+
+enter continue · esc cancel
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Allowed / api.example.com / Change ports / Type ports / 22, 443
+
+~ api.example.com:22,443
+
+Changes api.example.com
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── for
+o3s  /home/ubuntu/o3s
+firewall / Allowed / api.example.com / Set an end time
+
+For how long
+❯ 1. For good
+  2. 1 hour
+  3. 8 hours
+  4. 1 day
+  5. Type a duration…   e.g. 90m, 2h30m
+
+↑/↓ navigate · 1-5 choose · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Allowed / api.example.com / Set an end time / For good
+
+~ api.example.com:443   open for good
+
+Changes api.example.com
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Allowed / api.example.com / Set an end time / 1 hour
+
+~ api.example.com:443   closes at 16:04
+
+Changes api.example.com
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Allowed / api.example.com / Set an end time / 8 hours
+
+~ api.example.com:443   closes at 23:04
+
+Changes api.example.com
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Allowed / api.example.com / Set an end time / 1 day
+
+~ api.example.com:443   closes at Jan 3 15:04
+
+Changes api.example.com
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── forTyped
+o3s  /home/ubuntu/o3s
+firewall / Allowed / api.example.com / Set an end time / Type a duration
+
+For how long
+Seconds alone, or a duration.
+e.g. 90s  20m  1h  1h30m
+❯
+
+enter continue · esc cancel
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Allowed / api.example.com / Set an end time / Type a duration / 90m
+
+~ api.example.com:443   closes at 16:34
+
+Changes api.example.com
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── secret
+o3s  /home/ubuntu/o3s
+firewall / Allowed / api.example.com / Change secret
+
+Secret the proxy injects
+❯ 1. None
+  2. EXAMPLE_TOKEN   empty
+  3. OTHER_TOKEN     set
+  4. New secret…
+
+↑/↓ navigate · 1-4 choose · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Allowed / api.example.com / Change secret / None
+
+~ api.example.com:443   no secret
+
+Changes api.example.com
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── inject
+o3s  /home/ubuntu/o3s
+firewall / Allowed / api.example.com / Change secret / EXAMPLE_TOKEN
+
+Where the secret goes
+❯ [x] header
+  [ ] query
+  [ ] body
+
+↑/↓ navigate · space toggle · type to search · enter continue · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Allowed / api.example.com / Change secret / EXAMPLE_TOKEN / header
+
+~ api.example.com:443   EXAMPLE_TOKEN in header
+
+Changes api.example.com
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Allowed / api.example.com / Change secret / EXAMPLE_TOKEN / query
+
+~ api.example.com:443   EXAMPLE_TOKEN in query
+
+Changes api.example.com
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Allowed / api.example.com / Change secret / EXAMPLE_TOKEN / body
+
+~ api.example.com:443   EXAMPLE_TOKEN in body
+
+Changes api.example.com
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+…Allowed / api.example.com / Change secret / EXAMPLE_TOKEN / header, query, body
+
+~ api.example.com:443   EXAMPLE_TOKEN in header, query, body
+
+Changes api.example.com
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── inject
+o3s  /home/ubuntu/o3s
+firewall / Allowed / api.example.com / Change secret / OTHER_TOKEN
+
+Where the secret goes
+❯ [x] header
+  [ ] query
+  [ ] body
+
+↑/↓ navigate · space toggle · type to search · enter continue · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Allowed / api.example.com / Change secret / OTHER_TOKEN / header
+
+~ api.example.com:443   OTHER_TOKEN in header
+
+Changes api.example.com
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── secretName
+o3s  /home/ubuntu/o3s
+firewall / Allowed / api.example.com / Change secret / New secret
+
+Secret name
+An uppercase env name, the way the proxy reads it.
+e.g. GH_TOKEN
+❯
+
+enter continue · esc cancel
+
+──── value:NEW_TOKEN
+o3s  /home/ubuntu/o3s
+firewall / Allowed / api.example.com / Change secret / New secret / NEW_TOKEN
+
+Value for NEW_TOKEN
+Empty leaves it waiting, echo "$TOKEN" | o3s secret add NEW_TOKEN sets it later.
+❯
+
+enter continue · esc cancel
+
+──── inject
+o3s  /home/ubuntu/o3s
+…wall / Allowed / api.example.com / Change secret / New secret / NEW_TOKEN / ***
+
+Where the secret goes
+❯ [x] header
+  [ ] query
+  [ ] body
+
+↑/↓ navigate · space toggle · type to search · enter continue · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+…lowed / api.example.com / Change secret / New secret / NEW_TOKEN / *** / header
+
+~ api.example.com:443   NEW_TOKEN in header
+
+Changes api.example.com
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Allowed / api.example.com / Remove
+
+- api.example.com:443, EXAMPLE_TOKEN stops being injected
+
+Removes api.example.com
+Apply?
+  1. Yes
+❯ 2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
 ──── action
 o3s  /home/ubuntu/o3s
 firewall / Allowed / example.net
@@ -1063,6 +1407,302 @@ Apply?
 
 ↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
 
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.net / Change ports / 22, 443
+
+~ example.net:22,443
+
+Changes example.net
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── portsTyped
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.net / Change ports / Type ports
+
+Ports
+Ports from 1 to 65535, separated by commas.
+e.g. 22, 443, 8443
+❯
+
+enter continue · esc cancel
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.net / Change ports / Type ports / 22, 443
+
+~ example.net:22,443
+
+Changes example.net
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── for
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.net / Set an end time
+
+For how long
+❯ 1. For good
+  2. 1 hour
+  3. 8 hours
+  4. 1 day
+  5. Type a duration…   e.g. 90m, 2h30m
+
+↑/↓ navigate · 1-5 choose · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.net / Set an end time / For good
+
+~ example.net:443   open for good
+
+Changes example.net
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.net / Set an end time / 1 hour
+
+~ example.net:443   closes at 16:04
+
+Changes example.net
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.net / Set an end time / 8 hours
+
+~ example.net:443   closes at 23:04
+
+Changes example.net
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.net / Set an end time / 1 day
+
+~ example.net:443   closes at Jan 3 15:04
+
+Changes example.net
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── forTyped
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.net / Set an end time / Type a duration
+
+For how long
+Seconds alone, or a duration.
+e.g. 90s  20m  1h  1h30m
+❯
+
+enter continue · esc cancel
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.net / Set an end time / Type a duration / 90m
+
+~ example.net:443   closes at 16:34
+
+Changes example.net
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── secret
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.net / Change secret
+
+Secret the proxy injects
+❯ 1. None
+  2. EXAMPLE_TOKEN   empty
+  3. OTHER_TOKEN     set
+  4. New secret…
+
+↑/↓ navigate · 1-4 choose · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.net / Change secret / None
+
+~ example.net:443   no secret
+
+Changes example.net
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── inject
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.net / Change secret / EXAMPLE_TOKEN
+
+Where the secret goes
+❯ [x] header
+  [ ] query
+  [ ] body
+
+↑/↓ navigate · space toggle · type to search · enter continue · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.net / Change secret / EXAMPLE_TOKEN / header
+
+~ example.net:443   EXAMPLE_TOKEN in header
+
+Changes example.net
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.net / Change secret / EXAMPLE_TOKEN / query
+
+~ example.net:443   EXAMPLE_TOKEN in query
+
+Changes example.net
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.net / Change secret / EXAMPLE_TOKEN / body
+
+~ example.net:443   EXAMPLE_TOKEN in body
+
+Changes example.net
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+…l / Allowed / example.net / Change secret / EXAMPLE_TOKEN / header, query, body
+
+~ example.net:443   EXAMPLE_TOKEN in header, query, body
+
+Changes example.net
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── inject
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.net / Change secret / OTHER_TOKEN
+
+Where the secret goes
+❯ [x] header
+  [ ] query
+  [ ] body
+
+↑/↓ navigate · space toggle · type to search · enter continue · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.net / Change secret / OTHER_TOKEN / header
+
+~ example.net:443   OTHER_TOKEN in header
+
+Changes example.net
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── secretName
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.net / Change secret / New secret
+
+Secret name
+An uppercase env name, the way the proxy reads it.
+e.g. GH_TOKEN
+❯
+
+enter continue · esc cancel
+
+──── value:NEW_TOKEN
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.net / Change secret / New secret / NEW_TOKEN
+
+Value for NEW_TOKEN
+Empty leaves it waiting, echo "$TOKEN" | o3s secret add NEW_TOKEN sets it later.
+❯
+
+enter continue · esc cancel
+
+──── inject
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.net / Change secret / New secret / NEW_TOKEN / ***
+
+Where the secret goes
+❯ [x] header
+  [ ] query
+  [ ] body
+
+↑/↓ navigate · space toggle · type to search · enter continue · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+…/ Allowed / example.net / Change secret / New secret / NEW_TOKEN / *** / header
+
+~ example.net:443   NEW_TOKEN in header
+
+Changes example.net
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.net / Remove
+
+- example.net:443
+
+Removes example.net
+Apply?
+  1. Yes
+❯ 2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
 ──── action
 o3s  /home/ubuntu/o3s
 firewall / Allowed / example.org
@@ -1099,6 +1739,289 @@ o3s  /home/ubuntu/o3s
 firewall / Allowed / example.org / Change ports / 443
 
 ~ example.org:443
+
+Changes example.org
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.org / Change ports / 22, 443
+
+~ example.org:22,443
+
+Changes example.org
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── portsTyped
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.org / Change ports / Type ports
+
+Ports
+Ports from 1 to 65535, separated by commas.
+e.g. 22, 443, 8443
+❯
+
+enter continue · esc cancel
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.org / Change ports / Type ports / 22, 443
+
+~ example.org:22,443
+
+Changes example.org
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── for
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.org / Set an end time
+
+For how long
+❯ 1. For good
+  2. 1 hour
+  3. 8 hours
+  4. 1 day
+  5. Type a duration…   e.g. 90m, 2h30m
+
+↑/↓ navigate · 1-5 choose · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.org / Set an end time / For good
+
+~ example.org:443   open for good
+
+Changes example.org
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.org / Set an end time / 1 hour
+
+~ example.org:443   closes at 16:04
+
+Changes example.org
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.org / Set an end time / 8 hours
+
+~ example.org:443   closes at 23:04
+
+Changes example.org
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.org / Set an end time / 1 day
+
+~ example.org:443   closes at Jan 3 15:04
+
+Changes example.org
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── forTyped
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.org / Set an end time / Type a duration
+
+For how long
+Seconds alone, or a duration.
+e.g. 90s  20m  1h  1h30m
+❯
+
+enter continue · esc cancel
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.org / Set an end time / Type a duration / 90m
+
+~ example.org:443   closes at 16:34
+
+Changes example.org
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── secret
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.org / Change secret
+
+Secret the proxy injects
+❯ 1. None
+  2. EXAMPLE_TOKEN   empty
+  3. OTHER_TOKEN     set
+  4. New secret…
+
+↑/↓ navigate · 1-4 choose · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.org / Change secret / None
+
+~ example.org:443   no secret
+
+Changes example.org
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── inject
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.org / Change secret / EXAMPLE_TOKEN
+
+Where the secret goes
+❯ [x] header
+  [ ] query
+  [ ] body
+
+↑/↓ navigate · space toggle · type to search · enter continue · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.org / Change secret / EXAMPLE_TOKEN / header
+
+~ example.org:443   EXAMPLE_TOKEN in header
+
+Changes example.org
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.org / Change secret / EXAMPLE_TOKEN / query
+
+~ example.org:443   EXAMPLE_TOKEN in query
+
+Changes example.org
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.org / Change secret / EXAMPLE_TOKEN / body
+
+~ example.org:443   EXAMPLE_TOKEN in body
+
+Changes example.org
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+…l / Allowed / example.org / Change secret / EXAMPLE_TOKEN / header, query, body
+
+~ example.org:443   EXAMPLE_TOKEN in header, query, body
+
+Changes example.org
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── inject
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.org / Change secret / OTHER_TOKEN
+
+Where the secret goes
+❯ [x] header
+  [ ] query
+  [ ] body
+
+↑/↓ navigate · space toggle · type to search · enter continue · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.org / Change secret / OTHER_TOKEN / header
+
+~ example.org:443   OTHER_TOKEN in header
+
+Changes example.org
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── secretName
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.org / Change secret / New secret
+
+Secret name
+An uppercase env name, the way the proxy reads it.
+e.g. GH_TOKEN
+❯
+
+enter continue · esc cancel
+
+──── value:NEW_TOKEN
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.org / Change secret / New secret / NEW_TOKEN
+
+Value for NEW_TOKEN
+Empty leaves it waiting, echo "$TOKEN" | o3s secret add NEW_TOKEN sets it later.
+❯
+
+enter continue · esc cancel
+
+──── inject
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.org / Change secret / New secret / NEW_TOKEN / ***
+
+Where the secret goes
+❯ [x] header
+  [ ] query
+  [ ] body
+
+↑/↓ navigate · space toggle · type to search · enter continue · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+…/ Allowed / example.org / Change secret / New secret / NEW_TOKEN / *** / header
+
+~ example.org:443   NEW_TOKEN in header
 
 Changes example.org
 Apply?
@@ -1254,9 +2177,19 @@ e.g. GH_TOKEN
 
 enter continue · esc cancel
 
-──── inject
+──── value:NEW_TOKEN
 o3s  /home/ubuntu/o3s
 firewall / Blocked / 1 marked / 443 / For good / New secret / NEW_TOKEN
+
+Value for NEW_TOKEN
+Empty leaves it waiting, echo "$TOKEN" | o3s secret add NEW_TOKEN sets it later.
+❯
+
+enter continue · esc cancel
+
+──── inject
+o3s  /home/ubuntu/o3s
+firewall / Blocked / 1 marked / 443 / For good / New secret / NEW_TOKEN / ***
 
 Where the secret goes
 ❯ [x] header
@@ -1267,7 +2200,7 @@ Where the secret goes
 
 ──── apply
 o3s  /home/ubuntu/o3s
-firewall / Blocked / 1 marked / 443 / For good / New secret / NEW_TOKEN / header
+…l / Blocked / 1 marked / 443 / For good / New secret / NEW_TOKEN / *** / header
 
 + blocked.example:443   NEW_TOKEN in header
 
@@ -1552,17 +2485,162 @@ Values the proxy injects. The cage never sees them.
 
 ↑/↓ navigate · / search · enter select · esc back
 
+──── bind
+o3s  /home/ubuntu/o3s
+secret / Add a secret / NEW_TOKEN / ***
+
+Bind NEW_TOKEN to a host?
+❯ 1. Yes, choose a host…
+  2. Not now
+
+↑/↓ navigate · 1-2 choose · enter select · esc back
+
 ──── host
 o3s  /home/ubuntu/o3s
 secret / Add a secret / NEW_TOKEN / *** / Yes, choose a host
 
 Host
 ❯ example.com
-  api.example.com   EXAMPLE_TOKEN
-  example.net
+  api.example.com   EXAMPLE_TOKEN   in 1h
+  example.net       expired
   example.org
 
 ↑/↓ navigate · type to search · enter select · esc back
+
+──── inject
+o3s  /home/ubuntu/o3s
+secret / Add a secret / NEW_TOKEN / *** / Yes, choose a host / example.com
+
+Where the secret goes
+❯ [x] header
+  [ ] query
+  [ ] body
+
+↑/↓ navigate · space toggle · type to search · enter continue · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+…et / Add a secret / NEW_TOKEN / *** / Yes, choose a host / example.com / header
+
+~ example.com: NEW_TOKEN in header
+
+Binds NEW_TOKEN to example.com
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+…ret / Add a secret / NEW_TOKEN / *** / Yes, choose a host / example.com / query
+
+~ example.com: NEW_TOKEN in query
+
+Binds NEW_TOKEN to example.com
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+…cret / Add a secret / NEW_TOKEN / *** / Yes, choose a host / example.com / body
+
+~ example.com: NEW_TOKEN in body
+
+Binds NEW_TOKEN to example.com
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+…cret / NEW_TOKEN / *** / Yes, choose a host / example.com / header, query, body
+
+~ example.com: NEW_TOKEN in header, query, body
+
+Binds NEW_TOKEN to example.com
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── inject
+o3s  /home/ubuntu/o3s
+secret / Add a secret / NEW_TOKEN / *** / Yes, choose a host / api.example.com
+
+Where the secret goes
+❯ [x] header
+  [ ] query
+  [ ] body
+
+↑/↓ navigate · space toggle · type to search · enter continue · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+… Add a secret / NEW_TOKEN / *** / Yes, choose a host / api.example.com / header
+
+~ api.example.com: NEW_TOKEN in header, replacing EXAMPLE_TOKEN
+
+Binds NEW_TOKEN to api.example.com
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── inject
+o3s  /home/ubuntu/o3s
+secret / Add a secret / NEW_TOKEN / *** / Yes, choose a host / example.net
+
+Where the secret goes
+❯ [x] header
+  [ ] query
+  [ ] body
+
+↑/↓ navigate · space toggle · type to search · enter continue · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+…et / Add a secret / NEW_TOKEN / *** / Yes, choose a host / example.net / header
+
+~ example.net: NEW_TOKEN in header
+
+Binds NEW_TOKEN to example.net
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── inject
+o3s  /home/ubuntu/o3s
+secret / Add a secret / NEW_TOKEN / *** / Yes, choose a host / example.org
+
+Where the secret goes
+❯ [x] header
+  [ ] query
+  [ ] body
+
+↑/↓ navigate · space toggle · type to search · enter continue · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+…et / Add a secret / NEW_TOKEN / *** / Yes, choose a host / example.org / header
+
+~ example.org: NEW_TOKEN in header
+
+Binds NEW_TOKEN to example.org
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
 
 ──── action
 o3s  /home/ubuntu/o3s

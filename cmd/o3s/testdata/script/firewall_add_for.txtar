@@ -1,6 +1,6 @@
 # A new host with --for closes at the end time it gets, which the allowlist keeps in UTC
 exec o3s firewall add example.com --for 1h
-stdout '^Allowed example\.com:443 until .+$'
+stdout '^Allowed example\.com:443, until .+$'
 grep '"expires": "[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z"' o3s.json
 
 # A later end time renews the host without a question
@@ -28,11 +28,33 @@ exec o3s firewall add example.edu --for 1h30m
 stderr 'invalid duration "soon"'
 stderr 'Run ''o3s firewall add --help'' for usage.'
 
+# For good takes a host's end time off again
+exec o3s firewall add ${THIRD_HOST} --for good
+stdout '^  ~ expires .+ -> none$'
+stdout '^Allowed '${THIRD_HOST@R}':443$'
+
+# A range with a secret and an end reads as one line, each part once
+exec o3s firewall add ${RANGE} --secret ${SECRET} --for 1h
+stdout '^Allowed '${RANGE@R}':443 \(every address in '${RANGE@R}'\), with '${SECRET@R}' in header, until .+$'
+
+# A host past its end reads as expired, not as a time gone by
+cp expired.json o3s.json
+exec o3s firewall add ${SUBDOMAIN} --secret ${SECRET}
+stdout '^Allowed '${SUBDOMAIN@R}':443, with '${SECRET@R}' in header, expired$'
+
 -- o3s.json --
 {
   "$schema": "./.devcontainer/o3s.schema.json",
   "stores": [],
   "hosts": [
     {"name": "example.org", "ports": [443], "by": ["registry.example.com/features/tool", "user"]}
+  ]
+}
+-- expired.json --
+{
+  "$schema": "./.devcontainer/o3s.schema.json",
+  "stores": [],
+  "hosts": [
+    {"name": "api.example.com", "ports": [443], "by": ["user"], "expires": "2000-01-01T00:00:00Z"}
   ]
 }

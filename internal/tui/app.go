@@ -474,14 +474,14 @@ func crumb(q menu.Question, values []string) string {
 		if len(q.Tabs) > 1 {
 			parts = append(parts, values[0])
 		}
-		// Name a new order, the row picked on a tab that takes one, and how many on a tab that takes marks
+		// Name a new order, the row or the key picked on a tab that takes one, and how many on a tab that takes marks
 		switch {
 		case len(values) > 1 && values[1] == menu.Order:
 			parts = append(parts, "order")
 		case i >= 0 && q.Tabs[i].Multi:
 			parts = append(parts, fmt.Sprintf("%d marked", len(values)-1))
 		case i >= 0 && len(values) > 1:
-			parts = append(parts, label(q.Tabs[i].Options, values[1]))
+			parts = append(parts, label(append(slices.Clone(q.Tabs[i].Options), keyOptions(q.Tabs[i])...), values[1]))
 		}
 		return strings.Join(parts, " / ")
 	}
@@ -491,6 +491,16 @@ func crumb(q menu.Question, values []string) string {
 		shown[j] = label(q.Options, v)
 	}
 	return strings.Join(shown, ", ")
+}
+
+// keyOptions are the keys a tab acts on as options, each shown by what it does, so a key's answer reads as its help.
+func keyOptions(t menu.Tab) []menu.Option {
+	out := make([]menu.Option, len(t.Keys))
+	// Take every key by its help
+	for i, k := range t.Keys {
+		out[i] = menu.Option{Value: k.Value, Label: k.Help}
+	}
+	return out
 }
 
 // label is how a value shows among options: its label without the sign and the dots of a row that leads on, or the value

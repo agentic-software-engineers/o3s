@@ -4,6 +4,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/hansehart/o3s/internal/config"
 	"github.com/hansehart/o3s/internal/words"
 )
 
@@ -50,9 +51,9 @@ func secretDialog(h Home, a Answers) (Question, bool) {
 	// Show the secret's facts and what the user can do with it
 	if !a.has("action") {
 		actions := []Option{{Value: setValue, Label: "Set a value"}}
-		// Offer the removal of a value the secret holds
-		if slices.ContainsFunc(h.Secrets, func(s Secret) bool { return s.Name == name && s.Set }) {
-			actions = append(actions, Option{Value: remove, Label: "Remove"})
+		// Offer to replace and to remove a value the secret holds
+		if holdsValue(h, name) {
+			actions = []Option{{Value: setValue, Label: "Replace the value"}, {Value: remove, Label: "Remove"}}
 		}
 		facts := []Fact{{Label: "Value", Value: SecretState(!waits(h, name))}, {Label: "Hosts", Value: words.Or(strings.Join(carrying(h, name), ", "), "none")}}
 		return detail(name, facts, actions...), false
@@ -60,7 +61,15 @@ func secretDialog(h Home, a Answers) (Question, bool) {
 	// Follow what the user chose
 	switch a.get("action") {
 	case setValue:
-		return ask(a, Question{Key: "value", Kind: Hidden, Title: "Value for " + name})
+		// Ask the new value first
+		if !a.has("value") {
+			return Question{Key: "value", Kind: Hidden, Title: "Value for " + name}, false
+		}
+		// Confirm a value that replaces the one the secret holds
+		if holdsValue(h, name) {
+			return ask(a, apply([]string{"~ " + name + ": value replaced"}, "Replaces the value of "+name, false))
+		}
+		return Question{}, true
 	case remove:
 		line := "- " + name
 		// Name the hosts that stop receiving the value
@@ -72,27 +81,42 @@ func secretDialog(h Home, a Answers) (Question, bool) {
 	return Question{}, true
 }
 
-// bindDialog asks whether to bind a new secret to a host the proxy then injects it for, and which.
+// bindDialog asks whether to bind a new secret to a host the proxy then injects it for, and which, where the home allows
+// a host.
 func bindDialog(h Home, a Answers) (Question, bool) {
 	name := strings.TrimSpace(a.get("name"))
-	// Leave a secret some host carries already as it is
-	if len(carrying(h, name)) > 0 {
+	// Leave a secret some host carries already as it is, and offer no binding where the home allows no host
+	if len(carrying(h, name)) > 0 || len(h.Hosts) == 0 {
 		return Question{}, true
 	}
 	// Ask whether to bind the secret now
 	if !a.has("bind") {
 		return Question{Key: "bind", Kind: Select, Title: "Bind " + name + " to a host?", Numbered: true, Options: []Option{{Value: yes, Label: "Yes, choose a host…"}, {Value: notNow, Label: "Not now"}}}, false
 	}
-	// Ask which host where the user binds it now
-	if a.get("bind") == yes && !a.has("host") {
+	// Leave the binding where the user binds the secret later
+	if a.get("bind") != yes {
+		return Question{}, true
+	}
+	// Ask which host, each with the secret it carries and when it closes
+	if !a.has("host") {
 		q := Question{Key: "host", Kind: Select, Title: "Host"}
 		// Offer every allowed host
 		for _, host := range h.Hosts {
-			q.Options = append(q.Options, Option{Value: host.Name, Note: words.Or(host.Secret, "")})
+			q.Options = append(q.Options, Option{Value: host.Name, Note: strings.TrimSpace(host.Secret + "   " + config.Until(host.Expires, h.Now))})
 		}
 		return q, false
 	}
-	return Question{}, true
+	// Ask where the secret goes
+	if !a.has("inject") {
+		return injectQuestion(), false
+	}
+	host, _ := (&config.Config{Hosts: h.Hosts}).Find(a.get("host"))
+	line := "~ " + host.Name + ": " + name + " in " + strings.Join(a.all("inject"), ", ")
+	// Name a secret the binding replaces
+	if host.Secret != "" && host.Secret != name {
+		line += ", replacing " + host.Secret
+	}
+	return ask(a, apply([]string{line}, "Binds "+name+" to "+host.Name, false))
 }
 
 // secretPlan builds the commands the secret view's dialogs lead to.
@@ -107,14 +131,14 @@ func secretPlan(a Answers) []Command {
 	if picked[0] == add {
 		name := strings.TrimSpace(a.get("name"))
 		cmds := []Command{{Args: []string{"secret", "add", name, "--no-bind-hint"}, Stdin: &value}}
-		// Bind the secret to the host the user chose
-		if a.get("bind") == yes && a.has("host") {
-			cmds = append(cmds, Command{Args: []string{"firewall", "add", a.get("host"), "--secret", name, "--yes"}})
+		// Bind the secret to the host the user chose, where the user agreed
+		if a.get("bind") == yes && confirmed(a) {
+			cmds = append(cmds, Command{Args: []string{"firewall", "add", a.get("host"), "--secret", name, "--inject", strings.Join(a.all("inject"), ","), "--yes"}})
 		}
 		return cmds
 	}
-	// Store the value the user typed
-	if a.get("action") == setValue {
+	// Store the value the user typed, where it replaces none or the user agreed to the replacement
+	if a.get("action") == setValue && (!a.has("apply") || confirmed(a)) {
 		return []Command{{Args: []string{"secret", "add", picked[0], "--no-bind-hint"}, Stdin: &value}}
 	}
 	// Leave the value as it was where the user declines
@@ -135,4 +159,29 @@ func carrying(h Home, name string) []string {
 		}
 	}
 	return out
+}
+
+// valueKey names the answer that holds a secret's value.
+func valueKey(name string) string {
+	return "value:" + name
+}
+
+// valueQuestion asks a secret's value, an empty line leaving the secret waiting for one.
+func valueQuestion(name string) Question {
+	return Question{Key: valueKey(name), Kind: Hidden, Title: "Value for " + name, About: "Empty leaves it waiting, echo \"$TOKEN\" | o3s secret add " + name + " sets it later."}
+}
+
+// storeValue stores the value the user gave a secret, and nothing where the user left the secret waiting.
+func storeValue(a Answers, name string) []Command {
+	value := a.get(valueKey(name))
+	// Leave a skipped secret waiting
+	if value == "" {
+		return nil
+	}
+	return []Command{{Args: []string{"secret", "add", name, "--no-bind-hint"}, Stdin: &value}}
+}
+
+// holdsValue reports whether a secret holds a value.
+func holdsValue(h Home, name string) bool {
+	return slices.ContainsFunc(h.Secrets, func(s Secret) bool { return s.Name == name && s.Set })
 }

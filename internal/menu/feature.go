@@ -180,8 +180,8 @@ func discoverDialog(h Home, a Answers, marked []string) (Question, bool) {
 	// Ask the value of every secret the new features wait for, before the confirmation
 	for _, name := range pv.Waiting {
 		// Ask for a value not yet given
-		if !a.has("value:" + name) {
-			return Question{Key: "value:" + name, Kind: Hidden, Title: "Value for " + name, About: "Empty leaves it waiting, echo \"$TOKEN\" | o3s secret add " + name + " sets it later."}, false
+		if !a.has(valueKey(name)) {
+			return valueQuestion(name), false
 		}
 	}
 	lines := slices.Clone(pv.Lines)
@@ -297,11 +297,7 @@ func discoverPlan(h Home, a Answers, marked []string) []Command {
 	var cmds []Command
 	// Store every value the user gave, so the feature finds it in place
 	for _, name := range pv.Waiting {
-		value := a.get("value:" + name)
-		// Leave a skipped secret waiting
-		if value != "" {
-			cmds = append(cmds, Command{Args: []string{"secret", "add", name, "--no-bind-hint"}, Stdin: &value})
-		}
+		cmds = append(cmds, storeValue(a, name)...)
 	}
 	// Add the newly marked features
 	if len(added) > 0 {

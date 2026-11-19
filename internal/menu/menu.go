@@ -296,7 +296,7 @@ func mainMenu(h Home) Question {
 		{Value: "feature", Note: fmt.Sprintf("tools in the cage · %d installed", len(h.Installed))},
 		{Value: "firewall", Note: fmt.Sprintf("hosts the cage reaches · %d allowed · %d blocked", len(h.Hosts), len(h.Blocked))},
 		{Value: "project", Note: fmt.Sprintf("repositories in the workspace · %d", len(h.Projects))},
-		{Value: "secret", Note: fmt.Sprintf("values the proxy injects · %d", len(h.Secrets))},
+		{Value: "secret", Note: "values the proxy injects · " + secretCounts(h.Secrets)},
 		{Value: "update", Note: "the cli, the stack and the features"},
 	}
 	q := Question{Key: "do", Kind: Select, Title: "What do you want to do?"}
@@ -440,3 +440,16 @@ func ask(a Answers, q Question) (Question, bool) {
 // Order is what a view answers after the tab's value where the user dropped a row in a new place, followed by the row
 // and every row's value in the new order.
 const Order = "+order"
+
+// secretCounts names how many secrets hold a value and how many wait for one.
+func secretCounts(secrets []Secret) string {
+	set := 0
+	// Count every secret that holds a value
+	for _, s := range secrets {
+		// Count a secret with a value
+		if s.Set {
+			set++
+		}
+	}
+	return fmt.Sprintf("%d set · %d waiting", set, len(secrets)-set)
+}
