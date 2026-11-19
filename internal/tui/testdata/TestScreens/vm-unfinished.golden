@@ -1,0 +1,35 @@
+──── do
+o3s  /home/ubuntu/o3s
+
+
+What do you want to do?
+❯ cage   VM, stack and cage · unfinished
+
+↑/↓ navigate · type to search · enter select · esc quit
+
+──── action
+o3s  /home/ubuntu/o3s
+cage
+
+Cage
+
+  VM   unfinished
+
+❯ Finish making the VM
+  Remove
+
+↑/↓ navigate · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+cage / Remove
+
+- the VM and its disk, with the home and the projects inside
+
+Removes the cage
+Apply?
+  1. Yes
+❯ 2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+

@@ -1,0 +1,1652 @@
+──── do
+o3s  /home/ubuntu/o3s
+
+
+What do you want to do?
+❯ cage       VM, stack and cage · running
+  feature    tools in the cage · 2 installed
+  firewall   hosts the cage reaches · 4 allowed · 1 blocked
+  project    repositories in the workspace · 1
+  secret     values the proxy injects · 2
+  update     the cli, the stack and the features
+
+↑/↓ navigate · type to search · enter select · esc quit
+
+──── action
+o3s  /home/ubuntu/o3s
+cage
+
+Cage
+
+  Cage      running
+  Gateway   running
+  Proxy     running
+
+❯ Open in VS Code
+  Open a shell
+  Stop
+  Remove
+
+↑/↓ navigate · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+cage / Remove
+
+- the stack's containers, the home's files and the projects volume staying
+
+Removes the cage
+Apply?
+  1. Yes
+❯ 2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── view
+o3s  /home/ubuntu/o3s
+feature
+
+Feature   Installed    Discover    Stores
+
+Installed in this order on every rebuild. Pick one up with m to move it.
+╭────────────────────────────────────────────────────────────────────────────╮
+│ ⌕ Search…                                                                  │
+╰────────────────────────────────────────────────────────────────────────────╯
+  FEATURE   TAG   STORE                           HOSTS
+❯ tool      1     registry.example.com/features   example.org
+  other     1     registry.example.com/features
+
+↑/↓ navigate · ←/→ switch · m move · / search · enter select · esc back
+
+──── action
+o3s  /home/ubuntu/o3s
+feature / Installed / tool
+
+tool
+
+  Tag       1
+  Store     registry.example.com/features
+  Hosts     example.org
+  Options   mode=loose
+
+❯ Configure options
+  Remove
+  Back
+
+↑/↓ navigate · enter select · esc back
+
+──── options
+o3s  /home/ubuntu/o3s
+feature / Installed / tool / Configure options
+
+Changes apply on the next rebuild.
+╭────────────────────────────────────────────────────────────────────────────╮
+│ ⌕ Search…                                                                  │
+╰────────────────────────────────────────────────────────────────────────────╯
+  OPTION    VALUE   DEFAULT
+❯ debug     –       false
+    Log every step
+  mode      loose   strict
+  version   –       latest
+
+↑/↓ navigate · / search · enter select · esc back
+
+──── option:debug
+o3s  /home/ubuntu/o3s
+feature / Installed / tool / Configure options / debug
+
+debug
+Log every step
+  1. true
+❯ 2. false   current
+
+↑/↓ navigate · 1-2 choose · enter select · esc back
+
+──── option:mode
+o3s  /home/ubuntu/o3s
+feature / Installed / tool / Configure options / mode
+
+mode
+How strict the tool is
+  1. strict
+❯ 2. loose    current
+
+↑/↓ navigate · 1-2 choose · enter select · esc back
+
+──── option:version
+o3s  /home/ubuntu/o3s
+feature / Installed / tool / Configure options / version
+
+version
+The version to install
+e.g. latest  lts
+❯ latest
+
+tab complete · enter continue · esc cancel
+
+──── apply
+o3s  /home/ubuntu/o3s
+feature / Installed / tool / Remove
+
+- registry.example.com/features/tool
+- example.org:443
+
+Removes tool with 1 host
+Apply?
+  1. Yes
+❯ 2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── action
+o3s  /home/ubuntu/o3s
+feature / Installed / other
+
+other
+
+  Tag     1
+  Store   registry.example.com/features
+
+❯ Remove
+  Back
+
+↑/↓ navigate · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+feature / Installed / other / Remove
+
+- registry.example.com/features/other
+- example.org:443
+
+Removes other with 1 host
+Apply?
+  1. Yes
+❯ 2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+feature / Discover / 1 marked
+
+- registry.example.com/features/other
+- example.org:443
+
+Removes 1 feature
+Apply?
+  1. Yes
+❯ 2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+feature / Discover / 1 marked
+
+- registry.example.com/features/tool
+- example.org:443
+
+Removes 1 feature
+Apply?
+  1. Yes
+❯ 2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+feature / Discover / 0 marked
+
+- registry.example.com/features/tool
+- example.org:443
+- registry.example.com/features/other
+- example.org:443
+
+Removes 2 features
+Apply?
+  1. Yes
+❯ 2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── store
+o3s  /home/ubuntu/o3s
+feature / Stores / Add a store
+
+Store
+A registry path that holds dev container features.
+e.g. ghcr.io/devcontainers/features
+❯
+
+enter continue · esc cancel
+
+──── action
+o3s  /home/ubuntu/o3s
+feature / Stores / registry.example.com/features
+
+registry.example.com/features
+❯ Remove
+  Back
+
+↑/↓ navigate · type to search · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+feature / Stores / registry.example.com/features / Remove
+
+- registry.example.com/features
+
+Removes the store, the features installed from it stay
+Apply?
+  1. Yes
+❯ 2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── view
+o3s  /home/ubuntu/o3s
+firewall
+
+Firewall   Allowed    Blocked
+
+The cage reaches only these hosts.
+╭────────────────────────────────────────────────────────────────────────────╮
+│ ⌕ Search…                                                                  │
+╰────────────────────────────────────────────────────────────────────────────╯
+  HOST              PORTS    DATA     LAST SEEN   CLOSES     SECRET            …
+❯ + Allow a host…
+  example.com       22,443   1.2 GB   2m ago      for good                     …
+  api.example.com   443      –        –           in 1h      EXAMPLE_TOKEN !   …
+  example.net       443      –        –           expired                      …
+  example.org       443      –        –           for good                     …
+
+↑/↓ navigate · ←/→ switch · p prune expired · / search · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Allowed / +prune
+
+- example.net   expired Jan 1 00:00
+
+Removes 1 expired host
+Apply?
+  1. Yes
+❯ 2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── hosts
+o3s  /home/ubuntu/o3s
+firewall / Allowed / Allow a host
+
+Hosts
+A name, a wildcard, an IPv4 address or an IPv4 range. Several, separated by
+spaces.
+e.g. example.com  *.example.com  192.0.2.1  198.51.100.0/24
+❯
+
+enter continue · esc cancel
+
+──── ports
+o3s  /home/ubuntu/o3s
+firewall / Allowed / Allow a host / new.example.net *.example.org
+
+Ports
+❯ 1. 443           HTTPS (recommended)
+  2. 22, 443       SSH and HTTPS
+  3. Type ports…
+
+↑/↓ navigate · 1-3 choose · enter select · esc back
+
+──── for
+o3s  /home/ubuntu/o3s
+firewall / Allowed / Allow a host / new.example.net *.example.org / 443
+
+For how long
+❯ 1. For good
+  2. 1 hour
+  3. 8 hours
+  4. 1 day
+  5. Type a duration…   e.g. 90m, 2h30m
+
+↑/↓ navigate · 1-5 choose · enter select · esc back
+
+──── secret
+o3s  /home/ubuntu/o3s
+…ewall / Allowed / Allow a host / new.example.net *.example.org / 443 / For good
+
+Secret the proxy injects
+❯ 1. None
+  2. EXAMPLE_TOKEN   empty
+  3. OTHER_TOKEN     set
+  4. New secret…
+
+↑/↓ navigate · 1-4 choose · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+… Allowed / Allow a host / new.example.net *.example.org / 443 / For good / None
+
++ new.example.net:443
++ *.example.org:443
+
+Allows new.example.net and every name below example.org for good
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── inject
+o3s  /home/ubuntu/o3s
+…/ Allow a host / new.example.net *.example.org / 443 / For good / EXAMPLE_TOKEN
+
+Where the secret goes
+❯ [x] header
+  [ ] query
+  [ ] body
+
+↑/↓ navigate · space toggle · type to search · enter continue · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+… host / new.example.net *.example.org / 443 / For good / EXAMPLE_TOKEN / header
+
++ new.example.net:443   EXAMPLE_TOKEN in header
++ *.example.org:443   EXAMPLE_TOKEN in header
+
+Allows new.example.net and every name below example.org for good
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+…a host / new.example.net *.example.org / 443 / For good / EXAMPLE_TOKEN / query
+
++ new.example.net:443   EXAMPLE_TOKEN in query
++ *.example.org:443   EXAMPLE_TOKEN in query
+
+Allows new.example.net and every name below example.org for good
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+… a host / new.example.net *.example.org / 443 / For good / EXAMPLE_TOKEN / body
+
++ new.example.net:443   EXAMPLE_TOKEN in body
++ *.example.org:443   EXAMPLE_TOKEN in body
+
+Allows new.example.net and every name below example.org for good
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+…xample.net *.example.org / 443 / For good / EXAMPLE_TOKEN / header, query, body
+
++ new.example.net:443   EXAMPLE_TOKEN in header, query, body
++ *.example.org:443   EXAMPLE_TOKEN in header, query, body
+
+Allows new.example.net and every name below example.org for good
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── inject
+o3s  /home/ubuntu/o3s
+…d / Allow a host / new.example.net *.example.org / 443 / For good / OTHER_TOKEN
+
+Where the secret goes
+❯ [x] header
+  [ ] query
+  [ ] body
+
+↑/↓ navigate · space toggle · type to search · enter continue · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+… a host / new.example.net *.example.org / 443 / For good / OTHER_TOKEN / header
+
++ new.example.net:443   OTHER_TOKEN in header
++ *.example.org:443   OTHER_TOKEN in header
+
+Allows new.example.net and every name below example.org for good
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── secretName
+o3s  /home/ubuntu/o3s
+…ed / Allow a host / new.example.net *.example.org / 443 / For good / New secret
+
+Secret name
+An uppercase env name, the way the proxy reads it.
+e.g. GH_TOKEN
+❯
+
+enter continue · esc cancel
+
+──── inject
+o3s  /home/ubuntu/o3s
+… host / new.example.net *.example.org / 443 / For good / New secret / NEW_TOKEN
+
+Where the secret goes
+❯ [x] header
+  [ ] query
+  [ ] body
+
+↑/↓ navigate · space toggle · type to search · enter continue · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+…ew.example.net *.example.org / 443 / For good / New secret / NEW_TOKEN / header
+
++ new.example.net:443   NEW_TOKEN in header
++ *.example.org:443   NEW_TOKEN in header
+
+Allows new.example.net and every name below example.org for good
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── secret
+o3s  /home/ubuntu/o3s
+firewall / Allowed / Allow a host / new.example.net *.example.org / 443 / 1 hour
+
+Secret the proxy injects
+❯ 1. None
+  2. EXAMPLE_TOKEN   empty
+  3. OTHER_TOKEN     set
+  4. New secret…
+
+↑/↓ navigate · 1-4 choose · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+… / Allowed / Allow a host / new.example.net *.example.org / 443 / 1 hour / None
+
++ new.example.net:443   closes at 16:04
++ *.example.org:443   closes at 16:04
+
+Allows new.example.net and every name below example.org for 1 hour
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── secret
+o3s  /home/ubuntu/o3s
+…rewall / Allowed / Allow a host / new.example.net *.example.org / 443 / 8 hours
+
+Secret the proxy injects
+❯ 1. None
+  2. EXAMPLE_TOKEN   empty
+  3. OTHER_TOKEN     set
+  4. New secret…
+
+↑/↓ navigate · 1-4 choose · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+…/ Allowed / Allow a host / new.example.net *.example.org / 443 / 8 hours / None
+
++ new.example.net:443   closes at 23:04
++ *.example.org:443   closes at 23:04
+
+Allows new.example.net and every name below example.org for 8 hours
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── secret
+o3s  /home/ubuntu/o3s
+firewall / Allowed / Allow a host / new.example.net *.example.org / 443 / 1 day
+
+Secret the proxy injects
+❯ 1. None
+  2. EXAMPLE_TOKEN   empty
+  3. OTHER_TOKEN     set
+  4. New secret…
+
+↑/↓ navigate · 1-4 choose · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+…l / Allowed / Allow a host / new.example.net *.example.org / 443 / 1 day / None
+
++ new.example.net:443   closes at Jan 3 15:04
++ *.example.org:443   closes at Jan 3 15:04
+
+Allows new.example.net and every name below example.org for 1 day
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── forTyped
+o3s  /home/ubuntu/o3s
+… Allowed / Allow a host / new.example.net *.example.org / 443 / Type a duration
+
+For how long
+Seconds alone, or a duration.
+e.g. 90s  20m  1h  1h30m
+❯
+
+enter continue · esc cancel
+
+──── secret
+o3s  /home/ubuntu/o3s
+…ed / Allow a host / new.example.net *.example.org / 443 / Type a duration / 90m
+
+Secret the proxy injects
+❯ 1. None
+  2. EXAMPLE_TOKEN   empty
+  3. OTHER_TOKEN     set
+  4. New secret…
+
+↑/↓ navigate · 1-4 choose · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+…low a host / new.example.net *.example.org / 443 / Type a duration / 90m / None
+
++ new.example.net:443   closes at 16:34
++ *.example.org:443   closes at 16:34
+
+Allows new.example.net and every name below example.org for 90 minutes
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── for
+o3s  /home/ubuntu/o3s
+firewall / Allowed / Allow a host / new.example.net *.example.org / 22, 443
+
+For how long
+❯ 1. For good
+  2. 1 hour
+  3. 8 hours
+  4. 1 day
+  5. Type a duration…   e.g. 90m, 2h30m
+
+↑/↓ navigate · 1-5 choose · enter select · esc back
+
+──── secret
+o3s  /home/ubuntu/o3s
+…l / Allowed / Allow a host / new.example.net *.example.org / 22, 443 / For good
+
+Secret the proxy injects
+❯ 1. None
+  2. EXAMPLE_TOKEN   empty
+  3. OTHER_TOKEN     set
+  4. New secret…
+
+↑/↓ navigate · 1-4 choose · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+…owed / Allow a host / new.example.net *.example.org / 22, 443 / For good / None
+
++ new.example.net:22,443
++ *.example.org:22,443
+
+Allows new.example.net and every name below example.org for good
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── portsTyped
+o3s  /home/ubuntu/o3s
+firewall / Allowed / Allow a host / new.example.net *.example.org / Type ports
+
+Ports
+Ports from 1 to 65535, separated by commas.
+e.g. 22, 443, 8443
+❯
+
+enter continue · esc cancel
+
+──── for
+o3s  /home/ubuntu/o3s
+…/ Allowed / Allow a host / new.example.net *.example.org / Type ports / 22, 443
+
+For how long
+❯ 1. For good
+  2. 1 hour
+  3. 8 hours
+  4. 1 day
+  5. Type a duration…   e.g. 90m, 2h30m
+
+↑/↓ navigate · 1-5 choose · enter select · esc back
+
+──── secret
+o3s  /home/ubuntu/o3s
+… Allow a host / new.example.net *.example.org / Type ports / 22, 443 / For good
+
+Secret the proxy injects
+❯ 1. None
+  2. EXAMPLE_TOKEN   empty
+  3. OTHER_TOKEN     set
+  4. New secret…
+
+↑/↓ navigate · 1-4 choose · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+…a host / new.example.net *.example.org / Type ports / 22, 443 / For good / None
+
++ new.example.net:22,443
++ *.example.org:22,443
+
+Allows new.example.net and every name below example.org for good
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── action
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.com
+
+example.com
+
+  Ports       22,443
+  Data        1.2 GB
+  Last seen   2m ago
+  Closes      for good
+  Secret      none
+  Needed by   user
+
+❯ Change ports
+  Set an end time
+  Change secret
+  Remove
+  Back
+
+↑/↓ navigate · enter select · esc back
+
+──── ports
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.com / Change ports
+
+Ports
+❯ 1. 443           HTTPS (recommended)
+  2. 22, 443       SSH and HTTPS
+  3. Type ports…
+
+↑/↓ navigate · 1-3 choose · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.com / Change ports / 443
+
+~ example.com:443
+
+Changes example.com
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.com / Change ports / 22, 443
+
+~ example.com:22,443
+
+Changes example.com
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── portsTyped
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.com / Change ports / Type ports
+
+Ports
+Ports from 1 to 65535, separated by commas.
+e.g. 22, 443, 8443
+❯
+
+enter continue · esc cancel
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.com / Change ports / Type ports / 22, 443
+
+~ example.com:22,443
+
+Changes example.com
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── for
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.com / Set an end time
+
+For how long
+❯ 1. 1 hour
+  2. 8 hours
+  3. 1 day
+  4. Type a duration…   e.g. 90m, 2h30m
+
+↑/↓ navigate · 1-4 choose · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.com / Set an end time / 1 hour
+
+~ example.com:22,443   closes at 16:04
+
+Changes example.com
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.com / Set an end time / 8 hours
+
+~ example.com:22,443   closes at 23:04
+
+Changes example.com
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.com / Set an end time / 1 day
+
+~ example.com:22,443   closes at Jan 3 15:04
+
+Changes example.com
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── forTyped
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.com / Set an end time / Type a duration
+
+For how long
+Seconds alone, or a duration.
+e.g. 90s  20m  1h  1h30m
+❯
+
+enter continue · esc cancel
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.com / Set an end time / Type a duration / 90m
+
+~ example.com:22,443   closes at 16:34
+
+Changes example.com
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── secret
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.com / Change secret
+
+Secret the proxy injects
+❯ 1. EXAMPLE_TOKEN   empty
+  2. OTHER_TOKEN     set
+  3. New secret…
+
+↑/↓ navigate · 1-3 choose · enter select · esc back
+
+──── inject
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.com / Change secret / EXAMPLE_TOKEN
+
+Where the secret goes
+❯ [x] header
+  [ ] query
+  [ ] body
+
+↑/↓ navigate · space toggle · type to search · enter continue · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.com / Change secret / EXAMPLE_TOKEN / header
+
+~ example.com:22,443   EXAMPLE_TOKEN in header
+
+Changes example.com
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.com / Change secret / EXAMPLE_TOKEN / query
+
+~ example.com:22,443   EXAMPLE_TOKEN in query
+
+Changes example.com
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.com / Change secret / EXAMPLE_TOKEN / body
+
+~ example.com:22,443   EXAMPLE_TOKEN in body
+
+Changes example.com
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+…l / Allowed / example.com / Change secret / EXAMPLE_TOKEN / header, query, body
+
+~ example.com:22,443   EXAMPLE_TOKEN in header, query, body
+
+Changes example.com
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── inject
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.com / Change secret / OTHER_TOKEN
+
+Where the secret goes
+❯ [x] header
+  [ ] query
+  [ ] body
+
+↑/↓ navigate · space toggle · type to search · enter continue · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.com / Change secret / OTHER_TOKEN / header
+
+~ example.com:22,443   OTHER_TOKEN in header
+
+Changes example.com
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── secretName
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.com / Change secret / New secret
+
+Secret name
+An uppercase env name, the way the proxy reads it.
+e.g. GH_TOKEN
+❯
+
+enter continue · esc cancel
+
+──── inject
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.com / Change secret / New secret / NEW_TOKEN
+
+Where the secret goes
+❯ [x] header
+  [ ] query
+  [ ] body
+
+↑/↓ navigate · space toggle · type to search · enter continue · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+…ewall / Allowed / example.com / Change secret / New secret / NEW_TOKEN / header
+
+~ example.com:22,443   NEW_TOKEN in header
+
+Changes example.com
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.com / Remove
+
+- example.com:22,443
+
+Removes example.com
+Apply?
+  1. Yes
+❯ 2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── action
+o3s  /home/ubuntu/o3s
+firewall / Allowed / api.example.com
+
+api.example.com
+
+  Ports       443
+  Data        –
+  Last seen   –
+  Closes      in 1h
+  Secret      EXAMPLE_TOKEN, in the header
+  Needed by   user
+
+❯ Change ports
+  Set an end time
+  Change secret
+  Remove
+  Back
+
+↑/↓ navigate · enter select · esc back
+
+──── ports
+o3s  /home/ubuntu/o3s
+firewall / Allowed / api.example.com / Change ports
+
+Ports
+❯ 1. 443           HTTPS (recommended)
+  2. 22, 443       SSH and HTTPS
+  3. Type ports…
+
+↑/↓ navigate · 1-3 choose · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Allowed / api.example.com / Change ports / 443
+
+~ api.example.com:443
+
+Changes api.example.com
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── action
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.net
+
+example.net
+
+  Ports       443
+  Data        –
+  Last seen   –
+  Closes      expired
+  Secret      none
+  Needed by   user
+
+❯ Change ports
+  Set an end time
+  Change secret
+  Remove
+  Back
+
+↑/↓ navigate · enter select · esc back
+
+──── ports
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.net / Change ports
+
+Ports
+❯ 1. 443           HTTPS (recommended)
+  2. 22, 443       SSH and HTTPS
+  3. Type ports…
+
+↑/↓ navigate · 1-3 choose · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.net / Change ports / 443
+
+~ example.net:443
+
+Changes example.net
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── action
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.org
+
+example.org
+
+  Ports       443
+  Data        –
+  Last seen   –
+  Closes      for good
+  Secret      none
+  Needed by   registry.example.com/features/tool
+
+❯ Change ports
+  Set an end time
+  Change secret
+  Back
+
+↑/↓ navigate · enter select · esc back
+
+──── ports
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.org / Change ports
+
+Ports
+❯ 1. 443           HTTPS (recommended)
+  2. 22, 443       SSH and HTTPS
+  3. Type ports…
+
+↑/↓ navigate · 1-3 choose · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Allowed / example.org / Change ports / 443
+
+~ example.org:443
+
+Changes example.org
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── ports
+o3s  /home/ubuntu/o3s
+firewall / Blocked / 1 marked
+
+Ports
+❯ 1. 443           HTTPS (recommended)
+  2. 22, 443       SSH and HTTPS
+  3. Type ports…
+
+↑/↓ navigate · 1-3 choose · enter select · esc back
+
+──── for
+o3s  /home/ubuntu/o3s
+firewall / Blocked / 1 marked / 443
+
+For how long
+❯ 1. For good
+  2. 1 hour
+  3. 8 hours
+  4. 1 day
+  5. Type a duration…   e.g. 90m, 2h30m
+
+↑/↓ navigate · 1-5 choose · enter select · esc back
+
+──── secret
+o3s  /home/ubuntu/o3s
+firewall / Blocked / 1 marked / 443 / For good
+
+Secret the proxy injects
+❯ 1. None
+  2. EXAMPLE_TOKEN   empty
+  3. OTHER_TOKEN     set
+  4. New secret…
+
+↑/↓ navigate · 1-4 choose · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Blocked / 1 marked / 443 / For good / None
+
++ blocked.example:443
+
+Allows blocked.example for good
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── inject
+o3s  /home/ubuntu/o3s
+firewall / Blocked / 1 marked / 443 / For good / EXAMPLE_TOKEN
+
+Where the secret goes
+❯ [x] header
+  [ ] query
+  [ ] body
+
+↑/↓ navigate · space toggle · type to search · enter continue · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Blocked / 1 marked / 443 / For good / EXAMPLE_TOKEN / header
+
++ blocked.example:443   EXAMPLE_TOKEN in header
+
+Allows blocked.example for good
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Blocked / 1 marked / 443 / For good / EXAMPLE_TOKEN / query
+
++ blocked.example:443   EXAMPLE_TOKEN in query
+
+Allows blocked.example for good
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Blocked / 1 marked / 443 / For good / EXAMPLE_TOKEN / body
+
++ blocked.example:443   EXAMPLE_TOKEN in body
+
+Allows blocked.example for good
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+…all / Blocked / 1 marked / 443 / For good / EXAMPLE_TOKEN / header, query, body
+
++ blocked.example:443   EXAMPLE_TOKEN in header, query, body
+
+Allows blocked.example for good
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── inject
+o3s  /home/ubuntu/o3s
+firewall / Blocked / 1 marked / 443 / For good / OTHER_TOKEN
+
+Where the secret goes
+❯ [x] header
+  [ ] query
+  [ ] body
+
+↑/↓ navigate · space toggle · type to search · enter continue · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Blocked / 1 marked / 443 / For good / OTHER_TOKEN / header
+
++ blocked.example:443   OTHER_TOKEN in header
+
+Allows blocked.example for good
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── secretName
+o3s  /home/ubuntu/o3s
+firewall / Blocked / 1 marked / 443 / For good / New secret
+
+Secret name
+An uppercase env name, the way the proxy reads it.
+e.g. GH_TOKEN
+❯
+
+enter continue · esc cancel
+
+──── inject
+o3s  /home/ubuntu/o3s
+firewall / Blocked / 1 marked / 443 / For good / New secret / NEW_TOKEN
+
+Where the secret goes
+❯ [x] header
+  [ ] query
+  [ ] body
+
+↑/↓ navigate · space toggle · type to search · enter continue · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Blocked / 1 marked / 443 / For good / New secret / NEW_TOKEN / header
+
++ blocked.example:443   NEW_TOKEN in header
+
+Allows blocked.example for good
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── secret
+o3s  /home/ubuntu/o3s
+firewall / Blocked / 1 marked / 443 / 1 hour
+
+Secret the proxy injects
+❯ 1. None
+  2. EXAMPLE_TOKEN   empty
+  3. OTHER_TOKEN     set
+  4. New secret…
+
+↑/↓ navigate · 1-4 choose · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Blocked / 1 marked / 443 / 1 hour / None
+
++ blocked.example:443   closes at 16:04
+
+Allows blocked.example for 1 hour
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── secret
+o3s  /home/ubuntu/o3s
+firewall / Blocked / 1 marked / 443 / 8 hours
+
+Secret the proxy injects
+❯ 1. None
+  2. EXAMPLE_TOKEN   empty
+  3. OTHER_TOKEN     set
+  4. New secret…
+
+↑/↓ navigate · 1-4 choose · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Blocked / 1 marked / 443 / 8 hours / None
+
++ blocked.example:443   closes at 23:04
+
+Allows blocked.example for 8 hours
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── secret
+o3s  /home/ubuntu/o3s
+firewall / Blocked / 1 marked / 443 / 1 day
+
+Secret the proxy injects
+❯ 1. None
+  2. EXAMPLE_TOKEN   empty
+  3. OTHER_TOKEN     set
+  4. New secret…
+
+↑/↓ navigate · 1-4 choose · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Blocked / 1 marked / 443 / 1 day / None
+
++ blocked.example:443   closes at Jan 3 15:04
+
+Allows blocked.example for 1 day
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── forTyped
+o3s  /home/ubuntu/o3s
+firewall / Blocked / 1 marked / 443 / Type a duration
+
+For how long
+Seconds alone, or a duration.
+e.g. 90s  20m  1h  1h30m
+❯
+
+enter continue · esc cancel
+
+──── secret
+o3s  /home/ubuntu/o3s
+firewall / Blocked / 1 marked / 443 / Type a duration / 90m
+
+Secret the proxy injects
+❯ 1. None
+  2. EXAMPLE_TOKEN   empty
+  3. OTHER_TOKEN     set
+  4. New secret…
+
+↑/↓ navigate · 1-4 choose · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Blocked / 1 marked / 443 / Type a duration / 90m / None
+
++ blocked.example:443   closes at 16:34
+
+Allows blocked.example for 90 minutes
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── for
+o3s  /home/ubuntu/o3s
+firewall / Blocked / 1 marked / 22, 443
+
+For how long
+❯ 1. For good
+  2. 1 hour
+  3. 8 hours
+  4. 1 day
+  5. Type a duration…   e.g. 90m, 2h30m
+
+↑/↓ navigate · 1-5 choose · enter select · esc back
+
+──── secret
+o3s  /home/ubuntu/o3s
+firewall / Blocked / 1 marked / 22, 443 / For good
+
+Secret the proxy injects
+❯ 1. None
+  2. EXAMPLE_TOKEN   empty
+  3. OTHER_TOKEN     set
+  4. New secret…
+
+↑/↓ navigate · 1-4 choose · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Blocked / 1 marked / 22, 443 / For good / None
+
++ blocked.example:22,443
+
+Allows blocked.example for good
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── portsTyped
+o3s  /home/ubuntu/o3s
+firewall / Blocked / 1 marked / Type ports
+
+Ports
+Ports from 1 to 65535, separated by commas.
+e.g. 22, 443, 8443
+❯
+
+enter continue · esc cancel
+
+──── for
+o3s  /home/ubuntu/o3s
+firewall / Blocked / 1 marked / Type ports / 22, 443
+
+For how long
+❯ 1. For good
+  2. 1 hour
+  3. 8 hours
+  4. 1 day
+  5. Type a duration…   e.g. 90m, 2h30m
+
+↑/↓ navigate · 1-5 choose · enter select · esc back
+
+──── secret
+o3s  /home/ubuntu/o3s
+firewall / Blocked / 1 marked / Type ports / 22, 443 / For good
+
+Secret the proxy injects
+❯ 1. None
+  2. EXAMPLE_TOKEN   empty
+  3. OTHER_TOKEN     set
+  4. New secret…
+
+↑/↓ navigate · 1-4 choose · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+firewall / Blocked / 1 marked / Type ports / 22, 443 / For good / None
+
++ blocked.example:22,443
+
+Allows blocked.example for good
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── view
+o3s  /home/ubuntu/o3s
+project
+
+Repositories in the workspace, cloned into projects/<host>/<owner>/<name>.
+╭────────────────────────────────────────────────────────────────────────────╮
+│ ⌕ Search…                                                                  │
+╰────────────────────────────────────────────────────────────────────────────╯
+  NAME                  HOST
+❯ + Add a project…
+  + Create a project…
+  example/app           github.com
+
+↑/↓ navigate · / search · enter select · esc back
+
+──── repos
+o3s  /home/ubuntu/o3s
+project / Add a project
+
+Repositories
+owner/repo, host/owner/repo or a git URL. Several, separated by spaces.
+e.g. hansehart/o3s  gitlab.com/group/app
+❯
+
+enter continue · esc cancel
+
+──── repos
+o3s  /home/ubuntu/o3s
+project / Create a project
+
+Repository
+owner/repo or host/owner/repo for the new, empty repository.
+e.g. example/scratch
+❯
+
+enter continue · esc cancel
+
+──── action
+o3s  /home/ubuntu/o3s
+project / example/app
+
+github.com/example/app
+
+  Path   /home/ubuntu/projects/github.com/example/app
+
+❯ Remove
+  Back
+
+↑/↓ navigate · enter select · esc back
+
+──── typed
+o3s  /home/ubuntu/o3s
+project / example/app / Remove
+
+Type example/app to confirm
+Deletes projects/github.com/example/app with every uncommitted change, and
+removes it from the workspace.
+❯
+
+enter continue · esc cancel
+
+──── view
+o3s  /home/ubuntu/o3s
+secret
+
+Values the proxy injects. The cage never sees them.
+╭────────────────────────────────────────────────────────────────────────────╮
+│ ⌕ Search…                                                                  │
+╰────────────────────────────────────────────────────────────────────────────╯
+  NAME              VALUE   HOSTS
+❯ + Add a secret…
+  EXAMPLE_TOKEN     empty   api.example.com
+  OTHER_TOKEN       set
+
+↑/↓ navigate · / search · enter select · esc back
+
+──── host
+o3s  /home/ubuntu/o3s
+secret / Add a secret / NEW_TOKEN / *** / Yes, choose a host
+
+Host
+❯ example.com
+  api.example.com   EXAMPLE_TOKEN
+  example.net
+  example.org
+
+↑/↓ navigate · type to search · enter select · esc back
+
+──── action
+o3s  /home/ubuntu/o3s
+secret / EXAMPLE_TOKEN
+
+EXAMPLE_TOKEN
+
+  Value   empty
+  Hosts   api.example.com
+
+❯ Set a value
+  Back
+
+↑/↓ navigate · enter select · esc back
+
+──── view
+o3s  /home/ubuntu/o3s
+update
+
+Newer versions, all chosen.
+╭────────────────────────────────────────────────────────────────────────────╮
+│ ⌕ Search…                                                                  │
+╰────────────────────────────────────────────────────────────────────────────╯
+      PART    CHANGE
+❯ [x] cli     1.0.0 -> 2.0.0
+  [x] stack   1 file, 2 images
+  [x] tool    1 -> 2
+
+↑/↓ navigate · space toggle · / search · enter apply · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+update / 3 marked
+
+~ cli   1.0.0 -> 2.0.0
+~ stack   1 file, 2 images
+~ tool   1 -> 2
+
+Updates 3 parts
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+update / 2 marked
+
+~ stack   1 file, 2 images
+~ tool   1 -> 2
+
+Updates 2 parts
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+update / 2 marked
+
+~ cli   1.0.0 -> 2.0.0
+~ tool   1 -> 2
+
+Updates 2 parts
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+update / 2 marked
+
+~ cli   1.0.0 -> 2.0.0
+~ stack   1 file, 2 images
+
+Updates 2 parts
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+

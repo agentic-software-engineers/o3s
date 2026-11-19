@@ -1,0 +1,169 @@
+──── do
+o3s  /home/ubuntu/o3s
+
+
+What do you want to do?
+❯ init     make this folder a home
+  secret   values the proxy injects · 2
+
+↑/↓ navigate · type to search · enter select · esc quit
+
+──── isolation
+o3s  /home/ubuntu/o3s
+init
+
+Isolation
+❯ 1. VM (recommended)   the home runs in its own VM, AppArmor inside it
+  2. Process            the cage shares this machine's kernel
+
+↑/↓ navigate · 1-2 choose · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+init / VM (recommended)
+
+Creates an o3s home in /home/ubuntu/o3s, inside its own VM
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── apparmor
+o3s  /home/ubuntu/o3s
+init / Process
+
+AppArmor
+❯ 1. On (recommended)   limits what the cage may do on the shared kernel
+  2. Off                the cage keeps its other limits
+
+↑/↓ navigate · 1-2 choose · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+init / Process / On (recommended)
+
+Creates an o3s home in /home/ubuntu/o3s, on this machine's kernel
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+init / Process / Off
+
+Creates an o3s home in /home/ubuntu/o3s, on this machine's kernel, without
+AppArmor
+Apply?
+❯ 1. Yes
+  2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+
+──── view
+o3s  /home/ubuntu/o3s
+secret
+
+Values the proxy injects. The cage never sees them.
+╭────────────────────────────────────────────────────────────────────────────╮
+│ ⌕ Search…                                                                  │
+╰────────────────────────────────────────────────────────────────────────────╯
+  NAME              VALUE   HOSTS
+❯ + Add a secret…
+  EXAMPLE_TOKEN     empty
+  OTHER_TOKEN       set
+
+↑/↓ navigate · / search · enter select · esc back
+
+──── name
+o3s  /home/ubuntu/o3s
+secret / Add a secret
+
+Name
+An uppercase env name, the way the proxy reads it.
+e.g. GH_TOKEN
+❯
+
+enter continue · esc cancel
+
+──── value
+o3s  /home/ubuntu/o3s
+secret / Add a secret / NEW_TOKEN
+
+Value for NEW_TOKEN
+❯
+
+enter continue · esc cancel
+
+──── bind
+o3s  /home/ubuntu/o3s
+secret / Add a secret / NEW_TOKEN / ***
+
+Bind NEW_TOKEN to a host?
+❯ 1. Yes, choose a host…
+  2. Not now
+
+↑/↓ navigate · 1-2 choose · enter select · esc back
+
+──── host
+o3s  /home/ubuntu/o3s
+secret / Add a secret / NEW_TOKEN / *** / Yes, choose a host
+
+Host
+  No match for ""
+
+↑/↓ navigate · type to search · enter select · esc back
+
+──── action
+o3s  /home/ubuntu/o3s
+secret / EXAMPLE_TOKEN
+
+EXAMPLE_TOKEN
+
+  Value   empty
+  Hosts   none
+
+❯ Set a value
+  Back
+
+↑/↓ navigate · enter select · esc back
+
+──── value
+o3s  /home/ubuntu/o3s
+secret / EXAMPLE_TOKEN / Set a value
+
+Value for EXAMPLE_TOKEN
+❯
+
+enter continue · esc cancel
+
+──── action
+o3s  /home/ubuntu/o3s
+secret / OTHER_TOKEN
+
+OTHER_TOKEN
+
+  Value   set
+  Hosts   none
+
+❯ Set a value
+  Remove
+  Back
+
+↑/↓ navigate · enter select · esc back
+
+──── apply
+o3s  /home/ubuntu/o3s
+secret / OTHER_TOKEN / Remove
+
+- OTHER_TOKEN
+
+Removes the value of OTHER_TOKEN
+Apply?
+  1. Yes
+❯ 2. No
+
+↑/↓ navigate · 1-2 choose · y/n answer · enter select · esc back
+

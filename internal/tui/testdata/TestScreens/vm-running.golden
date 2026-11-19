@@ -1,0 +1,23 @@
+──── do
+o3s  /home/ubuntu/o3s
+
+
+What do you want to do?
+❯ cage   VM, stack and cage · running
+
+↑/↓ navigate · type to search · enter select · esc quit
+
+──── action
+o3s  /home/ubuntu/o3s
+cage
+
+Cage
+
+  VM   running
+
+❯ Open a shell in the VM
+  Stop
+  Remove
+
+↑/↓ navigate · enter select · esc back
+
