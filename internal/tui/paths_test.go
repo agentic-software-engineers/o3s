@@ -13,8 +13,8 @@ import (
 )
 
 // walked follows one path of the menu on the screen, from the main menu to where it ends, handing every screen that
-// asks to the check given, and reports the commands it ran.
-func walked(t *testing.T, h menu.Home, p menutest.Path, width, height int, check func(m model)) [][]string {
+// asks to the check given, and hands back the app where the path ends with the commands it ran.
+func walked(t *testing.T, h menu.Home, p menutest.Path, width, height int, check func(m model)) (model, [][]string) {
 	t.Helper()
 	m, ran := onHome(t, h, width, height)
 	// Answer every question of the path on the screen
@@ -30,7 +30,7 @@ func walked(t *testing.T, h menu.Home, p menutest.Path, width, height int, check
 	if p.Stuck {
 		check(m)
 	}
-	return *ran
+	return m, *ran
 }
 
 // Every path of the menu runs on the screen the way the model walks it: the screen asks the path's questions in
@@ -46,7 +46,7 @@ func TestEveryPath(t *testing.T) {
 		// Walk every path of the home on the screen
 		for i, p := range paths {
 			t.Run(fmt.Sprintf("%s/%03d", h.Name, i), func(t *testing.T) {
-				ran := walked(t, h.Home, p, usualWidth, usualHeight, func(model) {})
+				_, ran := walked(t, h.Home, p, usualWidth, usualHeight, func(model) {})
 
 				// Require the commands of the path's plan
 				if diff := cmp.Diff(commands(p.Plan), ran); diff != "" {
