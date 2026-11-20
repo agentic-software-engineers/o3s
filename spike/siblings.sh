@@ -19,7 +19,10 @@ install_kind cage
 limactl shell cage -- sudo sh -c "ip route replace default via ${gw} dev lima0 metric 50 && rm -f /etc/resolv.conf && echo 'nameserver ${gw}' > /etc/resolv.conf"
 fence cage
 check "the cage reaches the gateway VM" limactl shell cage -- ping -c 3 -W 5 "${gw}"
-workload_checks cage
+egress_checks cage
 check "the cage is refused example.com over its own NIC" fails limactl shell cage -- curl -sS -o /dev/null --max-time 20 --interface eth0 https://example.com
+# Open HTTPS to every host, since the registries serve their layers from storage addresses that change per request
+limactl shell gateway -- sudo iptables -I cage-forward 2 -i lima0 -o eth0 -p tcp --dport 443 -j ACCEPT
+workload_checks cage
 limactl shell gateway -- sudo iptables -L cage-forward -v -n
 report

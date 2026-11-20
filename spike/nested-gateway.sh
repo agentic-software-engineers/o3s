@@ -13,5 +13,8 @@ check "the cage VM runs on KVM in its scope" on_kvm_in_scope cage
 install_kind cage
 mapfile -t ips < <(allowed_ips)
 fence cage "${ips[@]}"
+egress_checks cage
+# Open HTTPS to every host, since the registries serve their layers from storage addresses that change per request
+sudo iptables -I fence 2 -p tcp --dport 443 -j ACCEPT
 workload_checks cage
 report

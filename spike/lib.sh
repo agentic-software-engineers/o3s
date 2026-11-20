@@ -71,11 +71,16 @@ install_kind() {
     chmod +x /usr/local/bin/kind'
 }
 
-# Run the egress and workload checks from inside the instance
-workload_checks() {
+# Check from inside the instance that the allowed host connects and another is refused
+egress_checks() {
   local name=$1
   check "the cage reaches github.com" limactl shell "${name}" -- curl -sS -o /dev/null --max-time 20 https://github.com
   check "the cage is refused example.com" fails limactl shell "${name}" -- curl -sS -o /dev/null --max-time 20 https://example.com
+}
+
+# Run the engine and cluster checks from inside the instance, once HTTPS is open to the registries' storage
+workload_checks() {
+  local name=$1
   check "the cage runs hello-world" limactl shell "${name}" -- docker run --rm hello-world
   check "the cage raises a kind cluster" limactl shell "${name}" -- kind create cluster --wait 5m
   check "the kind node is Ready" limactl shell "${name}" -- docker exec kind-control-plane kubectl wait --for=condition=Ready node --all --timeout=60s

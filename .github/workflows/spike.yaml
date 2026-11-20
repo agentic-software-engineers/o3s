@@ -47,6 +47,7 @@ jobs:
       - name: Run the ${{ matrix.layout }} layout
         env:
           LAYOUT: ${{ matrix.layout }}
+        shell: bash
         run: bash "spike/${LAYOUT}.sh" 2>&1 | tee spike.log
 
       # write each check's outcome and duration into the run's summary
