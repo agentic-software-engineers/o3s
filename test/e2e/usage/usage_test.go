@@ -7,6 +7,7 @@
 package usage_test
 
 import (
+	"context"
 	"fmt"
 	"maps"
 	"os"
@@ -16,6 +17,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/hansehart/o3s/internal/cli"
 	"github.com/hansehart/o3s/internal/fixture"
@@ -66,8 +68,8 @@ func (u *user) env() []string {
 }
 
 // command is how the user's terminal starts o3s with the arguments given: on the machine, or over SSH with the agent
-// forwarded where the session holds one.
-func (u *user) command(args ...string) (string, []string) {
+// forwarded where the session holds one, with a terminal at the other end where o3s runs in one.
+func (u *user) command(tty bool, args ...string) (string, []string) {
 	bin, err := exec.LookPath("o3s")
 	// Stop when the binary this branch built is off PATH
 	if err != nil {
@@ -91,7 +93,11 @@ func (u *user) command(args ...string) (string, []string) {
 	for _, a := range args {
 		line += " " + quote(a)
 	}
-	ssh := []string{"-tt", "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=accept-new"}
+	ssh := []string{"-T", "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=accept-new"}
+	// Give o3s a terminal at the other end where it runs in one here
+	if tty {
+		ssh[0] = "-tt"
+	}
 	// Forward the agent the session holds
 	if u.agent.sock != "" {
 		ssh = append(ssh, "-A")
@@ -107,13 +113,19 @@ func quote(s string) string {
 	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
 }
 
-// o3s runs o3s in the user's terminal with the input given, and hands back what it printed and whether it failed.
-func (u *user) o3s(stdin string, args ...string) (string, bool) {
-	name, argv := u.command(args...)
-	cmd := exec.CommandContext(u.t.Context(), name, argv...)
+// patience is how long a command runs before the test reads it as hanging, longer than o3s takes to raise the stack.
+const patience = 3 * time.Minute
+
+// o3s runs o3s in the user's session with the input given, the way a script runs it, and hands back what it printed,
+// whether it failed, and whether it hung past the test's patience.
+func (u *user) o3s(stdin string, args ...string) (string, bool, bool) {
+	ctx, cancel := context.WithTimeout(u.t.Context(), patience)
+	defer cancel()
+	name, argv := u.command(false, args...)
+	cmd := exec.CommandContext(ctx, name, argv...)
 	cmd.Dir, cmd.Env, cmd.Stdin = u.home, u.env(), strings.NewReader(stdin)
 	out, err := cmd.CombinedOutput()
-	return strings.ReplaceAll(string(out), "\r\n", "\n"), err != nil
+	return string(out), err != nil, ctx.Err() != nil
 }
 
 // cageRuns reports whether the cage's container runs.
@@ -124,16 +136,19 @@ func (u *user) cageRuns() bool {
 	return err == nil && strings.TrimSpace(string(out)) != ""
 }
 
-// inCage runs a command in the cage the way o3s runs it there, and reports whether it succeeded.
+// inCage runs a command in the cage the way o3s runs it there, and reports whether it succeeded within the test's
+// patience.
 func (u *user) inCage(command ...string) bool {
-	cmd := exec.CommandContext(u.t.Context(), "devcontainer", append([]string{"exec", "--workspace-folder", u.home}, command...)...)
+	ctx, cancel := context.WithTimeout(u.t.Context(), patience)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, "devcontainer", append([]string{"exec", "--workspace-folder", u.home}, command...)...)
 	cmd.Env = u.env()
 	return cmd.Run() == nil
 }
 
 // lists reports whether a group's table lists a row that starts with the name.
 func (u *user) lists(name string, group ...string) bool {
-	out, _ := u.o3s("", group...)
+	out, _, _ := u.o3s("", group...)
 	return slices.ContainsFunc(strings.Split(out, "\n"), func(line string) bool { return strings.HasPrefix(line, name+" ") })
 }
 
@@ -355,31 +370,42 @@ func runOrders(u *user, f found) {
 	fl := faults[u.setup.Fault]
 	// Run every order
 	for _, order := range usagetest.Orders(len(events)) {
-		// Run every event of the order
-		for i, e := range order {
-			// Start the failure halfway through
-			if i == len(order)/2 {
-				fl.start(u)
-			}
-			ev := events[e]
-			out, failed := u.o3s(ev.stdin, ev.args...)
-			f.note(ev.name, screentest.OutputBreaks(out, failed)...)
-			// Check the home is the way a command that succeeded says
-			if !failed {
-				// Note a claim the home contradicts
-				if d := ev.holds(u); d != "" {
-					f.note(ev.name, d)
-				}
-			}
-			// Check the cage reaches the agent the session holds, where the project needs it
-			if ev.name == "add a project over SSH" && u.agent.pid != "" {
-				// Note a cage without the session's agent
-				if !u.inCage("ssh-add", "-l") {
-					f.note(ev.name, "the cage misses the session's agent")
-				}
+		runOrder(u, f, fl, order)
+		fl.end(u)
+	}
+}
+
+// runOrder runs the events of one order, the failure starting halfway through, and ends it at the first command that
+// hangs, since the ones after it would wait on the same failure.
+func runOrder(u *user, f found, fl fault, order []int) {
+	// Run every event of the order
+	for i, e := range order {
+		// Start the failure halfway through
+		if i == len(order)/2 {
+			fl.start(u)
+		}
+		ev := events[e]
+		out, failed, hung := u.o3s(ev.stdin, ev.args...)
+		// Note a command that hangs, and end the order
+		if hung {
+			f.note(ev.name, "hangs")
+			return
+		}
+		f.note(ev.name, screentest.OutputBreaks(out, failed)...)
+		// Check the home is the way a command that succeeded says
+		if !failed {
+			// Note a claim the home contradicts
+			if d := ev.holds(u); d != "" {
+				f.note(ev.name, d)
 			}
 		}
-		fl.end(u)
+		// Check the cage reaches the agent the session holds, where the project needs it
+		if ev.name == "add a project over SSH" && u.agent.pid != "" {
+			// Note a cage without the session's agent
+			if !u.inCage("ssh-add", "-l") {
+				f.note(ev.name, "the cage misses the session's agent")
+			}
+		}
 	}
 }
 
@@ -388,7 +414,7 @@ func runOrders(u *user, f found) {
 func walkMenu(u *user, f found) {
 	t := u.t
 	// Raise the cage the orders may have left stopped
-	if _, failed := u.o3s("", "cage", "start"); failed {
+	if _, failed, _ := u.o3s("", "cage", "start"); failed {
 		t.Fatalf("Setup: o3s cage start failed")
 	}
 	t.Chdir(u.home)
@@ -400,7 +426,7 @@ func walkMenu(u *user, f found) {
 	// Walk every path
 	for _, p := range paths {
 		where := "menu " + strings.Split(menutest.Line(p), " → ")[0]
-		name, args := u.command()
+		name, args := u.command(true)
 		s, err := ptytest.Start(u.home, u.env(), u.setup.Cols, u.setup.Rows, name, args...)
 		// Stop where o3s fails to start
 		if err != nil {
