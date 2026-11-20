@@ -113,8 +113,9 @@ func quote(s string) string {
 	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
 }
 
-// patience is how long a command runs before the test reads it as hanging, longer than o3s takes to raise the stack.
-const patience = 3 * time.Minute
+// patience is how long a command runs before the test reads it as hanging, well past what any command takes on a
+// working home.
+const patience = 30 * time.Second
 
 // o3s runs o3s in the user's session with the input given, the way a script runs it, and hands back what it printed,
 // whether it failed, and whether it hung past the test's patience.
@@ -439,6 +440,10 @@ func walkMenu(u *user, f found) {
 		// Stop where o3s fails to start
 		if err != nil {
 			t.Fatalf("ptytest.Start() = %v", err)
+		}
+		// Stop where o3s draws no menu in the user's terminal
+		if !s.Until(func(screen string) bool { return strings.Contains(screen, "o3s  ") }) {
+			t.Fatalf("o3s drew no menu within %v, on:\n%s", ptytest.Wait(), s.Screen())
 		}
 		s.Settle()
 		// Answer every question up to the last, checking every screen
