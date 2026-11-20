@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - spike/two-vms
+      - spike/nested-net
 
 permissions:
   contents: read
@@ -14,7 +14,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        layout: [nested, siblings]
+        layout: [nested-net]
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     steps:
