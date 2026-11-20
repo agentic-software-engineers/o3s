@@ -304,11 +304,17 @@ var faults = map[string]fault{
 // found gathers the breaks a setup shows, each once, by where it shows and the rule it breaks.
 type found map[string]bool
 
-// note keeps every break given, by where it showed.
-func (f found) note(where string, breaks ...string) {
+// note keeps every break given, by where it showed, and logs what showed it the first time.
+func (f found) note(t *testing.T, where, shown string, breaks ...string) {
+	t.Helper()
 	// Keep every break
 	for _, b := range breaks {
-		f[where+": "+b] = true
+		key := where + ": " + b
+		// Log what a break shows the first time
+		if !f[key] {
+			t.Logf("%s, on:\n%s", key, shown)
+		}
+		f[key] = true
 	}
 }
 
@@ -385,25 +391,27 @@ func runOrder(u *user, f found, fl fault, order []int) {
 			fl.start(u)
 		}
 		ev := events[e]
+		began := time.Now()
 		out, failed, hung := u.o3s(ev.stdin, ev.args...)
+		u.t.Logf("took %v: %s", time.Since(began).Round(time.Second), ev.name)
 		// Note a command that hangs, and end the order
 		if hung {
-			f.note(ev.name, "hangs")
+			f.note(u.t, ev.name, out, "hangs")
 			return
 		}
-		f.note(ev.name, screentest.OutputBreaks(out, failed)...)
+		f.note(u.t, ev.name, out, screentest.OutputBreaks(out, failed)...)
 		// Check the home is the way a command that succeeded says
 		if !failed {
 			// Note a claim the home contradicts
 			if d := ev.holds(u); d != "" {
-				f.note(ev.name, d)
+				f.note(u.t, ev.name, out, d)
 			}
 		}
 		// Check the cage reaches the agent the session holds, where the project needs it
 		if ev.name == "add a project over SSH" && u.agent.pid != "" {
 			// Note a cage without the session's agent
 			if !u.inCage("ssh-add", "-l") {
-				f.note(ev.name, "the cage misses the session's agent")
+				f.note(u.t, ev.name, out, "the cage misses the session's agent")
 			}
 		}
 	}
@@ -435,14 +443,14 @@ func walkMenu(u *user, f found) {
 		s.Settle()
 		// Answer every question up to the last, checking every screen
 		for j, a := range p.Answers[:max(len(p.Answers)-1, 0)] {
-			f.note(where, screentest.Breaks(strings.Split(s.Screen(), "\n"), u.setup.Cols, u.setup.Rows)...)
+			f.note(t, where, s.Screen(), screentest.Breaks(strings.Split(s.Screen(), "\n"), u.setup.Cols, u.setup.Rows)...)
 			// Note a path whose rows a user can't reach
 			if err := usagetest.Answer(s, p.Asked[j], a.Values); err != nil {
-				f.note(where, "row out of sight")
+				f.note(t, where, s.Screen(), "row out of sight")
 				break
 			}
 		}
-		f.note(where, screentest.Breaks(strings.Split(s.Screen(), "\n"), u.setup.Cols, u.setup.Rows)...)
+		f.note(t, where, s.Screen(), screentest.Breaks(strings.Split(s.Screen(), "\n"), u.setup.Cols, u.setup.Rows)...)
 		s.Stop()
 	}
 }
