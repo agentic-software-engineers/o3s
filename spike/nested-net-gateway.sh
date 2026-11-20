@@ -44,6 +44,8 @@ sudo iptables -A cage -m set --match-set allow dst -j ACCEPT
 sudo iptables -A cage -j LOG --log-prefix "cage-refused "
 sudo iptables -A cage -j REJECT
 sudo iptables -I OUTPUT 1 -m cgroup --path "${SCOPE}" -j cage
+# Drop the names the cage VM resolved before the fence, so every lookup from here on passes the allow-list
+limactl shell cage -- sudo resolvectl flush-caches
 sleep 5
 
 check "the cage reaches github.com through the proxy" limactl shell cage -- curl -sSk -o /dev/null --max-time 20 https://github.com
