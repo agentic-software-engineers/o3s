@@ -86,6 +86,33 @@ func actions(m model) [][]tea.Msg {
 	return out
 }
 
+// randomWalk answers a path up to the step its seed picks, then takes seeded random actions, handing the screen after
+// each to the check given with the keys pressed so far, until the walk ends or leaves the menu. The same seed walks the
+// same keys on every run.
+func randomWalk(t *testing.T, h menu.Home, p menutest.Path, seed int, check func(m model, pressed []string)) {
+	t.Helper()
+	rng := rand.New(rand.NewPCG(uint64(seed), uint64(seed))) //nolint:gosec // a seeded walk repeats the same keys on every run, its seed a path's number
+	m, _ := onHome(t, h, usualWidth, usualHeight)
+	// Answer the path up to the step the seed picks
+	for _, a := range p.Answers[:rng.IntN(len(p.Answers)+1)] {
+		m = answer(t, m, a.Values)
+	}
+	var pressed []string
+	// Take one action after another, checking the screen after each
+	for range walkSteps {
+		acts := actions(m)
+		act := acts[rng.IntN(len(acts))]
+		pressed = append(pressed, fmt.Sprint(act))
+		var quit bool
+		m, quit = drive(m, act...)
+		// End the walk where it leaves the menu
+		if quit {
+			return
+		}
+		check(m, pressed)
+	}
+}
+
 // Seeded random keys keep the menu to its rules after every key, the way crush's oracle test walks its model, each
 // walk starting at a screen of a path of the menu, so the walks reach every part of it, the same keys on every run.
 func TestRandomWalks(t *testing.T) {
@@ -99,25 +126,7 @@ func TestRandomWalks(t *testing.T) {
 		// Walk from a screen of every path, the path's number its seed
 		for i, p := range paths {
 			t.Run(fmt.Sprintf("%s/%03d", h.Name, i), func(t *testing.T) {
-				rng := rand.New(rand.NewPCG(uint64(i), uint64(i))) //nolint:gosec // a seeded walk repeats the same keys on every run
-				m, _ := onHome(t, h.Home, usualWidth, usualHeight)
-				// Answer the path up to the step the seed picks
-				for _, a := range p.Answers[:rng.IntN(len(p.Answers)+1)] {
-					m = answer(t, m, a.Values)
-				}
-				var pressed []string
-
-				// Take one action after another, checking the screen after each
-				for range walkSteps {
-					acts := actions(m)
-					act := acts[rng.IntN(len(acts))]
-					pressed = append(pressed, fmt.Sprint(act))
-					var quit bool
-					m, quit = drive(m, act...)
-					// End the walk where it leaves the menu
-					if quit {
-						return
-					}
+				randomWalk(t, h.Home, p, i, func(m model, pressed []string) {
 					// Report every break of the rules outside the known ones
 					for _, b := range screenBreaks(m) {
 						// Report a break no finding names
@@ -125,7 +134,7 @@ func TestRandomWalks(t *testing.T) {
 							t.Fatalf("%s from %s after %v, on:\n%s", b, menutest.Line(p), pressed, strings.Join(screen(m), "\n"))
 						}
 					}
-				}
+				})
 			})
 		}
 	}
