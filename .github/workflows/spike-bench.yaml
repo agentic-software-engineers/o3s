@@ -1,0 +1,64 @@
+name: Spike bench
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - spike/nested-cost
+
+permissions:
+  contents: read
+
+jobs:
+  bench:
+    # measure a 2 vCPU, 6 GiB VM on the runner (l1) and inside a gateway VM (l2), three rounds each on separate runners
+    strategy:
+      fail-fast: false
+      matrix:
+        layout: [l1, l2]
+        round: [1, 2, 3]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      # check out the scripts and the VM template
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # hand the runner user the hardware virtualization
+      - name: Set up QEMU and KVM
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y --no-install-recommends ovmf qemu-system-x86 qemu-utils
+          sudo modprobe kvm
+          sudo chown "${USER}" /dev/kvm
+
+      # restore the VM image the VM tests cached on main
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/lima/download
+          key: lima-download-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('internal/vm/o3s.yaml') }}
+
+      # install Lima owned by root
+      - name: Install Lima
+        run: bash spike/install-lima.sh
+
+      # measure the layout and keep its log for the summary
+      - name: Measure ${{ matrix.layout }}
+        shell: bash
+        env:
+          LAYOUT: ${{ matrix.layout }}
+        run: bash "spike/bench-${LAYOUT}.sh" 2>&1 | tee bench.log
+
+      # write every measured row into the run's summary
+      - name: Summarize
+        if: always()
+        env:
+          LAYOUT: ${{ matrix.layout }}
+          ROUND: ${{ matrix.round }}
+        run: |
+          {
+            echo "### ${LAYOUT} round ${ROUND}"
+            echo "| metric | value | unit |"
+            echo "|---|---|---|"
+            grep '^BENCH' bench.log | sed 's/^BENCH //' || true
+          } >> "${GITHUB_STEP_SUMMARY}"
