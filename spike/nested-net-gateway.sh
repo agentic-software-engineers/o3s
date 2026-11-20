@@ -26,8 +26,11 @@ sudo dnsmasq --port=5353 --listen-address=127.0.0.1 --bind-interfaces --no-resol
   --server="${domains}/1.1.1.1" --ipset="${direct}/allow" --ipset=/github.com/allow,proxied --address=/#/ \
   --log-queries --log-facility=/tmp/dnsmasq.log
 # Take the cage's HTTPS on the proxy, which reads where each connection was headed
-docker run -d --name proxy --network host "${MITM}" mitmdump --mode transparent --listen-port 8443 --showhost \
-  --set block_global=false >/dev/null
+docker run -d --name proxy --network host --entrypoint mitmdump "${MITM}" --mode transparent --listen-port 8443 \
+  --showhost --set block_global=false >/dev/null
+check "the proxy listens on 8443" timeout 120 sh -c 'until ss -ltn | grep -q ":8443 "; do sleep 2; done'
+docker ps -a --filter name=proxy
+docker logs proxy 2>&1 | tail -20
 
 # Steer the scope's lookups to the resolver and its HTTPS to the proxied hosts to the proxy
 sudo iptables -t nat -A OUTPUT -m cgroup --path "${SCOPE}" -p udp --dport 53 -j REDIRECT --to-ports 5353
@@ -52,4 +55,9 @@ check "the cage runs hello-world" limactl shell cage -- docker run --rm hello-wo
 check "the cage raises a kind cluster" limactl shell cage -- kind create cluster --wait 5m
 sudo tail -20 /tmp/dnsmasq.log
 sudo journalctl -k --no-pager | grep cage-refused | tail -10 || true
-docker logs proxy 2>&1 | tail -10
+echo "--- proxy at the end"
+docker ps -a --filter name=proxy
+docker logs proxy 2>&1 | tail -30
+sudo iptables -t nat -L OUTPUT -v -n
+sudo iptables -L cage -v -n
+sudo ipset list proxied | tail -5
