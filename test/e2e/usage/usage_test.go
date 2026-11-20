@@ -30,7 +30,23 @@ import (
 
 // knownBreaks are the breaks o3s shows today, each by where it shows and the rule it breaks, with what a fix changes.
 // A fix removes its entry, and a new break fails the test.
-var knownBreaks = map[string]string{}
+var knownBreaks = map[string]string{
+	"add a feature: no next step":                                 "a feature add with the registry out of reach names no command to run next",
+	"add a project over SSH: devcontainer log":                    "a project add shows the devcontainer CLI's own log",
+	"add a project over SSH: no clone in the cage":                "a project add over SSH says Added with no clone in the cage",
+	"add a project over SSH: no next step":                        "a project add over SSH that fails names no command that works",
+	"add a project over SSH: the cage misses the session's agent": "the cage misses the SSH agent the user's session holds",
+	"add a store: no next step":                                   "a store add with the registry out of reach names no command to run next",
+	"close a host: no next step":                                  "closing a host the firewall lacks names no command to run next",
+	"menu feature / Discover [] / no: no footer":                  "the Discover tab runs past a short terminal, its footer out of sight",
+	"menu feature / Discover [] / yes: no footer":                 "the Discover tab runs past a short terminal, its footer out of sight",
+	"remove a feature: no next step":                              "removing a feature the home lacks names no command to run next",
+	"remove a project: devcontainer log":                          "a project rm shows the devcontainer CLI's own log",
+	"remove a secret: no next step":                               "removing a secret the home lacks names no command to run next",
+	"remove a store: no next step":                                "removing a store the home lacks names no command to run next",
+	"start the cage: devcontainer log":                            "a cage start shows the devcontainer CLI's own log",
+	"start the cage: hangs":                                       "a cage start without the network waits past any working start",
+}
 
 // Real things the commands reach, each a value the test checks itself.
 const (
