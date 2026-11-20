@@ -3,12 +3,16 @@ on:
   # lint again when the title changes, since a squash merge lands the title on main
   pull_request:
     types: [opened, edited, reopened, synchronize]
+  # report on a merge queue's commit too, whose title the pull request's run checked already
+  merge_group:
 
 permissions:
   contents: read
 
 jobs:
   commitlint:
+    # lint a pull request's commits, and leave a merge queue's commit to the run that linted them
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       # check out history so the pull request's commit range resolves

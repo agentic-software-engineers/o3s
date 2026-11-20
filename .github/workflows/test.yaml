@@ -1,9 +1,9 @@
 name: Test
 on:
+  # run the fast checks on every push to a pull request, every one so the required ones always report
   pull_request:
-    # leave a change to the documentation alone to the checks that read it
-    paths-ignore:
-      - '**.md'
+  # run every check once on a merge queue's commit before it reaches main
+  merge_group:
   push:
     branches:
       - main
@@ -89,6 +89,8 @@ jobs:
 
   stack:
     # run the suite on every supported release and every architecture the images ship for, once lint and the unit tests pass
+    # leave the long checks to the merge queue and to main, so a pull request's pushes stay fast
+    if: github.event_name != 'pull_request'
     needs: [golangci-lint, go-test]
     strategy:
       fail-fast: false
@@ -153,6 +155,8 @@ jobs:
 
   usage-setups:
     # read the setups the usage suite runs on from the table PICT generated, one job each
+    # leave the long checks to the merge queue and to main, so a pull request's pushes stay fast
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     outputs:
       rows: ${{ steps.rows.outputs.rows }}
@@ -168,6 +172,8 @@ jobs:
 
   usage:
     # use o3s the way a user does on the real stack, one setup of the table per job, once lint and the unit tests pass
+    # leave the long checks to the merge queue and to main, so a pull request's pushes stay fast
+    if: github.event_name != 'pull_request'
     needs: [golangci-lint, go-test, usage-setups]
     strategy:
       fail-fast: false
@@ -217,6 +223,8 @@ jobs:
   unix:
     # install o3s on a bare host the way a user does and boot a home's VM through it, on the runners that offer virtualization,
     # once lint and the unit tests pass
+    # leave the long checks to the merge queue and to main, so a pull request's pushes stay fast
+    if: github.event_name != 'pull_request'
     needs: [golangci-lint, go-test]
     strategy:
       fail-fast: false
@@ -258,6 +266,8 @@ jobs:
 
   hcs:
     # boot a home's VM on Windows, on the runner whose user is an Administrator, once lint and the unit tests pass
+    # leave the long checks to the merge queue and to main, so a pull request's pushes stay fast
+    if: github.event_name != 'pull_request'
     needs: [golangci-lint, go-test]
     runs-on: windows-2025
     timeout-minutes: 70
@@ -302,3 +312,15 @@ jobs:
       # run the suite that boots the home's VM through the o3s CLI
       - name: Run the VM tests
         run: go test -tags e2e -count=1 -timeout 60m -v ./test/e2e/vm/...
+
+  merge-checks:
+    # stand for every long check as one required check, passing where they were skipped on a pull request's push and
+    # failing where one failed in the merge queue or on main
+    if: always()
+    needs: [stack, usage-setups, usage, unix, hcs]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: re-actors/alls-green@b5b5b37504aa4183270bd3d855c52a67f212be35 # v1.3.0
+        with:
+          allowed-skips: ${{ github.event_name == 'pull_request' && 'stack, usage-setups, usage, unix, hcs' || '' }}
+          jobs: ${{ toJSON(needs) }}
