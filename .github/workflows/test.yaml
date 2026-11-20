@@ -4,6 +4,8 @@ on:
   pull_request:
   # run every check once on a merge queue's commit before it reaches main
   merge_group:
+  # run every check on a branch by hand, the long ones included
+  workflow_dispatch:
   push:
     branches:
       - main
