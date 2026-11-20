@@ -15,7 +15,6 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"syscall"
 	"testing"
 
 	"github.com/hansehart/o3s/internal/cli"
@@ -187,7 +186,12 @@ func (a agent) stop() {
 	if err != nil {
 		return
 	}
-	_ = syscall.Kill(pid, syscall.SIGTERM)
+	p, err := os.FindProcess(pid)
+	// Leave an agent whose process is gone
+	if err != nil {
+		return
+	}
+	_ = p.Kill()
 }
 
 // event is a command that changes the home, and the check that the home is the way the command says.
