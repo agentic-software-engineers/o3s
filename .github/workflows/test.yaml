@@ -1,9 +1,7 @@
 name: Test
 on:
-  # run the fast checks on every push to a pull request, every one so the required ones always report
+  # run the fast checks on every push to a pull request, and every check on the release's pull request
   pull_request:
-  # run every check once on a merge queue's commit before it reaches main
-  merge_group:
   push:
     branches:
       - main
@@ -13,8 +11,7 @@ on:
 permissions:
   contents: read
 
-# stop a pull request's run once a newer push supersedes it, and keep every run of main and the merge queue, each
-# commit a group of its own
+# stop a pull request's run once a newer push supersedes it, and keep every run of main, each commit a group of its own
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
@@ -90,8 +87,8 @@ jobs:
 
   stack:
     # run the suite on every supported release and every architecture the images ship for, once lint and the unit tests pass
-    # leave the long checks to the merge queue and to main, so a pull request's pushes stay fast
-    if: github.event_name != 'pull_request'
+    # leave the long checks to the release's pull request and to main, so every other pull request stays fast
+    if: github.event_name == 'push' || github.head_ref == 'release-please--branches--main'
     needs: [golangci-lint, go-test]
     strategy:
       fail-fast: false
@@ -155,8 +152,8 @@ jobs:
           test -z "$(git status --porcelain)"
 
   usage-setups:
-    # name the setups the usage suite runs on: one sample setup on a pull request's push, and every setup of the table
-    # elsewhere
+    # name every setup of the table the usage suite runs on, one job each, where the long checks run
+    if: github.event_name == 'push' || github.head_ref == 'release-please--branches--main'
     runs-on: ubuntu-latest
     outputs:
       setups: ${{ steps.setups.outputs.setups }}
@@ -166,17 +163,9 @@ jobs:
         with:
           persist-credentials: false
 
-      # name every setup the way the suite names it, or the sample alone on a pull request's push
+      # name every setup the way the suite names it
       - id: setups
-        env:
-          EVENT: ${{ github.event_name }}
-        run: |
-          # take the sample on a pull request's push, every setup elsewhere
-          if [ "$EVENT" = pull_request ]; then
-            echo 'setups=["local-host-80x14-none"]' >> "$GITHUB_OUTPUT"
-          else
-            echo "setups=$(awk 'NR > 1 && NF { gsub("~", "", $4); print $1 "-" $2 "-" $3 "-" $4 }' test/usagetest/testdata/setups.golden | jq -Rsc 'split("\n") | map(select(. != ""))')" >> "$GITHUB_OUTPUT"
-          fi
+        run: echo "setups=$(awk 'NR > 1 && NF { gsub("~", "", $4); print $1 "-" $2 "-" $3 "-" $4 }' test/usagetest/testdata/setups.golden | jq -Rsc 'split("\n") | map(select(. != ""))')" >> "$GITHUB_OUTPUT"
 
   usage:
     # use o3s the way a user does on the real stack, one setup per job, once lint and the unit tests pass
@@ -229,8 +218,8 @@ jobs:
   unix:
     # install o3s on a bare host the way a user does and boot a home's VM through it, on the runners that offer virtualization,
     # once lint and the unit tests pass
-    # leave the long checks to the merge queue and to main, so a pull request's pushes stay fast
-    if: github.event_name != 'pull_request'
+    # leave the long checks to the release's pull request and to main, so every other pull request stays fast
+    if: github.event_name == 'push' || github.head_ref == 'release-please--branches--main'
     needs: [golangci-lint, go-test]
     strategy:
       fail-fast: false
@@ -272,8 +261,8 @@ jobs:
 
   hcs:
     # boot a home's VM on Windows, on the runner whose user is an Administrator, once lint and the unit tests pass
-    # leave the long checks to the merge queue and to main, so a pull request's pushes stay fast
-    if: github.event_name != 'pull_request'
+    # leave the long checks to the release's pull request and to main, so every other pull request stays fast
+    if: github.event_name == 'push' || github.head_ref == 'release-please--branches--main'
     needs: [golangci-lint, go-test]
     runs-on: windows-2025
     timeout-minutes: 70
@@ -320,13 +309,13 @@ jobs:
         run: go test -tags e2e -count=1 -timeout 60m -v ./test/e2e/vm/...
 
   merge-checks:
-    # stand for the long checks as one required check: passing where the stack and VM jobs were skipped on a pull
-    # request's push, failing where any job failed
+    # stand for the long checks as one required check: passing where they were skipped on a pull request other than
+    # the release's, failing where any job failed
     if: always()
     needs: [stack, usage-setups, usage, unix, hcs]
     runs-on: ubuntu-latest
     steps:
       - uses: re-actors/alls-green@b5b5b37504aa4183270bd3d855c52a67f212be35 # v1.3.0
         with:
-          allowed-skips: ${{ github.event_name == 'pull_request' && 'stack, unix, hcs' || '' }}
+          allowed-skips: ${{ github.event_name == 'pull_request' && github.head_ref != 'release-please--branches--main' && 'stack, usage-setups, usage, unix, hcs' || '' }}
           jobs: ${{ toJSON(needs) }}

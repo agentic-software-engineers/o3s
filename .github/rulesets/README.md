@@ -7,7 +7,7 @@ after every change to this folder on `main` that the live rulesets match them.
 
 | File | Ruleset |
 | --- | --- |
-| [main.json](main.json) | `main`: no deletion or force push, squash pull requests, the required checks, and the merge queue whose commits the Test workflow checks |
+| [main.json](main.json) | `main`: no deletion or force push, squash pull requests, and the required checks, which run every check on the release's pull request |
 
 [rulesets.sh](rulesets.sh) compares a file with the live ruleset of the same `name`. Every value of the file must equal
 the live one, while the live ruleset may hold fields the file leaves out, such as its id. Rules compare by type, and a

@@ -1,8 +1,6 @@
 name: Audit workflows
 on:
   pull_request:
-  # check a merge queue's commit, which the queue waits on
-  merge_group:
   push:
     branches:
       - main
