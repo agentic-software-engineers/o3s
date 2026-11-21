@@ -1,6 +1,5 @@
 #!/bin/sh
-# Checks and applies the rulesets the JSON files of this folder define, the way microsoft/vscode's
-# .github/rulesets/rulesets.ts does (see README.md):
+# Checks and applies the rulesets the JSON files of this folder define (see README.md):
 #   .github/rulesets/rulesets.sh check   fails where a live ruleset is missing or differs from its file
 #   .github/rulesets/rulesets.sh apply   creates or updates the live rulesets from their files (admins only)
 set -eu

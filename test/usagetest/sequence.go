@@ -6,12 +6,11 @@ import (
 	"slices"
 )
 
-// trials is how many candidate orders each step weighs, as NIST's generator does.
+// trials is how many candidate orders each step weighs.
 const trials = 1000
 
 // Orders are orders of n events, each event once in every order, such that every three events appear in every one of
-// their six orders across them: a sequence covering array of strength 3. It follows NIST's greedy generator
-// (usnistgov/combinatorial-testing-tools, SequenceCoveringArrays/newseq3.c): it starts with the events in order and
+// their six orders across them: a sequence covering array of strength 3. It starts with the events in order and
 // reversed, then adds the candidate that covers the most triples still open, and its reverse from six events on, until
 // every triple is covered. A fixed seed draws the candidates, so the orders are the same on every run.
 func Orders(n int) [][]int {
@@ -40,7 +39,7 @@ func Orders(n int) [][]int {
 		}
 		orders = append(orders, best)
 		cover(open, best)
-		// Add the reverse too from six events on, as NIST's generator does
+		// Add the reverse too from six events on, which covers the triples the order holds backwards
 		if n > 5 {
 			back := slices.Clone(best)
 			slices.Reverse(back)

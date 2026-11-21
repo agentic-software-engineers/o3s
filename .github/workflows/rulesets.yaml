@@ -1,7 +1,6 @@
 name: Rulesets
-# check that the repository's rulesets match the files of .github/rulesets, which an admin applies, the way
-# microsoft/vscode's rulesets.yml does: it fails where a change to a file reached main unapplied, or a ruleset changed in
-# the settings without its file. It runs without admin rights, so it leaves the bypass actors uncompared.
+# check that the repository's rulesets match the files of .github/rulesets, which an admin applies: it fails where a
+# change to a file reached main unapplied, or a ruleset changed in the settings without its file. It runs without admin rights, so it leaves the bypass actors uncompared.
 on:
   push:
     branches:
