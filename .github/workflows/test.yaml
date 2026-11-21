@@ -1,7 +1,7 @@
 name: Test
 on:
-  # run the fast checks on every push to a pull request, and every check on one labeled verify, which the release's
-  # pull request has to be
+  # run the fast checks on every push to a pull request, and every check on one labeled verify, which a stable
+  # release's pull request has to be
   pull_request:
     types: [opened, synchronize, reopened, labeled]
   push:
@@ -316,12 +316,13 @@ jobs:
 
   merge-checks:
     # stand for the long checks as one required check: passing where they were skipped on a pull request without
-    # verify, and failing where any job failed, or skipped on the release's pull request until it is labeled verify
+    # verify, a release candidate's among them, and failing where any job failed, or skipped on a stable release's pull
+    # request until it is labeled verify
     if: always()
     needs: [stack, usage-setups, usage, unix, hcs]
     runs-on: ubuntu-latest
     steps:
       - uses: re-actors/alls-green@b5b5b37504aa4183270bd3d855c52a67f212be35 # v1.3.0
         with:
-          allowed-skips: ${{ github.event_name != 'schedule' && github.head_ref != 'release-please--branches--main' && !contains(github.event.pull_request.labels.*.name, 'verify') && 'stack, usage-setups, usage, unix, hcs' || '' }}
+          allowed-skips: ${{ github.event_name != 'schedule' && !contains(github.event.pull_request.labels.*.name, 'verify') && (github.head_ref != 'release-please--branches--main' || contains(github.event.pull_request.title, '-rc.')) && 'stack, usage-setups, usage, unix, hcs' || '' }}
           jobs: ${{ toJSON(needs) }}
