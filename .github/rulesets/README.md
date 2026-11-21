@@ -3,7 +3,7 @@
 The JSON files in this folder define the repository's rulesets, in the format of GitHub's
 [REST API for rulesets](https://docs.github.com/en/rest/repos/rules). GitHub doesn't read them: merging a change to one
 changes nothing on the repository until an admin applies it. The [Rulesets workflow](../workflows/rulesets.yaml) checks
-every day, and after every change to this folder on `main`, that the live rulesets still match them.
+after every change to this folder on `main` that the live rulesets match them.
 
 | File | Ruleset |
 | --- | --- |
@@ -31,4 +31,4 @@ admins alone.
    ```
 
 The Rulesets workflow fails on `main` until the change is applied. A change made in the settings goes into its file in
-a pull request the same way, so the check passes again.
+a pull request the same way, and `rulesets.sh check` shows whether any did.

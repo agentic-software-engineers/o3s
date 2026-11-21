@@ -1,6 +1,6 @@
 name: Rulesets
-# check that the repository's rulesets match the files of .github/rulesets, which an admin applies: it fails where a
-# change to a file reached main unapplied, or a ruleset changed in the settings without its file. It runs without admin rights, so it leaves the bypass actors uncompared.
+# check that the repository's rulesets match the files of .github/rulesets, which an admin applies, after every change
+# to them on main: it fails until the change is applied. It runs without admin rights, so it leaves the bypass actors uncompared.
 on:
   push:
     branches:
@@ -8,9 +8,6 @@ on:
     paths:
       - .github/rulesets/**
       - .github/workflows/rulesets.yaml
-  # catch a ruleset changed in the settings, once a day
-  schedule:
-    - cron: '37 7 * * *'
 
 permissions:
   contents: read
