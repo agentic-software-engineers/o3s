@@ -3,7 +3,10 @@
 host PORT TARGET: listen on vsock PORT for any CID, and carry each connection to TCP 127.0.0.1:TARGET.
 guest PORT: listen on TCP PORT and carry each connection to vsock PORT on the host, CID 2.
 stdio CID PORT: carry stdin and stdout to vsock PORT on CID, for an SSH ProxyCommand.
+unix PATH TARGET: listen on the Unix socket PATH and carry each connection to TCP 127.0.0.1:TARGET (vfkit's listen mode dials PATH).
+stdio-unix PATH: carry stdin and stdout to the Unix socket PATH (vfkit's connect mode serves PATH).
 """
+import os
 import socket
 import sys
 import threading
@@ -60,10 +63,21 @@ def main():
             return s
 
         serve(listener, dial)
+    elif mode == "unix":
+        path, target = sys.argv[2], int(sys.argv[3])
+        if os.path.exists(path):
+            os.unlink(path)
+        listener = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+        listener.bind(path)
+        serve(listener, lambda: socket.create_connection(("127.0.0.1", target)))
     else:
-        cid, port = int(sys.argv[2]), int(sys.argv[3])
-        s = socket.socket(socket.AF_VSOCK, socket.SOCK_STREAM)
-        s.connect((cid, port))
+        # Dial the guest, over vsock or through vfkit's Unix socket
+        if mode == "stdio-unix":
+            s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            s.connect(sys.argv[2])
+        else:
+            s = socket.socket(socket.AF_VSOCK, socket.SOCK_STREAM)
+            s.connect((int(sys.argv[2]), int(sys.argv[3])))
         reader = threading.Thread(target=lambda: _copy_out(s), daemon=True)
         reader.start()
         # Send stdin until it ends

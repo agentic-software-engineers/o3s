@@ -1,0 +1,7 @@
+(^|\.)github\.com$
+(^|\.)githubusercontent\.com$
+(^|\.)ubuntu\.com$
+(^|\.)docker\.io$
+(^|\.)docker\.com$
+(^|\.)cloudflarestorage\.com$
+(^|\.)amazonaws\.com$
