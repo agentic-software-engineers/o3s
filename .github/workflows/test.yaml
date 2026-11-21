@@ -1,7 +1,9 @@
 name: Test
 on:
-  # run the fast checks on every push to a pull request, and every check on the release's pull request
+  # run the fast checks on every push to a pull request, and every check on one labeled verify, which the release's
+  # pull request has to be
   pull_request:
+    types: [opened, synchronize, reopened, labeled]
   push:
     branches:
       - main
@@ -91,8 +93,8 @@ jobs:
 
   stack:
     # run the suite on every supported release and every architecture the images ship for, once lint and the unit tests pass
-    # leave the long checks to the release's pull request and the daily run, so pull requests and main stay fast
-    if: github.event_name == 'schedule' || github.head_ref == 'release-please--branches--main'
+    # leave the long checks to a pull request labeled verify and the daily run, so pull requests and main stay fast
+    if: github.event_name == 'schedule' || contains(github.event.pull_request.labels.*.name, 'verify')
     needs: [golangci-lint, go-test]
     strategy:
       fail-fast: false
@@ -157,7 +159,7 @@ jobs:
 
   usage-setups:
     # name every setup of the table the usage suite runs on, one job each, where the long checks run
-    if: github.event_name == 'schedule' || github.head_ref == 'release-please--branches--main'
+    if: github.event_name == 'schedule' || contains(github.event.pull_request.labels.*.name, 'verify')
     runs-on: ubuntu-latest
     outputs:
       setups: ${{ steps.setups.outputs.setups }}
@@ -222,8 +224,8 @@ jobs:
   unix:
     # install o3s on a bare host the way a user does and boot a home's VM through it, on the runners that offer virtualization,
     # once lint and the unit tests pass
-    # leave the long checks to the release's pull request and the daily run, so pull requests and main stay fast
-    if: github.event_name == 'schedule' || github.head_ref == 'release-please--branches--main'
+    # leave the long checks to a pull request labeled verify and the daily run, so pull requests and main stay fast
+    if: github.event_name == 'schedule' || contains(github.event.pull_request.labels.*.name, 'verify')
     needs: [golangci-lint, go-test]
     strategy:
       fail-fast: false
@@ -265,8 +267,8 @@ jobs:
 
   hcs:
     # boot a home's VM on Windows, on the runner whose user is an Administrator, once lint and the unit tests pass
-    # leave the long checks to the release's pull request and the daily run, so pull requests and main stay fast
-    if: github.event_name == 'schedule' || github.head_ref == 'release-please--branches--main'
+    # leave the long checks to a pull request labeled verify and the daily run, so pull requests and main stay fast
+    if: github.event_name == 'schedule' || contains(github.event.pull_request.labels.*.name, 'verify')
     needs: [golangci-lint, go-test]
     runs-on: windows-2025
     timeout-minutes: 70
@@ -313,13 +315,13 @@ jobs:
         run: go test -tags e2e -count=1 -timeout 60m -v ./test/e2e/vm/...
 
   merge-checks:
-    # stand for the long checks as one required check: passing where they were skipped outside the release's pull
-    # request and the daily run, failing where any job failed
+    # stand for the long checks as one required check: passing where they were skipped on a pull request without
+    # verify, and failing where any job failed, or skipped on the release's pull request until it is labeled verify
     if: always()
     needs: [stack, usage-setups, usage, unix, hcs]
     runs-on: ubuntu-latest
     steps:
       - uses: re-actors/alls-green@b5b5b37504aa4183270bd3d855c52a67f212be35 # v1.3.0
         with:
-          allowed-skips: ${{ github.event_name != 'schedule' && github.head_ref != 'release-please--branches--main' && 'stack, usage-setups, usage, unix, hcs' || '' }}
+          allowed-skips: ${{ github.event_name != 'schedule' && github.head_ref != 'release-please--branches--main' && !contains(github.event.pull_request.labels.*.name, 'verify') && 'stack, usage-setups, usage, unix, hcs' || '' }}
           jobs: ${{ toJSON(needs) }}
