@@ -14,7 +14,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        layout: [process, siblings]
+        layout: [process, l1, siblings, l2]
         round: [1, 2, 3]
     runs-on: ubuntu-24.04
     timeout-minutes: 120
