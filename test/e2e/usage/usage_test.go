@@ -8,7 +8,6 @@ package usage_test
 
 import (
 	"context"
-	"fmt"
 	"maps"
 	"os"
 	"os/exec"
@@ -343,10 +342,20 @@ func TestUsage(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Setups() = %v", err)
 	}
+	name := os.Getenv("O3S_SETUP")
+	// Stop where the job names a setup the table lacks
+	if name != "" && !slices.ContainsFunc(setups, func(s usagetest.Setup) bool { return s.Name() == name }) {
+		var names []string
+		// Name every setup the table holds
+		for _, s := range setups {
+			names = append(names, s.Name())
+		}
+		t.Fatalf("O3S_SETUP=%s names no setup, want one of %s", name, strings.Join(names, ", "))
+	}
 	// Use o3s on every setup, or on the one the job names
-	for i, s := range setups {
+	for _, s := range setups {
 		// Leave the setups another job runs
-		if row := os.Getenv("O3S_SETUP_ROW"); row != "" && row != fmt.Sprint(i) {
+		if name != "" && s.Name() != name {
 			continue
 		}
 		t.Run(s.Name(), func(t *testing.T) {

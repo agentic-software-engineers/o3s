@@ -13,9 +13,10 @@ on:
 permissions:
   contents: read
 
-# stop a run once a newer push to the same pull request or branch supersedes it
+# stop a pull request's run once a newer push supersedes it, and keep every run of main and the merge queue, each
+# commit a group of its own, the way pytorch keys its groups
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
 
 env:
@@ -154,31 +155,36 @@ jobs:
           test -z "$(git status --porcelain)"
 
   usage-setups:
-    # read the setups the usage suite runs on from the table PICT generated, one job each
-    # leave the long checks to the merge queue and to main, so a pull request's pushes stay fast
-    if: github.event_name != 'pull_request'
+    # name the setups the usage suite runs on: one sample setup on a pull request's push, the way tailscale's
+    # natlab-basic runs one VM test on every pull request, and every setup of the table PICT generated elsewhere
     runs-on: ubuntu-latest
     outputs:
-      rows: ${{ steps.rows.outputs.rows }}
+      setups: ${{ steps.setups.outputs.setups }}
     steps:
       # check out the table
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      # number every row below the columns
-      - id: rows
-        run: echo "rows=$(awk 'NR > 1 && NF { print NR - 2 }' test/usagetest/testdata/setups.golden | jq -sc .)" >> "$GITHUB_OUTPUT"
+      # name every setup the way the suite names it, or the sample alone on a pull request's push
+      - id: setups
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          # take the sample on a pull request's push, every setup elsewhere
+          if [ "$EVENT" = pull_request ]; then
+            echo 'setups=["local-host-80x14-none"]' >> "$GITHUB_OUTPUT"
+          else
+            echo "setups=$(awk 'NR > 1 && NF { gsub("~", "", $4); print $1 "-" $2 "-" $3 "-" $4 }' test/usagetest/testdata/setups.golden | jq -Rsc 'split("\n") | map(select(. != ""))')" >> "$GITHUB_OUTPUT"
+          fi
 
   usage:
-    # use o3s the way a user does on the real stack, one setup of the table per job, once lint and the unit tests pass
-    # leave the long checks to the merge queue and to main, so a pull request's pushes stay fast
-    if: github.event_name != 'pull_request'
+    # use o3s the way a user does on the real stack, one setup per job, once lint and the unit tests pass
     needs: [golangci-lint, go-test, usage-setups]
     strategy:
       fail-fast: false
       matrix:
-        row: ${{ fromJSON(needs.usage-setups.outputs.rows) }}
+        setup: ${{ fromJSON(needs.usage-setups.outputs.setups) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 150
     steps:
@@ -217,7 +223,7 @@ jobs:
           # let bake read the Dockerfile the CLI writes outside the build context, which the runners' Compose
           # withholds by default
           BUILDX_BAKE_ENTITLEMENTS_FS: 0
-          O3S_SETUP_ROW: ${{ matrix.row }}
+          O3S_SETUP: ${{ matrix.setup }}
         run: go test -tags e2e -count=1 -timeout 140m -v -run TestUsage ./test/e2e/usage/...
 
   unix:
@@ -314,13 +320,13 @@ jobs:
         run: go test -tags e2e -count=1 -timeout 60m -v ./test/e2e/vm/...
 
   merge-checks:
-    # stand for every long check as one required check, passing where they were skipped on a pull request's push and
-    # failing where one failed in the merge queue or on main
+    # stand for the long checks as one required check, the way containerd, moby and prometheus gather their jobs:
+    # passing where the stack and VM jobs were skipped on a pull request's push, failing where any job failed
     if: always()
     needs: [stack, usage-setups, usage, unix, hcs]
     runs-on: ubuntu-latest
     steps:
       - uses: re-actors/alls-green@b5b5b37504aa4183270bd3d855c52a67f212be35 # v1.3.0
         with:
-          allowed-skips: ${{ github.event_name == 'pull_request' && 'stack, usage-setups, usage, unix, hcs' || '' }}
+          allowed-skips: ${{ github.event_name == 'pull_request' && 'stack, unix, hcs' || '' }}
           jobs: ${{ toJSON(needs) }}
