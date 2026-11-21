@@ -7,13 +7,17 @@ on:
       - main
     paths-ignore:
       - '**.md'
+  # run every check on main each morning, catching what changes outside the repository, such as images and registries
+  schedule:
+    - cron: '0 4 * * *'
 
 permissions:
   contents: read
 
-# stop a pull request's run once a newer push supersedes it, and keep every run of main, each commit a group of its own
+# stop a pull request's run once a newer push supersedes it, and keep every run of main, each commit and event a group
+# of its own
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
 
 env:
@@ -87,8 +91,8 @@ jobs:
 
   stack:
     # run the suite on every supported release and every architecture the images ship for, once lint and the unit tests pass
-    # leave the long checks to the release's pull request and to main, so every other pull request stays fast
-    if: github.event_name == 'push' || github.head_ref == 'release-please--branches--main'
+    # leave the long checks to the release's pull request, main and the morning run, so every other pull request stays fast
+    if: github.event_name != 'pull_request' || github.head_ref == 'release-please--branches--main'
     needs: [golangci-lint, go-test]
     strategy:
       fail-fast: false
@@ -153,7 +157,7 @@ jobs:
 
   usage-setups:
     # name every setup of the table the usage suite runs on, one job each, where the long checks run
-    if: github.event_name == 'push' || github.head_ref == 'release-please--branches--main'
+    if: github.event_name != 'pull_request' || github.head_ref == 'release-please--branches--main'
     runs-on: ubuntu-latest
     outputs:
       setups: ${{ steps.setups.outputs.setups }}
@@ -218,8 +222,8 @@ jobs:
   unix:
     # install o3s on a bare host the way a user does and boot a home's VM through it, on the runners that offer virtualization,
     # once lint and the unit tests pass
-    # leave the long checks to the release's pull request and to main, so every other pull request stays fast
-    if: github.event_name == 'push' || github.head_ref == 'release-please--branches--main'
+    # leave the long checks to the release's pull request, main and the morning run, so every other pull request stays fast
+    if: github.event_name != 'pull_request' || github.head_ref == 'release-please--branches--main'
     needs: [golangci-lint, go-test]
     strategy:
       fail-fast: false
@@ -261,8 +265,8 @@ jobs:
 
   hcs:
     # boot a home's VM on Windows, on the runner whose user is an Administrator, once lint and the unit tests pass
-    # leave the long checks to the release's pull request and to main, so every other pull request stays fast
-    if: github.event_name == 'push' || github.head_ref == 'release-please--branches--main'
+    # leave the long checks to the release's pull request, main and the morning run, so every other pull request stays fast
+    if: github.event_name != 'pull_request' || github.head_ref == 'release-please--branches--main'
     needs: [golangci-lint, go-test]
     runs-on: windows-2025
     timeout-minutes: 70
