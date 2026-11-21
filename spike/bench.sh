@@ -3,6 +3,8 @@
 set -uo pipefail
 
 REPEATS=3
+# The threads the CPU and disk tests run, matching the measured VMs' 2 vCPU where the layout runs on more
+THREADS="${BENCH_THREADS:-$(nproc)}"
 NODE=kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5
 
 # Print one result row
@@ -35,11 +37,11 @@ fio_json() {
 for _ in $(seq "${REPEATS}"); do
   # CPU on one thread and on every thread, in events per second
   row "cpu 1 thread" "$(sysbench cpu --threads=1 --time=20 run | awk '/events per second/ {print $4}')" "events/s"
-  row "cpu all threads" "$(sysbench cpu --threads="$(nproc)" --time=20 run | awk '/events per second/ {print $4}')" "events/s"
+  row "cpu all threads" "$(sysbench cpu --threads="${THREADS}" --time=20 run | awk '/events per second/ {print $4}')" "events/s"
   # Random 4k reads and writes, as Firecracker's block test runs them
   for rw in randread randwrite; do
     row "disk ${rw} 4k" "$(fio_json '.jobs[0] | (.read.iops + .write.iops) | floor' --name=r --filename=/var/tmp/fio.dat --size=2G \
-      --bs=4k --rw="${rw}" --direct=1 --ioengine=libaio --iodepth=32 --numjobs="$(nproc)" --time_based=1 --runtime=20 \
+      --bs=4k --rw="${rw}" --direct=1 --ioengine=libaio --iodepth=32 --numjobs="${THREADS}" --time_based=1 --runtime=20 \
       --ramp_time=5 --randrepeat=0 --group_reporting)" "iops"
   done
   # Sequential 1M reads and writes
