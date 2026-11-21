@@ -15,6 +15,10 @@
   "prHourlyLimit": 0,
   "minimumReleaseAge": "3 days",
   "minimumReleaseAgeBehaviour": "timestamp-optional",
+  "lockFileMaintenance": {
+    "enabled": true,
+    "schedule": ["on monday"]
+  },
   "osvVulnerabilityAlerts": true,
   "vulnerabilityAlerts": {
     "addLabels": ["security"],
@@ -66,11 +70,6 @@
       "matchFileNames": [".github/**"],
       "matchUpdateTypes": ["pin", "pinDigest", "digest"],
       "groupName": "workflow digests"
-    },
-    {
-      "description": "A digest names a build, not a release, so it has no date an age check could measure.",
-      "matchUpdateTypes": ["digest"],
-      "minimumReleaseAge": "0 days"
     },
     {
       "description": "A minor is compatible by the rules, but a new minor of a base image or the toolchain can still change behaviour.",
