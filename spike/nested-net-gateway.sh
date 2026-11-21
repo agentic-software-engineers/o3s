@@ -26,11 +26,12 @@ sudo dnsmasq --port=5353 --listen-address=127.0.0.1 --bind-interfaces --no-resol
   --server="${domains}/1.1.1.1" --ipset="${direct}/allow" --ipset=/github.com/allow,proxied --address=/#/ \
   --log-queries --log-facility=/tmp/dnsmasq.log
 # Take the cage's HTTPS on the proxy, which reads where each connection was headed
-docker run -d --name proxy --network host --entrypoint mitmdump "${MITM}" --mode transparent --listen-port 8443 \
-  --showhost --set block_global=false >/dev/null
+docker run -d --name proxy --network host -e PYTHONUNBUFFERED=1 --entrypoint mitmdump "${MITM}" --mode transparent \
+  --listen-host 0.0.0.0 --listen-port 8443 --showhost --set block_global=false >/dev/null
 check "the proxy listens on 8443" timeout 120 sh -c 'until ss -ltn | grep -q ":8443 "; do sleep 2; done'
 docker ps -a --filter name=proxy
 docker logs proxy 2>&1 | tail -20
+sudo ss -ltnp | grep 8443
 
 # Steer the scope's lookups to the resolver and its HTTPS to the proxied hosts to the proxy
 sudo iptables -t nat -A OUTPUT -m cgroup --path "${SCOPE}" -p udp --dport 53 -j REDIRECT --to-ports 5353
@@ -54,7 +55,23 @@ check "the cage gets no answer for example.com" fails limactl shell cage -- gete
 ip="$(getent ahostsv4 example.com | awk 'NR == 1 {print $1}')"
 check "the cage is refused example.com by address" fails limactl shell cage -- curl -sSk -o /dev/null --max-time 20 --resolve "example.com:443:${ip}" https://example.com
 check "the cage runs hello-world" limactl shell cage -- docker run --rm hello-world
-check "the cage raises a kind cluster" limactl shell cage -- kind create cluster --wait 5m
+# Keep etcd's data on a tmpfs in the cage VM, as kind's maintainers describe, so its syncs stay in memory
+limactl shell cage -- sudo sh -c 'mkdir -p /tmp/etcd && mount -t tmpfs tmpfs /tmp/etcd'
+limactl shell cage -- sh -c 'cat > /tmp/kind.yaml <<KIND
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+nodes:
+- role: control-plane
+  extraMounts:
+  - hostPath: /tmp/etcd
+    containerPath: /var/lib/etcd
+KIND'
+# Raise the cluster three times, timing each run to Ready
+for run in 1 2 3; do
+  check "the cage raises a kind cluster with etcd on tmpfs, run ${run}" limactl shell cage -- kind create cluster --config /tmp/kind.yaml --wait 5m
+  limactl shell cage -- kind delete cluster >/dev/null 2>&1
+  limactl shell cage -- sudo sh -c 'rm -rf /tmp/etcd/*'
+done
 sudo tail -20 /tmp/dnsmasq.log
 sudo journalctl -k --no-pager | grep cage-refused | tail -10 || true
 echo "--- proxy at the end"
