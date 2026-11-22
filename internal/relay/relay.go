@@ -112,7 +112,7 @@ func (r *Relay) Forward(s Service, dial func(context.Context) (net.Conn, error))
 		}
 		defer r.untrack(target)
 		defer target.Close()
-		pipe(c, target)
+		Pipe(c, target)
 	})
 }
 
@@ -252,8 +252,8 @@ type closeWriter interface {
 	CloseWrite() error
 }
 
-// pipe copies both ways until both directions end.
-func pipe(a, b net.Conn) {
+// Pipe carries bytes both ways between two connections until both directions end, passing each end on as a half-close.
+func Pipe(a, b net.Conn) {
 	var wg sync.WaitGroup
 	wg.Go(func() { copyHalf(b, a) })
 	wg.Go(func() { copyHalf(a, b) })
