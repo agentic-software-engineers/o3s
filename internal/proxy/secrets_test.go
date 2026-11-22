@@ -4,17 +4,12 @@ import (
 	"bufio"
 	"bytes"
 	"compress/gzip"
-	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/rand"
 	"crypto/tls"
 	"crypto/x509"
-	"crypto/x509/pkix"
 	"encoding/base64"
 	"io"
 	"log/slog"
 	"maps"
-	"math/big"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -26,6 +21,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 
+	"github.com/hansehart/o3s/internal/certtest"
 	"github.com/hansehart/o3s/internal/config"
 	"github.com/hansehart/o3s/internal/fixture"
 	"github.com/hansehart/o3s/internal/proxy"
@@ -33,35 +29,6 @@ import (
 
 // strictValidity is the longest a server certificate may last for the strictest clients.
 const strictValidity = 397 * 24 * time.Hour
-
-// testCA makes a CA shaped like the one o3s keeps for a home, and a pool that trusts it.
-func testCA(t *testing.T) (tls.Certificate, *x509.CertPool) {
-	t.Helper()
-	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	// Stop when the key fails to generate
-	if err != nil {
-		t.Fatalf("Setup: GenerateKey = %v", err)
-	}
-	tmpl := &x509.Certificate{
-		SerialNumber:          big.NewInt(1),
-		Subject:               pkix.Name{Organization: []string{"o3s"}, CommonName: "Egress Proxy CA"},
-		NotBefore:             time.Now().Add(-time.Hour),
-		NotAfter:              time.Now().AddDate(10, 0, 0),
-		IsCA:                  true,
-		BasicConstraintsValid: true,
-		MaxPathLenZero:        true,
-		KeyUsage:              x509.KeyUsageCertSign | x509.KeyUsageCRLSign,
-	}
-	der, err := x509.CreateCertificate(rand.Reader, tmpl, tmpl, &key.PublicKey, key)
-	// Stop when the CA fails to sign
-	if err != nil {
-		t.Fatalf("Setup: CreateCertificate = %v", err)
-	}
-	leaf, _ := x509.ParseCertificate(der)
-	roots := x509.NewCertPool()
-	roots.AddCert(leaf)
-	return tls.Certificate{Certificate: [][]byte{der}, PrivateKey: key, Leaf: leaf}, roots
-}
 
 // received is what a host read from one request.
 type received struct {
@@ -102,7 +69,7 @@ type intercept struct {
 // and a client in the cage that trusts the proxy's CA.
 func intercepting(t *testing.T, value string, sites []string, answer http.HandlerFunc) intercept {
 	t.Helper()
-	ca, roots := testCA(t)
+	ca, roots := certtest.CA(t)
 	s, got := recording(t, answer)
 	upstreamRoots := x509.NewCertPool()
 	upstreamRoots.AddCert(s.Certificate())
@@ -417,7 +384,7 @@ func TestProxyShowsACertificateStrictClientsAccept(t *testing.T) {
 
 // A host whose certificate fails the proxy's check is left unreached, and the cage hears of a bad gateway.
 func TestProxyRefusesAHostItCannotTrust(t *testing.T) {
-	ca, roots := testCA(t)
+	ca, roots := certtest.CA(t)
 	s, got := recording(t, silent)
 	u := newUpstreams()
 	u.route(fixture.Port, s)

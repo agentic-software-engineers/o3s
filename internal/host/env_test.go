@@ -42,3 +42,22 @@ func TestEnvKeepsTheMarkerAndNamesTheUser(t *testing.T) {
 		}
 	}
 }
+
+// A home's marker reads back as the one its env file holds, and empty for a home that lacks one.
+func TestMarkerReadsTheMarkerTheHomeHolds(t *testing.T) {
+	home := t.TempDir()
+	_ = os.MkdirAll(filepath.Join(home, ".devcontainer"), 0o750)
+	before := Marker(home)
+	// Stop when the env file stays unwritten
+	if err := Env(home, "o3s-cage"); err != nil {
+		t.Fatalf("Setup: Env() = %v", err)
+	}
+	data, _ := os.ReadFile(filepath.Join(home, ".devcontainer", ".env"))
+
+	got := Marker(home)
+
+	// Require empty first, then the marker the file holds
+	if before != "" || got == "" || !strings.Contains(string(data), "O3S_MARKER="+got+"\n") {
+		t.Errorf("Marker before = %q, after = %q, want empty then the file's marker:\n%s", before, got, data)
+	}
+}
