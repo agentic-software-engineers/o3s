@@ -187,3 +187,21 @@ func TestServeListensAgainAfterTheSocketGoes(t *testing.T) {
 		t.Errorf("read after the socket went %q, want %q", got, fixture.Reply)
 	}
 }
+
+// A socket carries the sticky bit, which keeps it through the runtime folder's periodic clean-ups.
+func TestUnixListenKeepsTheSocketThroughCleanUps(t *testing.T) {
+	u := relay.Unix{Dir: socketDir(t)}
+	l, err := u.Listen(relay.DNS)
+	// Stop when the service fails to listen
+	if err != nil {
+		t.Fatalf("Setup: Listen(%s) = %v", relay.DNS, err)
+	}
+	t.Cleanup(func() { _ = l.Close() })
+
+	info, err := os.Stat(u.Path(relay.DNS))
+
+	// Require the sticky bit on the socket
+	if err != nil || info.Mode()&os.ModeSticky == 0 {
+		t.Errorf("socket mode = %v, %v, want the sticky bit set", info.Mode(), err)
+	}
+}

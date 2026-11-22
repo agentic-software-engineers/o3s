@@ -27,7 +27,7 @@ func newRoot(s Streams) *cobra.Command {
 	root.SetFlagErrorFunc(func(_ *cobra.Command, err error) error {
 		return fmt.Errorf("%w: %w", ErrUsage, err)
 	})
-	root.AddCommand(newInit(), newFirewall(), newSecret(), newFeature(), newProject(), newCage(), newUpdate())
+	root.AddCommand(newInit(), newFirewall(), newSecret(), newFeature(), newProject(), newCage(), newUpdate(), newHost())
 	return root
 }
 

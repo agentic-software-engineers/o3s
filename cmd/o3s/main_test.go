@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"testing"
@@ -117,6 +118,14 @@ const tool = `{
   }}
 }`
 
+// scriptCmds gathers every command the scripts call beyond testscript's own.
+func scriptCmds() map[string]func(ts *testscript.TestScript, neg bool, args []string) {
+	cmds := map[string]func(ts *testscript.TestScript, neg bool, args []string){}
+	maps.Copy(cmds, ptyCmds)
+	maps.Copy(cmds, hostCmds)
+	return cmds
+}
+
 // TestMain lets the scripts run this binary as o3s.
 func TestMain(m *testing.M) {
 	testscript.Main(m, map[string]func(){"o3s": main})
@@ -178,8 +187,9 @@ func TestScripts(t *testing.T) {
 			}
 			env.Setenv("PATH", bin+string(os.PathListSeparator)+env.Getenv("PATH"))
 			ptySetup(env)
+			hostSetup(env)
 			return nil
 		},
-		Cmds: ptyCmds,
+		Cmds: scriptCmds(),
 	})
 }
