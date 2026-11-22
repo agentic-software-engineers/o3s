@@ -52,7 +52,8 @@ func Remove(ctx context.Context, home string) (int, error) {
 	return each(ctx, home, "rm", "--force")
 }
 
-// each runs one engine command on every container of the home's stack, running or not, and reports how many it reached.
+// each runs one engine command on every container of the home's stack, running or stopped, and reports how many it
+// reached.
 func each(ctx context.Context, home string, verb ...string) (int, error) {
 	out, err := docker(ctx, "ps", "-aq", "--filter", "label=com.docker.compose.project.working_dir="+filepath.Join(home, ".devcontainer"))
 	// Hand back an engine that fails to answer
@@ -60,7 +61,7 @@ func each(ctx context.Context, home string, verb ...string) (int, error) {
 		return 0, err
 	}
 	ids := strings.Fields(out)
-	// Leave a home without containers as it is
+	// Leave a home free of containers as it is
 	if len(ids) == 0 {
 		return 0, nil
 	}

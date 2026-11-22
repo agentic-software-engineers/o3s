@@ -20,7 +20,7 @@ var (
 )
 
 // onHome is the app on a home, recording every command it builds, each of which echoes and succeeds, the ones for
-// the real terminal handed over without running.
+// the real terminal handed over idle.
 func onHome(t *testing.T, h menu.Home, width, height int) (model, *[][]string) {
 	t.Helper()
 	var ran [][]string
@@ -39,7 +39,7 @@ func onHome(t *testing.T, h menu.Home, width, height int) (model, *[][]string) {
 	return m, &ran
 }
 
-// screen is what the app shows, without colors and each line without the padding at its end.
+// screen is what the app shows, stripped of colors and each line stripped of the padding at its end.
 func screen(m model) []string {
 	lines := strings.Split(stripped(m.View().Content), "\n")
 	// Trim the padding of every line
@@ -49,7 +49,7 @@ func screen(m model) []string {
 	return lines
 }
 
-// listOf is the list the field the app shows moves through, and nil for a field without one.
+// listOf is the list the field the app shows moves through, and nil for a field lacking one.
 func listOf(f field) *list {
 	// Take the list of the kind of field
 	switch f := f.(type) {
@@ -67,12 +67,12 @@ func listOf(f field) *list {
 // moveTo presses ↓ or ↑ until the row with the value is highlighted, and reports whether it got there.
 func moveTo(m model, value string) (model, bool) {
 	l := listOf(m.field)
-	// Report a field without rows
+	// Report a field lacking rows
 	if l == nil {
 		return m, false
 	}
 	i := slices.IndexFunc(l.shown(), func(o menu.Option) bool { return o.Value == value })
-	// Report a value no row holds
+	// Report a value outside every row
 	if i < 0 {
 		return m, false
 	}
@@ -137,11 +137,11 @@ func answer(t *testing.T, m model, values []string) model {
 	return m
 }
 
-// to moves to the row with the value, and stops the test where no row holds it.
+// to moves to the row with the value, and stops the test where every row lacks it.
 func to(t *testing.T, m model, value string) model {
 	t.Helper()
 	m, ok := moveTo(m, value)
-	// Stop where no row holds the value
+	// Stop where every row lacks the value
 	if !ok {
 		t.Fatalf("no row %q on:\n%s", value, strings.Join(screen(m), "\n"))
 	}
@@ -152,7 +152,7 @@ func to(t *testing.T, m model, value string) model {
 func toTab(t *testing.T, m model, v view, name string) model {
 	t.Helper()
 	i := slices.IndexFunc(v.q.Tabs, func(tab menu.Tab) bool { return tab.Name == name })
-	// Stop where the view has no such tab
+	// Stop where the view lacks the tab
 	if i < 0 {
 		t.Fatalf("no tab %q on:\n%s", name, strings.Join(screen(m), "\n"))
 	}
@@ -207,7 +207,7 @@ func requireLines(t *testing.T, m model, want ...string) {
 	}
 }
 
-// lacksLine requires the screen to show no line that holds the text given.
+// lacksLine requires every line on the screen to lack the text given.
 func lacksLine(t *testing.T, m model, text string) {
 	t.Helper()
 	// Check every line of the screen

@@ -19,7 +19,7 @@ import (
 func Env(home, appArmorProfile string) error {
 	path := filepath.Join(home, ".devcontainer", ".env")
 	marker := markerIn(path)
-	// Draw a new marker where the home holds none
+	// Draw a new marker where the home lacks one
 	if marker == "" {
 		b := make([]byte, 32)
 		// Hand back randomness that fails to draw
@@ -42,10 +42,10 @@ func Env(home, appArmorProfile string) error {
 	return atomicfile.Write(path, buf.Bytes(), 0o644)
 }
 
-// markerIn reads the marker an env file holds, and empty where it holds none.
+// markerIn reads the marker an env file holds, and empty where the file lacks one.
 func markerIn(path string) string {
 	data, err := os.ReadFile(path)
-	// Read a missing file as one without a marker
+	// Read a missing file as one that lacks a marker
 	if err != nil {
 		return ""
 	}

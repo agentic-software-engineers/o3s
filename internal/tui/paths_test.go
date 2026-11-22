@@ -39,7 +39,7 @@ func TestEveryPath(t *testing.T) {
 	// Walk every home
 	for _, h := range menutest.Homes() {
 		paths, err := menutest.Walk(h.Home)
-		// Stop where the menu can't be walked
+		// Stop where the walk through the menu fails
 		if err != nil {
 			t.Fatalf("%s: %v", h.Name, err)
 		}
@@ -77,12 +77,12 @@ func TestScreens(t *testing.T) {
 	// Write the screens every home first shows
 	for _, h := range menutest.Homes() {
 		paths, err := menutest.Walk(h.Home)
-		// Stop where the menu can't be walked
+		// Stop where the walk through the menu fails
 		if err != nil {
 			t.Fatalf("%s: %v", h.Name, err)
 		}
 		var b strings.Builder
-		// Walk every path, writing every screen not written yet
+		// Walk every path, writing each screen the first time it shows
 		for _, p := range paths {
 			walked(t, h.Home, p, usualWidth, usualHeight, func(m model) {
 				shown := strings.Join(screen(m), "\n")

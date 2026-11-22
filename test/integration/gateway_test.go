@@ -204,7 +204,7 @@ func TestTheGatewayAdmitsATimedHostUntilItsEnd(t *testing.T) {
 	}
 	// Require a rule per port that stops at the host's end time
 	for _, port := range []string{strconv.Itoa(fixture.Port), strconv.Itoa(fixture.OtherPort)} {
-		// Flag a port of the timed host the chain leaves without its own stop
+		// Flag a port of the timed host whose rule in the chain lacks its own stop
 		if !strings.Contains(forward, "--dport "+port+" -m time --datestop "+stop+" -j ACCEPT") {
 			t.Errorf("FORWARD admits %s on %s without its end time, rules:\n%s", fixture.OtherHost, port, forward)
 		}
@@ -225,7 +225,7 @@ func TestTheGatewayAdmitsATimedHostUntilItsEnd(t *testing.T) {
 	}
 }
 
-// A host whose end time passed before the gateway started gets no rule and no resolution.
+// A host whose end time passed before the gateway started lacks both a rule and a resolution.
 func TestTheGatewayLeavesOutAnExpiredHost(t *testing.T) {
 	stacktest.AHomePolicy(t, fmt.Sprintf(`{"hosts": [{"name": %q, "ports": [%d], "by": ["user"]}, {"name": %q, "ports": [%d], "by": ["user"], "expires": %q}]}`, fixture.Host, fixture.Port, fixture.OtherHost, fixture.Port, fixture.LongAgoText))
 	// Stop when the gateway fails to come up
@@ -253,7 +253,7 @@ func TestTheGatewayAnswersOnTheCageNetworksRouteAddress(t *testing.T) {
 		t.Fatalf("Setup: Up(gateway): %v", err)
 	}
 	route, err := stacktest.CageRoute(t)
-	// Stop when the cage network names no route address
+	// Stop when the cage network lacks a route address
 	if err != nil || route == "" {
 		t.Fatalf("Setup: CageRoute() = %q, %v", route, err)
 	}
@@ -278,7 +278,7 @@ func TestACageNetworkContainerRoutesThroughTheRouteAddress(t *testing.T) {
 		t.Fatalf("Setup: Up(gateway): %v", err)
 	}
 	route, err := stacktest.CageRoute(t)
-	// Stop when the cage network names no route address
+	// Stop when the cage network lacks a route address
 	if err != nil || route == "" {
 		t.Fatalf("Setup: CageRoute() = %q, %v", route, err)
 	}
@@ -303,7 +303,7 @@ func TestTheCageNetworksRouteAddressResolvesToTheGateway(t *testing.T) {
 		t.Fatalf("Setup: Up(gateway): %v", err)
 	}
 	route, err := stacktest.CageRoute(t)
-	// Stop when the cage network names no route address
+	// Stop when the cage network lacks a route address
 	if err != nil || route == "" {
 		t.Fatalf("Setup: CageRoute() = %q, %v", route, err)
 	}

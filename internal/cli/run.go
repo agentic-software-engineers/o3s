@@ -30,7 +30,7 @@ func Run(ctx context.Context, args []string, s Streams) int {
 	home.Version = version()
 	home.Digests = Digests
 	home.Executable, _ = executable()
-	// Lead a user at a terminal through the menu when no command is named
+	// Lead a user at a terminal through the menu when the command is left out
 	if len(args) == 0 && isInteractive(s.In, s.Out) {
 		return runMenu(ctx, s)
 	}
@@ -59,15 +59,15 @@ func Run(ctx context.Context, args []string, s Streams) int {
 	return 1
 }
 
-// inItsVM names the way into the home's VM where a command finds no home in a folder whose home lives there: in through
-// the VM's shell where it runs, and what starts or finishes it otherwise.
+// inItsVM names the way into the home's VM where a command meets a folder whose home lives in that VM: in through the
+// VM's shell where it runs, and what starts or finishes it otherwise.
 func inItsVM(ctx context.Context, err error) error {
-	// Keep the error of a folder that holds no home of any kind
+	// Keep the error of a folder that lacks a home of any kind
 	if !errors.Is(err, config.ErrNoHome) {
 		return err
 	}
 	m, inVM, merr := homeMachine()
-	// Keep the error of a folder whose home has no VM
+	// Keep the error of a folder whose home lacks a VM
 	if !inVM {
 		return err
 	}
@@ -76,14 +76,14 @@ func inItsVM(ctx context.Context, err error) error {
 		return errors.New("this home lives in its VM, run its commands there: o3s cage shell --vm")
 	}
 	state, serr := m.state(ctx)
-	// Point a VM that is not running at what starts or finishes it
+	// Point a stopped VM at what starts or finishes it
 	if serr == nil && state != vm.Running {
 		return fmt.Errorf("this home lives in its VM: %w", notRunning(m.name, state))
 	}
 	return errors.New("this home lives in its VM, run its commands there: o3s cage shell --vm")
 }
 
-// isUsage reports whether an error comes from the command line rather than from the home's files.
+// isUsage reports whether an error comes from the command line.
 func isUsage(err error) bool {
 	// Read a broken settings file as a failure of the home, whatever rule it breaks
 	if errors.Is(err, config.ErrMalformed) {

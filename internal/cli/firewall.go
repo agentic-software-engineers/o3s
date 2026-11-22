@@ -41,7 +41,7 @@ func newFirewallAdd() *cobra.Command {
 		Args:  usage(cobra.MinimumNArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			now := time.Now()
-			// Take the hosts' secret off where the command says none
+			// Take the hosts' secret off where the command passes "none" as the secret
 			if ch.Secret == config.WithoutSecret {
 				ch.Secret, ch.NoSecret = "", true
 			}
@@ -51,7 +51,7 @@ func newFirewallAdd() *cobra.Command {
 				ch.ForGood = true
 			case forValue != "":
 				d, err := parseFor(forValue)
-				// Hand back a duration that reads as no time
+				// Hand back a duration that reads as zero time
 				if err != nil {
 					return err
 				}
@@ -86,7 +86,7 @@ func newFirewallAdd() *cobra.Command {
 				}
 			}
 			return change(cmd, func(c *config.Config) error {
-				// Allow every host the command names, all of them or none
+				// Allow every host the command names as one change that lands whole
 				for _, name := range args {
 					one := ch
 					one.Name = name
@@ -253,7 +253,7 @@ func showFirewall(cmd *cobra.Command, limit int, asJSON bool) error {
 		fmt.Fprintln(out, "Blocked names show while the stack runs")
 		return nil
 	}
-	// Say that nothing is blocked yet
+	// Say that the blocked list is still empty
 	if len(blocked) == 0 {
 		fmt.Fprintln(out, "Nothing blocked yet, names the cage asks for and the firewall refuses show here")
 		return nil
@@ -292,7 +292,7 @@ func newFirewallPrune() *cobra.Command {
 			for _, h := range c.Expired(now) {
 				names = append(names, h.Name)
 			}
-			// Say that nothing has expired
+			// Say that the expired list is empty
 			if len(names) == 0 {
 				fmt.Fprintln(out, "No expired host")
 				return nil
@@ -322,10 +322,10 @@ func newFirewallPrune() *cobra.Command {
 }
 
 // hostTraffic is how what the gateway recorded for a host reads: the data it moved, and when it last moved any, marked
-// dead after a whole window without data.
+// dead after a whole idle window.
 func hostTraffic(t traffic.Host, now time.Time) menu.Traffic {
 	seen := traffic.Ago(t.LastSeen, now)
-	// Mark a host that moved no data for a whole window
+	// Mark a host that stayed silent for a whole window
 	if t.Dead(now) {
 		seen += ", dead"
 	}

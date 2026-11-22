@@ -23,7 +23,7 @@ func Data() string {
 	return base("XDG_DATA_HOME", ".local/share")
 }
 
-// Proxy is the folder of the proxy's CA, the only one the proxy mounts.
+// Proxy is the folder of the proxy's CA, the sole folder the proxy mounts.
 func Proxy() string {
 	return filepath.Join(State(), "proxy")
 }

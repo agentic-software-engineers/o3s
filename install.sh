@@ -15,7 +15,7 @@
 #        within its channel. Then installs the devcontainer CLI o3s rebuilds the cage with, with
 #        its own Node, into ~/.local/share/o3s/devcontainers. Then installs Lima, which runs the
 #        home's VM, checked against the checksum this script pins for its archive, into
-#        ~/.local/share/o3s/lima, unless run with --no-lima. On Linux, Lima runs VMs with QEMU,
+#        ~/.local/share/o3s/lima, a step --no-lima skips. On Linux, Lima runs VMs with QEMU,
 #        which the system's package manager installs.
 #
 # ENVIRONMENT
@@ -24,6 +24,9 @@
 #        O3S_RELEASES_FEED           the releases feed --rc reads (default: GitHub's releases.atom)
 #        O3S_LIMA_URL                where Lima's archive comes from, still checked against its pin (default: GitHub releases)
 #        XDG_DATA_HOME               the data folder o3s keeps its devcontainer CLI and Lima in (default: ~/.local/share)
+#
+# SEE ALSO
+#        o3s init, .github/workflows/publish.yaml
 set -eu
 
 repo="hansehart/o3s"
@@ -242,7 +245,7 @@ if [ "${lima}" = "yes" ]; then
 		tar -C "${lima_prefix}" -xzf "${tmp}/${archive}" || die "failed to unpack ${archive} into ${lima_prefix}"
 		say "Installed Lima ${lima_version} to ${lima_prefix}"
 	fi
-	# Point a Linux host without QEMU, which Lima runs VMs with there, at the packages it needs
+	# Point a Linux host that lacks QEMU, which Lima runs VMs with there, at the packages it needs
 	if [ "${os}" = "linux" ]; then
 		qemu_arch="x86_64"
 		# Name QEMU's binary for this architecture

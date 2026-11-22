@@ -30,7 +30,7 @@ func TestParseRefSplitsAFeatureID(t *testing.T) {
 	}
 }
 
-// A feature's package is its id without the tag.
+// A feature's package is its id stripped of the tag.
 func TestRefPackageLeavesTheTagOut(t *testing.T) {
 	r := registry.Ref{Store: fixture.Store, ID: fixture.Feature, Tag: fixture.Major}
 
@@ -40,7 +40,7 @@ func TestRefPackageLeavesTheTagOut(t *testing.T) {
 	}
 }
 
-// An id that names no feature in a store is turned away.
+// An id that fails to name a feature in a store is turned away.
 func TestParseRefTurnsAwayAMalformedID(t *testing.T) {
 	// Check every malformed id
 	for _, in := range []string{"", fixture.Feature, path.Dir(fixture.Store) + "/" + fixture.Feature, fixture.Store + "/Tool", fixture.Store + "/" + fixture.Feature + ":", fixture.Store + "/" + fixture.Feature + "@sha256:0"} {

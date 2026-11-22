@@ -25,7 +25,8 @@ const binary = "#!/bin/sh\necho o3s version " + latest + "\n"
 // asset is the name the release gives this host's binary.
 var asset = "o3s-linux-" + runtime.GOARCH
 
-// aRelease serves a releases page whose newest is the latest release, with checksums that match its binary unless tampered.
+// aRelease serves a releases page whose newest is the latest release, with checksums that match its binary until
+// tampered with.
 func aRelease(t *testing.T, tampered bool) {
 	t.Helper()
 	sum := sha256.Sum256([]byte(binary))
@@ -155,7 +156,7 @@ func TestReplaceSwapsTheBinary(t *testing.T) {
 	}
 }
 
-// A release names three numbers, with or without a release candidate, and a build of no release names something else.
+// A release names three numbers and maybe a release candidate, and a build outside a release names something else.
 func TestIsReleaseKnowsReleaseCandidates(t *testing.T) {
 	tests := []struct {
 		version string
@@ -176,10 +177,10 @@ func TestIsReleaseKnowsReleaseCandidates(t *testing.T) {
 	}
 }
 
-// A dev build takes its release files from the folder O3S_RELEASE_URL names, and asks for one where it names none.
+// A dev build takes its release files from the folder O3S_RELEASE_URL names, and asks for one where it is unset.
 func TestFolderOfADevBuild(t *testing.T) {
 	t.Setenv("O3S_RELEASE_URL", "")
-	// Require a dev build without a folder turned away
+	// Require a dev build turned away for lacking a folder
 	if _, err := release.Folder("dev"); !errors.Is(err, release.ErrNoFolder) {
 		t.Errorf("Folder(dev) = %v, want ErrNoFolder", err)
 	}

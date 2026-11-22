@@ -9,19 +9,20 @@ import (
 	"github.com/hansehart/o3s/internal/menu"
 )
 
-// yes and no are the answers a confirmation gives.
+// yes and no are the agreement and the refusal a confirmation gives.
 const (
 	yes = "yes"
 	no  = "no"
 )
 
-// confirm takes yes or no, numbered one below the other, showing the change it is about above the question.
+// confirm takes an agreement or a refusal, numbered one below the other, showing the change it is about above the
+// question.
 type confirm struct {
 	q   menu.Question
 	yes bool
 }
 
-// newConfirm starts a confirmation on its default, and on no where the question names none.
+// newConfirm starts a confirmation on its default, and on the refusal where the default is empty.
 func newConfirm(q menu.Question) confirm {
 	return confirm{q: q, yes: len(q.Default) > 0 && q.Default[0] == yes}
 }

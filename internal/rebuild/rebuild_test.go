@@ -55,7 +55,7 @@ func TestRunRebuildsTheCage(t *testing.T) {
 	}
 }
 
-// A CLI on PATH serves where o3s's data folder holds none, and a host without either reports none.
+// A CLI on PATH serves where o3s's data folder lacks one, and a host lacking both reports the CLI missing.
 func TestCLIFindsTheCLIOnPath(t *testing.T) {
 	t.Setenv("XDG_DATA_HOME", t.TempDir())
 	bin := t.TempDir()
@@ -66,7 +66,7 @@ func TestCLIFindsTheCLIOnPath(t *testing.T) {
 	t.Setenv("PATH", t.TempDir())
 	_, without := rebuild.CLI()
 
-	// Require the CLI on PATH found, and none reported without it
+	// Require the CLI on PATH found, and missing once PATH lacks it
 	if !onPath || without {
 		t.Errorf("CLI() on PATH = %v and without = %v, want true and false", onPath, without)
 	}

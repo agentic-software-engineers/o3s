@@ -33,7 +33,8 @@ const feed = `<feed>
 </feed>
 `
 
-// aRelease serves a release holding the stub for Linux and macOS on amd64 and arm64, and checksums that match it unless tampered.
+// aRelease serves a release holding the stub for Linux and macOS on amd64 and arm64, and checksums that match it until
+// tampered with.
 func aRelease(t *testing.T, tampered bool) string {
 	t.Helper()
 	dir := t.TempDir()
@@ -97,7 +98,7 @@ func aHost(t *testing.T, kernel, arch string, fakes map[string]string) host {
 	return h
 }
 
-// install runs install.sh on the host against a release, without the devcontainer CLI and Lima.
+// install runs install.sh on the host against a release, skipping the devcontainer CLI and Lima.
 func (h host) install(t *testing.T, release string) (string, error) {
 	t.Helper()
 	return h.run(t, release, "--no-devcontainer", "--no-lima")
@@ -163,7 +164,7 @@ func TestInstallStopsOnATamperedDownload(t *testing.T) {
 	}
 }
 
-// A host o3s ships no binary for is named and turned away.
+// A host o3s lacks a binary for is named and turned away.
 func TestInstallTurnsAwayAnUnsupportedHost(t *testing.T) {
 	tests := []struct{ kernel, arch, want string }{
 		{"Linux", "riscv64", "riscv64"},
@@ -203,7 +204,8 @@ func TestInstallLeavesTheAttestationToTheUser(t *testing.T) {
 	}
 }
 
-// A host without xz, which the devcontainer CLI's installer unpacks Node with, is told what to do before anything installs.
+// A host that lacks xz, which the devcontainer CLI's installer unpacks Node with, is told what to do before anything
+// installs.
 func TestInstallNamesTheMissingXz(t *testing.T) {
 	h := aHost(t, "Linux", "x86_64", map[string]string{})
 
@@ -227,7 +229,7 @@ func TestTheSignerWorkflowExists(t *testing.T) {
 		t.Fatalf("ReadFile(install.sh) = %v", err)
 	}
 	m := regexp.MustCompile(`(?m)^signer="\$\{repo\}/(.+)"$`).FindSubmatch(data)
-	// Stop when the script pins no signer
+	// Stop when the script lacks a signer pin
 	if m == nil {
 		t.Fatalf("install.sh pins no signer")
 	}
@@ -240,7 +242,7 @@ func TestTheSignerWorkflowExists(t *testing.T) {
 	}
 }
 
-// A devcontainer CLI o3s installed before is kept, so a second install downloads nothing for it.
+// A devcontainer CLI o3s installed before is kept, so a second install skips its download.
 func TestInstallKeepsTheDevcontainerCLIItInstalled(t *testing.T) {
 	h := aHost(t, "Linux", "x86_64", map[string]string{})
 	bin := filepath.Join(h.home, ".local", "share", "o3s", "devcontainers", "bin")
@@ -315,7 +317,7 @@ func aLima(t *testing.T, h host) string {
 	return filepath.Dir(bin)
 }
 
-// A Lima o3s installed before is kept, so a second install downloads nothing for it.
+// A Lima o3s installed before is kept, so a second install skips its download.
 func TestInstallKeepsTheLimaItInstalled(t *testing.T) {
 	h := aHost(t, "Darwin", "arm64", map[string]string{})
 	prefix := aLima(t, h)
@@ -349,7 +351,7 @@ func TestInstallStopsOnATamperedLima(t *testing.T) {
 	}
 }
 
-// A Linux host without QEMU, which Lima runs VMs with there, is told how to add it.
+// A Linux host that lacks QEMU, which Lima runs VMs with there, is told how to add it.
 func TestInstallNamesTheMissingQEMU(t *testing.T) {
 	h := aHost(t, "Linux", "x86_64", map[string]string{})
 	aLima(t, h)
@@ -369,7 +371,7 @@ func TestInstallLeavesLimaOutOnRequest(t *testing.T) {
 	out, err := h.run(t, aRelease(t, false), "--no-devcontainer", "--no-lima")
 
 	_, unpacked := os.Stat(filepath.Join(h.home, ".local", "share", "o3s", "lima"))
-	// Require o3s in place, with neither Lima nor a word about it or QEMU
+	// Require o3s in place, with Lima left out and the output silent on Lima and QEMU
 	if err != nil || !h.installed() || unpacked == nil || strings.Contains(out, "Installed Lima") || strings.Contains(out, "Found Lima") || strings.Contains(out, "Install QEMU") {
 		t.Errorf("install.sh --no-lima = %v, Lima unpacked %v, want o3s alone\n%s", err, unpacked == nil, out)
 	}

@@ -35,11 +35,11 @@ func Load(file string) (*Workspace, error) {
 		return nil, err
 	}
 	v, err := hujson.Parse(data)
-	// Hand back a workspace that holds no JSON with comments
+	// Hand back a workspace that fails to parse as JSON with comments
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", file, err)
 	}
-	// Turn away a workspace that holds no object
+	// Turn away a workspace that holds something other than an object
 	if _, ok := v.Value.(*hujson.Object); !ok {
 		return nil, fmt.Errorf("%s holds no object", file)
 	}
@@ -57,7 +57,7 @@ func (w *Workspace) Folders() []Folder {
 	// Read every folder
 	for _, e := range w.find().Elements {
 		o, ok := e.Value.(*hujson.Object)
-		// Skip an entry that holds no object
+		// Skip an entry that holds something other than an object
 		if !ok {
 			continue
 		}
@@ -90,16 +90,16 @@ func (w *Workspace) Add(f Folder) error {
 		}
 	}
 	data, err := json.MarshalIndent(f, indent, unit)
-	// Hand back a folder JSON cannot hold, which strings never are
+	// Hand back a folder JSON fails to hold, though every string fits
 	if err != nil {
 		return err
 	}
 	v, err := hujson.Parse(data)
-	// Hand back JSON that fails to parse back, which JSON from the encoder never is
+	// Hand back JSON that fails to parse back, though JSON from the encoder always does
 	if err != nil {
 		return err
 	}
-	// Close the list on its own line where it held nothing
+	// Close the list on its own line where it was empty
 	if len(arr.Elements) == 0 && len(arr.AfterExtra) == 0 {
 		arr.AfterExtra = hujson.Extra("\n" + strings.TrimSuffix(indent, unit))
 	}
@@ -123,7 +123,7 @@ func (w *Workspace) Remove(p string) bool {
 	// Find the folder of the path
 	for i, e := range arr.Elements {
 		o, ok := e.Value.(*hujson.Object)
-		// Drop it, and close the list where it held nothing else
+		// Drop it, and close the list where it was the sole entry
 		if ok && field(o, "path") == p {
 			arr.Elements = append(arr.Elements[:i], arr.Elements[i+1:]...)
 			// Close an emptied list on the line it opens
@@ -151,7 +151,7 @@ func (w *Workspace) folders() *hujson.Array {
 		Name:  hujson.Value{BeforeExtra: hujson.Extra("\n" + w.unit()), Value: hujson.String("folders")},
 		Value: hujson.Value{BeforeExtra: hujson.Extra(" "), Value: a},
 	}
-	// Close the workspace on its own line where it held nothing
+	// Close the workspace on its own line where it was empty
 	if len(root.Members) == 0 && len(root.AfterExtra) == 0 {
 		root.AfterExtra = hujson.Extra("\n")
 	}
@@ -171,7 +171,7 @@ func (w *Workspace) find() *hujson.Array {
 	return &hujson.Array{}
 }
 
-// unit is the indent the workspace's top-level members carry, a tab where it shows none, as VS Code writes it.
+// unit is the indent the workspace's top-level members carry, a tab by default, as VS Code writes it.
 func (w *Workspace) unit() string {
 	root := w.v.Value.(*hujson.Object)
 	// Take the indent of the first top-level member
@@ -184,7 +184,7 @@ func (w *Workspace) unit() string {
 	return "\t"
 }
 
-// field reads a string member of an object, and empty where it holds none.
+// field reads a string member of an object, and empty where the object lacks it.
 func field(o *hujson.Object, key string) string {
 	// Find the member of that name
 	for _, m := range o.Members {
@@ -199,7 +199,7 @@ func field(o *hujson.Object, key string) string {
 // name reads a member's name.
 func name(m hujson.ObjectMember) string {
 	l, ok := m.Name.Value.(hujson.Literal)
-	// Take a name that holds no string as empty
+	// Take a name that holds something other than a string as empty
 	if !ok {
 		return ""
 	}

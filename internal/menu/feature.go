@@ -149,7 +149,7 @@ func installedDialog(h Home, a Answers, pkg string) (Question, bool) {
 			return optionsView(h, pkg, pv.Options), false
 		}
 		o, ok := pickedOption(a, pv.Options)
-		// End where the user picked no option
+		// End where the pick misses every option
 		if !ok {
 			return Question{}, true
 		}
@@ -169,7 +169,7 @@ func installedDialog(h Home, a Answers, pkg string) (Question, bool) {
 // for, then the confirmation.
 func discoverDialog(h Home, a Answers, marked []string) (Question, bool) {
 	added, removed := changes(h, marked)
-	// End where the marks change nothing
+	// End where the marks leave the features as they are
 	if len(added) == 0 && len(removed) == 0 {
 		return Question{}, true
 	}
@@ -180,7 +180,7 @@ func discoverDialog(h Home, a Answers, marked []string) (Question, bool) {
 	}
 	// Ask the value of every secret the new features wait for, before the confirmation
 	for _, name := range pv.Waiting {
-		// Ask for a value not yet given
+		// Ask for a value the answers still lack
 		if !a.has(valueKey(name)) {
 			return valueQuestion(name), false
 		}
@@ -231,23 +231,23 @@ func storeDialog(h Home, a Answers, picked []string) (Question, bool) {
 // featurePlan builds the commands the feature view's dialogs lead to.
 func featurePlan(h Home, a Answers) []Command {
 	tab, picked := view(a)
-	// Go back to the view where the user picked nothing or stepped back, an empty Discover tab taking every mark off
+	// Go back to the view where the pick is empty or the user stepped back, an empty Discover tab taking every mark off
 	if len(picked) == 0 && tab != discoverTab || a.get("action") == back {
 		return nil
 	}
-	// Order the features without asking, since moving them back undoes it
+	// Order the features at once, since moving them back undoes it
 	if tab == installedTab && picked[0] == Order && len(picked) > 1 {
 		return orderPlan(h, picked[2:])
 	}
-	// Add the store the user typed, which asks no confirmation since removing it undoes it
+	// Add the store the user typed at once, since removing it undoes it
 	if tab == storesTab && picked[0] == add {
 		return []Command{{Args: []string{"feature", "store", "add", strings.TrimSpace(a.get("store"))}}}
 	}
-	// Run nothing where the marks change nothing
+	// Stay idle where the marks leave the features as they are
 	if added, removed := changes(h, picked); tab == discoverTab && len(added) == 0 && len(removed) == 0 {
 		return nil
 	}
-	// Set an option without asking, since editing it back undoes it
+	// Set an option at once, since editing it back undoes it
 	if tab == installedTab && a.get("action") == configure {
 		return configurePlan(h, a, picked[0])
 	}
@@ -270,7 +270,7 @@ func installedPlan(pkg string) []Command {
 	return []Command{{Args: []string{"feature", "rm", pkg, "--no-preview", "--yes"}}}
 }
 
-// configurePlan sets the option the user edited at once and quietly, since editing it back undoes it, and runs nothing
+// configurePlan sets the option the user edited at once and quietly, since editing it back undoes it, and stays idle
 // where its value stays.
 func configurePlan(h Home, a Answers, pkg string) []Command {
 	pv, err := h.Lookup.Add(pkg)
@@ -280,7 +280,7 @@ func configurePlan(h Home, a Answers, pkg string) []Command {
 	}
 	o, ok := pickedOption(a, pv.Options)
 	v := a.get(optionKey(o))
-	// Run nothing where the user picked no option or kept its value
+	// Stay idle where the pick misses every option or keeps its value
 	if !ok || !a.has(optionKey(o)) || v == current(h, pkg, o) {
 		return nil
 	}
@@ -311,10 +311,10 @@ func discoverPlan(h Home, a Answers, marked []string) []Command {
 	return cmds
 }
 
-// orderPlan installs the features in the order the user dropped them in, at once and quietly, and runs nothing where
+// orderPlan installs the features in the order the user dropped them in, at once and quietly, and stays idle where
 // the order stays as it was.
 func orderPlan(h Home, order []string) []Command {
-	// Run nothing for an order that stays
+	// Stay idle for an order that stays
 	if slices.Equal(order, packages(h)) {
 		return nil
 	}
@@ -327,7 +327,7 @@ func changes(h Home, marked []string) ([]string, []string) {
 	var added, removed []string
 	// Take every marked feature the cage lacks
 	for _, id := range marked {
-		// Take a feature not installed yet
+		// Take a feature the cage still lacks
 		if !slices.Contains(packages(h), id) {
 			added = append(added, id)
 		}
@@ -345,7 +345,7 @@ func changes(h Home, marked []string) ([]string, []string) {
 // featureFacts are the facts a feature's detail shows: its tag, its store and the options it sets.
 func featureFacts(h Home, pkg string) []Fact {
 	i := slices.IndexFunc(h.Installed, func(f Installed) bool { return f.Package == pkg })
-	// Show nothing for a feature the home lacks
+	// Show an empty list for a feature the home lacks
 	if i < 0 {
 		return nil
 	}
@@ -394,7 +394,7 @@ func optionsView(h Home, pkg string, options []FeatureOption) Question {
 func pickedOption(a Answers, options []FeatureOption) (FeatureOption, bool) {
 	_, picked := pickedIn(a, optionsKey)
 	i := slices.IndexFunc(options, func(o FeatureOption) bool { return len(picked) > 0 && o.Name == picked[0] })
-	// Report a pick that names no option
+	// Report a pick that misses every option
 	if i < 0 {
 		return FeatureOption{}, false
 	}
@@ -507,7 +507,7 @@ func summaryTail(pv Preview) string {
 	if pv.Env > 0 {
 		parts = append(parts, words.Count(pv.Env, "env value", "env values"))
 	}
-	// Leave out what the change carries none of
+	// Hand back an empty summary for an empty change
 	if len(parts) == 0 {
 		return ""
 	}
@@ -544,7 +544,7 @@ func InstalledRow(f Installed, hosts []config.Host) []string {
 var OptionHeader = []string{"OPTION", "VALUE", "DEFAULT"}
 
 // OptionRow is how a feature option shows in a row after its name, piped or in the options view: the value the
-// feature sets, a dash where it sets none, and the one the option falls back to.
+// feature sets, a dash where it leaves the value empty, and the one the option falls back to.
 func OptionRow(o FeatureOption, value string) []string {
 	return []string{words.Or(value, "–"), o.Default}
 }

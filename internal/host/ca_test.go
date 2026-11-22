@@ -44,7 +44,7 @@ func TestCAWritesItsFilesWithTheirModes(t *testing.T) {
 	}
 }
 
-// The cert is a CA that signs the proxy's leaf certs and nothing below them.
+// The cert is a CA that signs the proxy's leaf certs, which end the chain.
 func TestCAIsARootThatSignsLeavesAlone(t *testing.T) {
 	dir := aCA(t)
 	data, err := os.ReadFile(filepath.Join(dir, "mitmproxy-ca.crt"))
@@ -60,7 +60,7 @@ func TestCAIsARootThatSignsLeavesAlone(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ParseCertificate() = %v", err)
 	}
-	// Require a root CA with no CA below it
+	// Require a root CA with a path length of zero, so every certificate below it is a leaf
 	if !cert.IsCA || cert.MaxPathLen != 0 || !cert.MaxPathLenZero {
 		t.Errorf("cert IsCA %v, MaxPathLen %d, want a CA with path length 0", cert.IsCA, cert.MaxPathLen)
 	}

@@ -154,8 +154,8 @@ func TestEveryFeatureDialogEndsInItsCommand(t *testing.T) {
 	}.check(t, aHomeWithTheTool())
 }
 
-// A new order of the installed features runs one quiet feature order over all of them, and nothing where the order
-// stays.
+// A new order of the installed features runs one quiet feature order over all of them, and stays idle where the
+// order stays.
 func TestOrderingFeaturesRunsOneQuietOrder(t *testing.T) {
 	h := aHomeWithTheTool()
 	h.Installed = append(h.Installed, Installed{Package: otherPkg, Tag: fixture.Major})
@@ -167,14 +167,14 @@ func TestOrderingFeaturesRunsOneQuietOrder(t *testing.T) {
 	if diff := cmp.Diff([]Command{{Args: []string{"feature", "order", otherPkg, toolPkg}, Quiet: true}}, ordered(otherPkg, toolPkg)); diff != "" {
 		t.Errorf("new order (-want +got):\n%s", diff)
 	}
-	// Require nothing for the order the features have
+	// Require an empty plan for the order the features have
 	if got := ordered(toolPkg, otherPkg); got != nil {
 		t.Errorf("same order = %v, want nothing", got)
 	}
 }
 
 // The confirmation of marks shows what the new features bring and what leaves with the unmarked ones, summed up, and
-// starts on no where something leaves.
+// starts on the refusal where something leaves.
 func TestMarkingFeaturesConfirmsTheWholeChange(t *testing.T) {
 	asked, _ := walk(t, aHomeWithTheTool(), []string{"feature"}, []string{discoverTab, otherPkg}, []string{""}, []string{""}, []string{"no"})
 
@@ -183,7 +183,7 @@ func TestMarkingFeaturesConfirmsTheWholeChange(t *testing.T) {
 	if diff := cmp.Diff([]string{otherPkg + ":" + fixture.Major, hostLine, otherHostLine, toolPkg, goneLine}, got.Preview); diff != "" {
 		t.Errorf("preview (-want +got):\n%s", diff)
 	}
-	// Require the summary of both, and no as the start
+	// Require the summary of both, and the refusal as the start
 	if want := "Adds " + fixture.OtherFeature + " with 2 hosts, 2 secrets wait for a value, removes 1 feature"; got.Summary != want || got.Default[0] != "no" {
 		t.Errorf("summary = %q, default %v, want %q and no", got.Summary, got.Default, want)
 	}

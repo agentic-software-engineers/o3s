@@ -43,7 +43,8 @@ func fakes(t *testing.T, scripts map[string]string) {
 	t.Setenv("PATH", bin)
 }
 
-// aWindows fakes WSL's Windows side, whose VS Code keeps the given settings, or none where they are empty.
+// aWindows fakes WSL's Windows side, whose VS Code keeps the given settings, or lacks a settings file where
+// they are empty.
 func aWindows(t *testing.T, settings string) {
 	t.Helper()
 	appData := t.TempDir()
@@ -51,7 +52,7 @@ func aWindows(t *testing.T, settings string) {
 		"cmd.exe": `echo 'C:\Users\ubuntu\AppData\Roaming'`,
 		"wslpath": `[ "$1" = -u ] && echo '` + appData + `'`,
 	})
-	// Leave VS Code without settings where the test gives none
+	// Leave VS Code free of settings where the test's settings are empty
 	if settings == "" {
 		return
 	}
@@ -80,7 +81,7 @@ func TestHostPathTakesTheWindowsFormUnderWSL(t *testing.T) {
 	}
 }
 
-// Outside WSL the host path is the folder as it is, and VS Code needs nothing first.
+// Outside WSL the host path is the folder as it is, and VS Code is ready as it is.
 func TestLinuxKeepsTheFolderAndNeedsNothing(t *testing.T) {
 	t.Setenv("SSH_CONNECTION", "")
 	t.Setenv("WSL_DISTRO_NAME", "")
@@ -121,14 +122,14 @@ func TestWSLCheckReadsTheSetting(t *testing.T) {
 		if tt.ok && err != nil {
 			t.Errorf("%s: Check() = %v, want nil", tt.name, err)
 		}
-		// Report a missing setting the check lets through, or names without both lines
+		// Report a missing setting the check lets through, or an error that lacks either line
 		if !tt.ok && (err == nil || !strings.Contains(err.Error(), `"dev.containers.executeInWSL": true`) || !strings.Contains(err.Error(), `"dev.containers.executeInWSLDistro": "Ubuntu"`)) {
 			t.Errorf("%s: Check() = %v, want both lines named", tt.name, err)
 		}
 	}
 }
 
-// aSession puts the test in a session over SSH, in a VS Code window's terminal or not, naming the given host.
+// aSession puts the test in a session over SSH, inside or outside a VS Code window's terminal, naming the given host.
 func aSession(t *testing.T, window bool, host string) {
 	t.Helper()
 	t.Setenv("SSH_CONNECTION", fmt.Sprintf("%s %d %s %d", fixture.Address, fixture.Port, fixture.Address, fixture.OtherPort))

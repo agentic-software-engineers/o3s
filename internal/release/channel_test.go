@@ -33,7 +33,7 @@ func TestChannelOfReadsTheBinarysName(t *testing.T) {
 	}
 }
 
-// feed is a releases feed whose newest entry is not the highest release, with a tag of no release among them.
+// feed is a releases feed whose newest entry falls below the highest release, with a stray tag among them.
 const feed = `<?xml version="1.0" encoding="UTF-8"?>
 <feed xmlns="http://www.w3.org/2005/Atom">
   <entry><link rel="alternate" type="text/html" href="https://github.com/hansehart/o3s/releases/tag/v1.0.0"/></entry>
@@ -42,7 +42,7 @@ const feed = `<?xml version="1.0" encoding="UTF-8"?>
   <entry><link rel="alternate" type="text/html" href="https://github.com/hansehart/o3s/releases/tag/nightly"/></entry>
 </feed>`
 
-// The newest release counts release candidates, and orders them by semver rather than by the feed.
+// The newest release counts release candidates, and orders them by semver, whatever the feed's order.
 func TestNewestReadsTheFeed(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /o3s/releases.atom", func(w http.ResponseWriter, _ *http.Request) {

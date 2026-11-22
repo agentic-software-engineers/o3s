@@ -25,7 +25,7 @@ const (
 	ThirdHost = "example.net"
 	// RefusedName is a name the gateway refuses.
 	RefusedName = "blocked.example"
-	// AbsentName is a name nothing knows.
+	// AbsentName is a name every resolver lacks.
 	AbsentName = "absent.example"
 	// NewHost and NextHost are two hosts a test allows afresh, apart from every other.
 	NewHost  = "new.example.net"
@@ -130,9 +130,9 @@ const (
 	Candidate = "2.0.0-rc.1"
 	// NextCandidate is the release candidate after Candidate.
 	NextCandidate = "2.0.0-rc.2"
-	// FurtherCandidate is a release candidate beyond NewerVersion, which only the candidates' channel takes.
+	// FurtherCandidate is a release candidate beyond NewerVersion, which the candidates' channel alone takes.
 	FurtherCandidate = "3.0.0-rc.1"
-	// DevBuild is a build that names no release.
+	// DevBuild is a build outside every release.
 	DevBuild = "1.0.0-SNAPSHOT-abc1234"
 )
 
@@ -190,7 +190,7 @@ const (
 
 // Moments, in UTC with whole seconds.
 const (
-	// NowText is the moment a test looks from, Go's own reference time, which names no day of its own.
+	// NowText is the moment a test looks from, Go's own reference time, a neutral day.
 	NowText = "2006-01-02T15:04:05Z"
 	// InAnHourText is an hour after NowText.
 	InAnHourText = "2006-01-02T16:04:05Z"

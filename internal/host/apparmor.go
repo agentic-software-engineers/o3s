@@ -22,7 +22,7 @@ var (
 
 // Profile loads the cage's confinement profile where the kernel runs AppArmor and lacks it, and says what it found or did.
 func Profile(ctx context.Context, file string) (string, error) {
-	// Leave a host without AppArmor alone
+	// Leave a host that lacks AppArmor alone
 	if exec.CommandContext(ctx, "aa-enabled", "--quiet").Run() != nil {
 		return "", nil
 	}
@@ -47,7 +47,7 @@ func Profile(ctx context.Context, file string) (string, error) {
 // loaded reports whether the kernel's policy names the cage's profile.
 func loaded() bool {
 	data, err := os.ReadFile(mountTable)
-	// Read a mount table that fails to read as no policy
+	// Read a mount table that fails to read as free of policy
 	if err != nil {
 		return false
 	}

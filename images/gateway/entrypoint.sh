@@ -21,7 +21,7 @@ CONF=/etc/dnsmasq.conf
 # Local port the proxy listens on
 PROXY_PORT=8443
 
-# Expiry for a resolved entry (seconds), refreshed on each resolution. Static seeds never expire.
+# Expiry for a resolved entry (seconds), refreshed on each resolution. Static seeds stay for good.
 IPSET_TIMEOUT=3600
 
 # Filled by parse_allowlist and read by everything after it.
@@ -119,7 +119,7 @@ parse_allowlist() {
       die "inject-host $addr needs a hostname not an IP"
     fi
 
-    # Leave out a host whose end time has passed, so the cage neither reaches nor resolves it
+    # Leave out a host whose end time has passed, so it drops out of the cage's routes and names
     if [ "$expires" != "-" ] && [[ ! "$expires" > "$now" ]]; then
       log "leaving out $addr, closed at $expires"
       continue
@@ -181,7 +181,7 @@ create_sets() {
     ipset create "allowed-p$p" hash:net timeout "$IPSET_TIMEOUT" -exist
   done
 
-  # Addresses named directly, which carry no name to check and so keep the address-only path
+  # Addresses named directly, which lack a name to check and so keep the path by address alone
   ipset create static-hosts hash:net timeout 0 -exist
 
   # One counting set per host, filled the way its allowing sets are
@@ -190,7 +190,7 @@ create_sets() {
   done
 }
 
-# Forwarding is set from outside this container, so verify it rather than write it.
+# Forwarding is set from outside this container, so verify it and leave it as it is.
 require_forwarding() {
   [ "$(cat /proc/sys/net/ipv4/ip_forward)" = 1 ] || die "net.ipv4.ip_forward is not enabled (set it via docker-compose sysctls)"
 }
@@ -212,7 +212,7 @@ apply_firewall() {
     # Divert every timed domain on the HTTPS port
     for rule in "${TIMED[@]}"; do
       read -r set p stop kind <<<"$rule"
-      # Divert only a domain on the HTTPS port, since the proxy checks names
+      # Divert a domain on the HTTPS port to the proxy, since the proxy checks names
       if [ "$kind" = domain ] && [ "$p" = 443 ]; then
         iptables -t nat -A PREROUTING -s "$CAGE_SUBNET" -p tcp --dport 443 -m set --match-set "$set" dst -m time --datestop "$stop" -j REDIRECT --to-ports "$PROXY_PORT"
       fi
@@ -238,7 +238,7 @@ apply_firewall() {
   iptables -A OUTPUT -m conntrack --ctstate NEW -m owner --uid-owner "$PROBE_USER" -j CONNMARK --set-mark "$PROBE_MARK"
   iptables -A OUTPUT -j O3S_ACCT
 
-  # Only cage DNS, loopback and return traffic reach the gateway itself
+  # Admit cage DNS, loopback and return traffic alone to the gateway itself
   iptables -F INPUT
   iptables -A INPUT -j O3S_ACCT
   iptables -A INPUT -i lo -j ACCEPT
@@ -249,7 +249,7 @@ apply_firewall() {
   iptables -A INPUT -s "$CAGE_SUBNET" -p tcp --dport "$PROXY_PORT" -j ACCEPT
   iptables -A INPUT -p icmp -j ACCEPT
 
-  # Default-deny, so only allow-listed destinations leave the cage on their declared ports
+  # Default-deny, so allow-listed destinations alone leave the cage, each on its declared ports
   iptables -F FORWARD
   iptables -A FORWARD -j O3S_ACCT
   iptables -A FORWARD -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
@@ -265,15 +265,15 @@ apply_firewall() {
       iptables -A FORWARD -s "$CAGE_SUBNET" -p tcp -m set --match-set "$set" dst --dport "$p" -m time --datestop "$stop" -j ACCEPT
     done
   fi
-  # Deny cage QUIC/HTTP-3, since interception is TCP-only and UDP would bypass the proxy
+  # Deny cage QUIC/HTTP-3, since interception covers TCP and UDP would bypass the proxy
   iptables -A FORWARD -s "$CAGE_SUBNET" -p udp -m multiport --dports 80,443 -j REJECT --reject-with icmp-port-unreachable
   # Fail fast instead of hanging on blocked connections
   iptables -A FORWARD -j REJECT --reject-with icmp-admin-prohibited
 }
 
-# Seed static entries directly, since no resolution will ever fill them.
+# Seed static entries directly, since they stay outside every resolution.
 seed_static() {
-  # Seed only where the policy names addresses
+  # Seed where the policy names addresses
   if [ ${#STATIC_SEEDS[@]} -gt 0 ]; then
     # Seed every address on its port
     for seed in "${STATIC_SEEDS[@]}"; do
@@ -305,7 +305,7 @@ write_resolver_conf() {
   # Start every lifetime with an empty log, since the record already holds what earlier ones refused
   rm -f "$DNS_LOG_DIR"/dns.log*
 
-  # Append the lines only where the policy names domains
+  # Append the lines where the policy names domains
   if [ ${#DOMAIN_LINES[@]} -gt 0 ]; then
     printf '%s\n' "${DOMAIN_LINES[@]}" >> "$CONF"
   fi

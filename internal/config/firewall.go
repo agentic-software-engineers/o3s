@@ -42,7 +42,7 @@ func (c *Config) Allow(ch Change) ([]Diff, error) {
 	return diffs, nil
 }
 
-// Remove takes the user off a host and drops the host once nothing needs it. It returns what still
+// Remove takes the user off a host and drops the host once it is left unneeded. It returns what still
 // needs a host it keeps.
 func (c *Config) Remove(name string) ([]string, error) {
 	i := slices.IndexFunc(c.Hosts, func(h Host) bool { return h.Name == name })
@@ -51,12 +51,12 @@ func (c *Config) Remove(name string) ([]string, error) {
 		return nil, fmt.Errorf("%w %s", ErrUnknownHost, name)
 	}
 	h := c.Hosts[i]
-	// Turn away a host the user never added, since its features own it
+	// Turn away a host its features brought, since they own it
 	if !slices.Contains(h.By, user) {
 		return nil, fmt.Errorf("%s is %w: %s", name, ErrOwnedByFeatures, strings.Join(h.By, ", "))
 	}
 	h.By = slices.DeleteFunc(slices.Clone(h.By), func(b string) bool { return b == user })
-	// Drop the host once nothing needs it
+	// Drop the host once it is left unneeded
 	if len(h.By) == 0 {
 		c.Hosts = slices.Delete(c.Hosts, i, i+1)
 		return nil, nil
@@ -68,11 +68,11 @@ func (c *Config) Remove(name string) ([]string, error) {
 // newHost builds a host from a change, filling what the change leaves empty with its default.
 func newHost(ch Change) Host {
 	h := Host{Name: ch.Name, Ports: ch.Ports, Secret: ch.Secret, Inject: ch.Inject, By: []string{user}, Expires: ch.Expires}
-	// Allow the HTTPS port when no port is named
+	// Allow the HTTPS port when the port list is empty
 	if len(h.Ports) == 0 {
 		h.Ports = []int{443}
 	}
-	// Inject a secret into the header when no site is named
+	// Inject a secret into the header when the site list is empty
 	if h.Secret != "" && len(h.Inject) == 0 {
 		h.Inject = []string{"header"}
 	}
@@ -99,7 +99,7 @@ func update(h Host, ch Change) (Host, []Diff) {
 		h.Secret = ch.Secret
 	}
 	inject := ch.Inject
-	// Inject a newly given secret into the header when no site is named or kept
+	// Inject a newly given secret into the header when the change and the host both leave the sites empty
 	if len(inject) == 0 && h.Secret != "" && len(h.Inject) == 0 {
 		inject = []string{"header"}
 	}

@@ -16,7 +16,7 @@ import (
 // path is where the gateway keeps its record, in its own state volume.
 const path = "/state/traffic.json"
 
-// Window is how long a host may move no data before it counts as dead.
+// Window is how long a host may stay idle before it counts as dead.
 const Window = 30 * 24 * time.Hour
 
 // Record is what the gateway recorded, with every moment in Unix seconds.
@@ -59,7 +59,7 @@ func Read(ctx context.Context, home string) (Record, bool, error) {
 		return Record{}, false, nil
 	}
 	out, err := exec.CommandContext(ctx, "docker", "exec", ids[0], "cat", path).Output() //nolint:gosec // the id comes from the engine itself, for the stack's own gateway
-	// Read a gateway that wrote no record yet as one that recorded nothing
+	// Read a gateway yet to write a record as one with an empty record
 	if err != nil {
 		return Record{}, true, nil
 	}
@@ -67,21 +67,21 @@ func Read(ctx context.Context, home string) (Record, bool, error) {
 	return r, true, err
 }
 
-// Parse reads a record the gateway wrote, and nothing as an empty record.
+// Parse reads a record the gateway wrote, and empty data as an empty record.
 func Parse(data []byte) (Record, error) {
 	var r Record
-	// Read a gateway that wrote nothing as an empty record
+	// Read an empty file from the gateway as an empty record
 	if len(data) == 0 {
 		return r, nil
 	}
-	// Hand back a record that holds no JSON
+	// Hand back a record that fails to parse as JSON
 	if err := json.Unmarshal(data, &r); err != nil {
 		return Record{}, fmt.Errorf("read the traffic record: %w", err)
 	}
 	return r, nil
 }
 
-// Dead reports whether a host was tracked for a whole window and moved no data in it.
+// Dead reports whether a host was tracked for a whole window and stayed idle through it.
 func (h Host) Dead(now time.Time) bool {
 	window := int64(Window / time.Second)
 	return h.Since > 0 && now.Unix()-h.Since >= window && now.Unix()-h.LastSeen >= window
@@ -117,9 +117,9 @@ func Size(bytes int64) string {
 	return fmt.Sprintf("%.1f %s", value, units[unit])
 }
 
-// Ago writes how long ago a moment was, in its largest whole unit, and never for a moment that never was.
+// Ago writes how long ago a moment was, in its largest whole unit, and "never" for an unset moment.
 func Ago(at int64, now time.Time) string {
-	// Name a moment that never was
+	// Name a moment that stays unset
 	if at <= 0 {
 		return "never"
 	}

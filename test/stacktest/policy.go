@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// AnEmptyPolicy hands the stack a policy without hosts for the length of the test.
+// AnEmptyPolicy hands the stack a policy with zero hosts for the length of the test.
 func AnEmptyPolicy(tb testing.TB) {
 	tb.Helper()
 	AHomePolicy(tb, `{"hosts": []}`)

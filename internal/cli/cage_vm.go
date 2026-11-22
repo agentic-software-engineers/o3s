@@ -61,14 +61,14 @@ func (m machine) remove(cmd *cobra.Command) error {
 }
 
 // shell opens a shell in the machine's running VM, or runs a command there, failing with the command's own exit code,
-// and points a VM that is not running at the command that starts it.
+// and points a VM that stays down at the command that starts it.
 func (m machine) shell(cmd *cobra.Command, args []string) error {
 	state, err := m.state(cmd.Context())
 	// Hand back a VM whose state stays unknown
 	if err != nil {
 		return err
 	}
-	// Point a VM that is not running at what starts it
+	// Point a stopped VM at what starts it
 	if state != vm.Running {
 		return notRunning(m.name, state)
 	}
@@ -80,7 +80,7 @@ func (m machine) shell(cmd *cobra.Command, args []string) error {
 	return err
 }
 
-// notRunning names a VM that is not running, and what starts it: init for one it has yet to finish, cage start
+// notRunning names a VM that stays down, and what starts it: init for one it has yet to finish, cage start
 // otherwise.
 func notRunning(name string, state vm.State) error {
 	// Point a VM init has yet to finish at init

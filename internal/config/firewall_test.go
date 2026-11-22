@@ -32,7 +32,7 @@ func TestAllowGivesANewHostItsDefaults(t *testing.T) {
 	if diff := cmp.Diff(want, c.Hosts); diff != "" {
 		t.Errorf("Allow(%s) hosts (-want +got):\n%s", fixture.Subdomain, diff)
 	}
-	// Require a new host to report no changed fields
+	// Require a new host to report an empty list of changed fields
 	if len(diffs) != 0 {
 		t.Errorf("Allow(%s) diffs = %v, want none for a new host", fixture.Subdomain, diffs)
 	}
@@ -158,7 +158,7 @@ func TestRemoveKeepsAHostAFeatureStillNeeds(t *testing.T) {
 	}
 }
 
-// Removing a host only features brought is turned away, since the features own it.
+// Removing a host that features alone brought is turned away, since the features own it.
 func TestRemoveTurnsAwayAHostOnlyFeaturesBrought(t *testing.T) {
 	c := aConfigThatAllows(config.Host{Name: fixture.OtherHost, Ports: []int{fixture.Port}, By: []string{fixture.Store + "/" + fixture.Feature}})
 
@@ -193,7 +193,7 @@ func TestAllowOpensForGoodAndTakesTheSecretOff(t *testing.T) {
 		t.Fatalf("Allow(%s) = %v", fixture.Subdomain, err)
 	}
 	want := []config.Host{{Name: fixture.Subdomain, Ports: []int{fixture.Port}, By: []string{"user"}}}
-	// Require the host open for good without a secret
+	// Require the host open for good and free of a secret
 	if diff := cmp.Diff(want, c.Hosts); diff != "" {
 		t.Errorf("Allow(%s) hosts (-want +got):\n%s", fixture.Subdomain, diff)
 	}

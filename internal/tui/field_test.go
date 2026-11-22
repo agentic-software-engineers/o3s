@@ -68,21 +68,21 @@ func TestListsClearTheFilterBeforeTheyStepBack(t *testing.T) {
 		_, cleared := press(f, keys("s", esc)...)
 		_, stepped := press(f, keys("s", esc, esc)...)
 
-		// Require the filter cleared without an outcome, then a step back
+		// Require the filter cleared with the field still open, then a step back
 		if cleared.outcome != open || stepped.outcome != back {
 			t.Errorf("%T: esc = %v then %v, want open then back", f, cleared.outcome, stepped.outcome)
 		}
 	}
 }
 
-// A multi-select that names no filter takes letters as nothing and offers no search.
+// A multi-select free of a filter passes letters by and leaves search out.
 func TestMultiFiltersWhereItSaysSo(t *testing.T) {
 	q := features
 	q.Filterable = false
 
 	f, _ := press(newMulti(q), keys("ru")...)
 
-	// Require no filter and no search among the keys
+	// Require an empty filter and keys free of search
 	if m := f.(multi); m.filter != "" || strings.Contains(stripped(footer(usualWidth, f.Keys())), "search") {
 		t.Errorf("filter %q, keys %q, want neither", m.filter, stripped(footer(usualWidth, f.Keys())))
 	}
@@ -103,7 +103,7 @@ func TestMultiMarksWhileFiltering(t *testing.T) {
 	}
 }
 
-// Enter without a mark takes the highlighted option, and the defaults start marked.
+// Enter on empty marks takes the highlighted option, and the defaults start marked.
 func TestMultiTakesTheHighlightedOptionOrTheDefaults(t *testing.T) {
 	_, highlighted := press(newMulti(features), down, down, enter)
 	q := features
@@ -136,7 +136,8 @@ func TestTextStartsFromItsDefault(t *testing.T) {
 	}
 }
 
-// A confirmation answers on its numbers, y or n at once, and on Enter with the one the arrows chose, no by default.
+// A confirmation answers on its numbers, y or n at once, and on Enter with the one the arrows chose, the refusal by
+// default.
 func TestConfirmAnswersYesOrNo(t *testing.T) {
 	apply := menu.Question{Key: "apply", Kind: menu.Confirm, Title: "Apply?"}
 
@@ -270,7 +271,7 @@ func TestViewCarriesARowAndDropsIt(t *testing.T) {
 
 	f, r := press(newView(q), typed("m")[0], down, down)
 
-	// Require the row moved in the view, nothing answered, and the keys that carry it
+	// Require the row moved in the view, the field still open, and the keys that carry it
 	if view := stripped(f.View(usualWidth, usualHeight)); r.outcome != open || !strings.Contains(view, "↕ "+fixture.Feature) || strings.Index(view, fixture.ThirdFeature) > strings.Index(view, fixture.Feature) {
 		t.Errorf("outcome %v, view:\n%s", r.outcome, view)
 	}
@@ -287,21 +288,21 @@ func TestViewCarriesARowAndDropsIt(t *testing.T) {
 	}
 }
 
-// Ctrl+arrows pick a row up and move it at once, Esc puts it back, and a row dropped where it was answers nothing.
+// Ctrl+arrows pick a row up and move it at once, Esc puts it back, and a row dropped in place leaves the field open.
 func TestViewPutsARowBack(t *testing.T) {
 	q := aView
 	q.Tabs = []menu.Tab{{Name: "Installed", Reorder: true, Options: []menu.Option{{Value: fixture.Feature}, {Value: fixture.OtherFeature}}}}
 
 	back, r := press(newView(q), tea.KeyPressMsg{Code: tea.KeyDown, Mod: tea.ModCtrl}, esc)
 
-	// Require the first order, the cursor on the row, and no answer
+	// Require the first order, the cursor on the row, and the field still open
 	if view := stripped(back.View(usualWidth, usualHeight)); r.outcome != open || !strings.Contains(view, "❯ "+fixture.Feature) || strings.Index(view, fixture.OtherFeature) < strings.Index(view, fixture.Feature) {
 		t.Errorf("outcome %v, view:\n%s", r.outcome, view)
 	}
 
 	_, r = press(newView(q), typed("m")[0], down, tea.KeyPressMsg{Code: tea.KeyUp}, enter)
 
-	// Require no answer for a row dropped where it was
+	// Require the field still open for a row dropped where it was
 	if r.outcome != open {
 		t.Errorf("dropped in place = %v, want no answer", r.values)
 	}
@@ -414,10 +415,10 @@ func lineWith(lines []string, text string) string {
 	return ""
 }
 
-// column is the screen column a text starts at in a line, and -1 for a line without it.
+// column is the screen column a text starts at in a line, and -1 for a line lacking it.
 func column(line, text string) int {
 	before, _, found := strings.Cut(line, text)
-	// Report a line without the text
+	// Report a line lacking the text
 	if !found {
 		return -1
 	}

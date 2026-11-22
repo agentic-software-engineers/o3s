@@ -15,7 +15,8 @@ const orderKey = "overrideFeatureInstallOrder"
 // ErrOrder marks an install order that puts a feature before one it installs after.
 var ErrOrder = errors.New("invalid install order")
 
-// InstallOrder hands back the order the config installs its features in, as store/id, and none where it fixes no order.
+// InstallOrder hands back the order the config installs its features in, as store/id, and an empty list where it
+// leaves the order open.
 func (c *Config) InstallOrder() []string {
 	// Look at every top-level member
 	for _, m := range c.v.Value.(*hujson.Object).Members {
@@ -35,7 +36,7 @@ func (c *Config) InstallOrder() []string {
 func (c *Config) SetInstallOrder(order []string) {
 	root := c.v.Value.(*hujson.Object)
 	i := slices.IndexFunc(root.Members, func(m hujson.ObjectMember) bool { return name(m) == orderKey })
-	// Drop the member where no feature is left to order
+	// Drop the member where the list of features to order is empty
 	if len(order) == 0 {
 		// Drop a member the config holds
 		if i >= 0 {
@@ -54,11 +55,11 @@ func (c *Config) SetInstallOrder(order []string) {
 }
 
 // Ordered works out the order features install in: the ones named first in that order, then the rest as they
-// stand, every feature moved only as far as it must to follow the features it installs after. A first that puts a
+// stand, every feature moved just as far as it must to follow the features it installs after. A first that puts a
 // feature before one it installs after is turned away with both named.
 func Ordered(features []string, after map[string][]string, first []string) ([]string, error) {
 	base := slices.Clone(first)
-	// Turn away a feature named first that is not installed
+	// Turn away a feature named first that is missing from the installed ones
 	for _, f := range first {
 		// Name the feature the home lacks
 		if !slices.Contains(features, f) {
@@ -67,7 +68,7 @@ func Ordered(features []string, after map[string][]string, first []string) ([]st
 	}
 	// Follow the features named first with the rest, as they stand
 	for _, f := range features {
-		// Take a feature not named first
+		// Take a feature outside the ones named first
 		if !slices.Contains(base, f) {
 			base = append(base, f)
 		}
@@ -94,7 +95,7 @@ func Ordered(features []string, after map[string][]string, first []string) ([]st
 	return out, nil
 }
 
-// ready reports whether every feature one installs after is in place, so none of them is still left.
+// ready reports whether every feature one installs after is in place, each one off the list of those still waiting.
 func ready(f string, deps, left []string) bool {
 	// Check every feature this one follows
 	for _, dep := range deps {

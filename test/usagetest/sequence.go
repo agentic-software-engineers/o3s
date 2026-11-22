@@ -26,7 +26,7 @@ func Orders(n int) [][]int {
 	cover(open, first)
 	cover(open, last)
 	rng := rand.New(rand.NewPCG(uint64(n), uint64(n))) //nolint:gosec // a fixed seed keeps the orders the same on every run
-	// Add the order that covers the most open triples until none is open
+	// Add the order that covers the most open triples until every triple is covered
 	for len(open) > 0 {
 		best, most := []int(nil), -1
 		// Weigh every candidate the seed draws

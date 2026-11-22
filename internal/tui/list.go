@@ -11,7 +11,7 @@ import (
 	"github.com/hansehart/o3s/internal/menu"
 )
 
-// rows is how many options a list shows at once where the screen leaves it no height of its own.
+// rows is how many options a list shows at once where the screen leaves its height unset.
 const rows = 12
 
 // list is the options, the filter, the cursor and the marks that a choice, a multi-select and a view's tab share.
@@ -24,8 +24,8 @@ type list struct {
 	numbered bool
 	// marks are the options marked, and nil for a list that takes one.
 	marks map[string]bool
-	// before are the options as they stood when the user picked the row under the cursor up, and nil while the user
-	// holds no row.
+	// before are the options as they stood when the user picked the row under the cursor up, and nil while every row
+	// rests in place.
 	before []menu.Option
 }
 
@@ -149,7 +149,7 @@ func (l list) marked() []string {
 // line that says what the highlighted one is below it, within the height given.
 func (l list) view(width, height int) []string {
 	shown := l.shown()
-	// Name a filter that matches nothing
+	// Name a filter that misses every option
 	if len(shown) == 0 {
 		return []string{dim.Render("  No match for \"" + l.filter + "\"")}
 	}
@@ -166,7 +166,7 @@ func (l list) view(width, height int) []string {
 		height--
 	}
 	fit := len(shown)
-	// Fit the options into the height, keeping a line for the ones below, and into the usual rows without a height
+	// Fit the options into the height, keeping a line for the ones below, and into the usual rows at an unset height
 	switch {
 	case height > 0 && fit+detail > height:
 		fit = max(height-1-detail, 1)
@@ -299,7 +299,7 @@ func pad(v string, width int) string {
 
 // cut shortens a line to a width, ending it in an ellipsis where it runs longer.
 func cut(line string, width int) string {
-	// Keep a line whole where the screen leaves no width yet or it fits
+	// Keep a line whole where the screen's width is still unset or the line fits
 	if width <= 0 || ansi.StringWidth(line) <= width {
 		return line
 	}

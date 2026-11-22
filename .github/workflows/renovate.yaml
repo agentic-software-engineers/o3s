@@ -13,7 +13,7 @@ on:
         type: choice
         options: [debug, info, warn]
 
-# One run at a time, so two runs never open the same pull request twice.
+# One run at a time, so each pull request opens once.
 concurrency:
   group: renovate
   cancel-in-progress: false
@@ -21,13 +21,13 @@ concurrency:
 jobs:
   renovate:
     runs-on: ubuntu-latest
-    # The app token carries the rights, so the built-in token needs none.
+    # The app token carries the rights, so the built-in token stays empty.
     permissions: {}
     steps:
       # Act as the renovate app, so its pull requests start the checks.
       - name: App token
         id: app-token
-        # Pinned to a commit: a tag can be moved, a commit cannot.
+        # Pinned to a commit: a tag can move, a commit stays fixed.
         uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         with:
           client-id: ${{ vars.RENOVATE_APP_CLIENT_ID }}
@@ -36,7 +36,7 @@ jobs:
           permission-pull-requests: write
           # The dependency dashboard is an issue, and labels go through the same API.
           permission-issues: write
-          # Without this, an update to a pinned action in .github/workflows is refused.
+          # Lets renovate update a pinned action in .github/workflows.
           permission-workflows: write
           # Dependabot alerts, which renovate reads to recognise a security update.
           permission-vulnerability-alerts: read
@@ -48,11 +48,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          # The job grants the built-in token nothing, so checkout needs the app token.
+          # The job leaves the built-in token empty, so checkout needs the app token.
           token: ${{ steps.app-token.outputs.token }}
           persist-credentials: false
 
-      # Run renovate against this repository only, at the version pinned here.
+      # Run renovate against this repository alone, at the version pinned here.
       - name: Renovate
         uses: renovatebot/github-action@acdd6bda8b035c99ce59d5675816af2aa65a1774 # v46.3.14
         with:

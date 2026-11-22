@@ -46,7 +46,7 @@ func roundTrip(t *testing.T, in string, edit func(*Workspace)) string {
 	return string(data)
 }
 
-// A folder added lands at the end, in the tabs VS Code writes, and leaves again without a trace.
+// A folder added lands at the end, in the tabs VS Code writes, and leaves again cleanly.
 func TestAddAndRemoveKeepTheLayout(t *testing.T) {
 	added := roundTrip(t, template, func(w *Workspace) {
 		// Stop when the folder is turned away
@@ -115,7 +115,7 @@ func TestAddKeepsCommentsAndTrailingCommas(t *testing.T) {
 	}
 }
 
-// A workspace without folders gets its list, and a path listed already is turned away.
+// A workspace that lacks folders gets its list, and a path listed already is turned away.
 func TestAddStartsTheListAndTurnsAwayADuplicate(t *testing.T) {
 	got := roundTrip(t, "{}\n", func(w *Workspace) {
 		// Stop when the folder is turned away

@@ -29,7 +29,7 @@ func newStoreAdd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			offered := map[string][]registry.Feature{}
 			_, err := edit(func(c *config.Config) error {
-				// Add every store, all of them or none
+				// Add every store as one change that lands whole
 				for _, id := range args {
 					// Turn away a store id that breaks a rule
 					if _, err := c.AddStore(id); err != nil {
@@ -81,7 +81,7 @@ func newStoreRm() *cobra.Command {
 				return nil
 			}
 			_, err = edit(func(c *config.Config) error {
-				// Remove every store, all of them or none
+				// Remove every store as one change that lands whole
 				for _, id := range args {
 					// Hand back a store the list lacks
 					if err := c.RemoveStore(id); err != nil {

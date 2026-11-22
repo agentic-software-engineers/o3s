@@ -19,7 +19,7 @@ import (
 func pinned(t *testing.T, script []byte, name string) string {
 	t.Helper()
 	m := regexp.MustCompile(`(?m)^` + name + `="([^"]+)"$`).FindSubmatch(script)
-	// Stop when the script pins no such value
+	// Stop when the script lacks a pin for such a value
 	if m == nil {
 		t.Fatalf("install.sh pins no %s", name)
 	}
@@ -49,7 +49,7 @@ func TestTheDevcontainersInstallerMatchesItsPin(t *testing.T) {
 		t.Fatalf("GET %s = %v", url, err)
 	}
 	defer resp.Body.Close()
-	// Stop when GitHub serves no installer at the tag
+	// Stop when GitHub fails to serve an installer at the tag
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("GET %s = %s", url, resp.Status)
 	}
@@ -86,7 +86,7 @@ func TestTheLimaArchivesMatchTheirPins(t *testing.T) {
 		t.Fatalf("GET %s = %v", url, err)
 	}
 	defer resp.Body.Close()
-	// Stop when GitHub serves no checksums at the release
+	// Stop when GitHub fails to serve checksums at the release
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("GET %s = %s", url, resp.Status)
 	}

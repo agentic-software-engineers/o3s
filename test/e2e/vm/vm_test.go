@@ -79,7 +79,7 @@ func TestTheHomesVM(t *testing.T) {
 			t.Fatalf("devcontainer up in the VM = %v\n%s", err, out)
 		}
 		id := regexp.MustCompile(`"containerId":"([0-9a-f]+)"`).FindStringSubmatch(out)
-		// Stop when the CLI names no cage
+		// Stop when the CLI's output lacks a cage
 		if id == nil {
 			t.Fatalf("devcontainer up in the VM names no container\n%s", out)
 		}

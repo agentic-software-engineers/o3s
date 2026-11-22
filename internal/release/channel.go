@@ -64,7 +64,7 @@ func Newest(ctx context.Context) (string, error) {
 			newest = m[1]
 		}
 	}
-	// Turn away a feed that names no release
+	// Turn away a feed that lacks a release
 	if newest == "" {
 		return "", fmt.Errorf("the releases feed names no release")
 	}

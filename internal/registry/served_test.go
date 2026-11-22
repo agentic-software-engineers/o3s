@@ -13,8 +13,8 @@ import (
 	"github.com/hansehart/o3s/internal/fixture"
 )
 
-// A registry that turns a store away reads as a plain cause, by what the registry answered, and never with the
-// addresses it asked.
+// A registry that turns a store away reads as a plain cause, by what the registry answered, keeping the addresses
+// it asked out of it.
 func TestServedNamesWhyARegistryTurnsAStoreAway(t *testing.T) {
 	asked := &http.Request{URL: &url.URL{Scheme: "https", Host: fixture.Host, Path: "/token"}}
 	tests := []struct {

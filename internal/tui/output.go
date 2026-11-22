@@ -29,7 +29,7 @@ func (p *pane) add(line string) {
 
 // redraw puts a line in the place of the last one, as a progress bar redraws itself.
 func (p *pane) redraw(line string) {
-	// Add the line where there is none to redraw
+	// Add the line where the pane is still empty
 	if len(p.lines) == 0 {
 		p.add(line)
 		return
@@ -72,11 +72,12 @@ func (p pane) View() string {
 	return p.view.View()
 }
 
-// wrapped breaks a line at its words to a width, going on under a listed item, and keeps it whole where there is no width yet.
+// wrapped breaks a line at its words to a width, going on under a listed item, and keeps it whole while the width is
+// still unset.
 func wrapped(line string, width int) []string {
 	hang := hangOf(ansi.Strip(line))
 	room := width - hang
-	// Keep a line whole where the screen leaves no room
+	// Keep a line whole where the screen lacks room
 	if width <= 0 || room <= 0 {
 		return []string{line}
 	}

@@ -6,7 +6,7 @@ import (
 	"github.com/hansehart/o3s/internal/menu"
 )
 
-// An update without the cli confirms the parts left marked and runs without restarting the menu.
+// An update that leaves the cli out confirms the parts left marked and keeps the menu running.
 func TestFlowUpdateWithoutTheCli(t *testing.T) {
 	m, ran := onHome(t, homeNamed(t, "running"), usualWidth, usualHeight)
 	m, _ = drive(m, keys("upd", enter, space, enter)...)

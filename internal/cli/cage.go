@@ -43,7 +43,7 @@ func showCage(cmd *cobra.Command) error {
 		return m.show(cmd)
 	}
 	dir, err := cageHome()
-	// Hand back a folder that holds no home
+	// Hand back a folder that lacks a home
 	if err != nil {
 		return err
 	}
@@ -64,7 +64,7 @@ func newCageIDE() *cobra.Command {
 		Args:  usage(cobra.NoArgs),
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			dir, err := cageHome()
-			// Hand back a folder that holds no home
+			// Hand back a folder that lacks a home
 			if err != nil {
 				return err
 			}
@@ -110,7 +110,7 @@ func newCageStart() *cobra.Command {
 				return m.start(cmd)
 			}
 			dir, err := cageHome()
-			// Hand back a folder that holds no home
+			// Hand back a folder that lacks a home
 			if err != nil {
 				return err
 			}
@@ -145,11 +145,11 @@ func newCageStop() *cobra.Command {
 				return m.stop(cmd)
 			}
 			dir, err := cageHome()
-			// Hand back a folder that holds no home
+			// Hand back a folder that lacks a home
 			if err != nil {
 				return err
 			}
-			// Leave a stack that runs nothing as it is
+			// Leave a stopped stack as it is
 			if !homeStack(cmd.Context(), dir).up() {
 				fmt.Fprintln(cmd.OutOrStdout(), "The cage is stopped already")
 				return nil
@@ -183,7 +183,7 @@ func newCageRm() *cobra.Command {
 			if inVM {
 				fmt.Fprintf(out, "  - the VM %s and its disk, with the home and the projects inside\n", m.name)
 			} else {
-				// Hand back a folder that holds no home
+				// Hand back a folder that lacks a home
 				if _, err := cageHome(); err != nil {
 					return err
 				}
@@ -234,7 +234,7 @@ func newCageShell() *cobra.Command {
 			// Open a shell or run a command in the home's VM
 			if inVM {
 				m, found, err := homeMachine()
-				// Point a home without a VM at the command that makes one
+				// Point a home that lacks a VM at the command that makes one
 				if !found {
 					return vm.ErrNoVM
 				}
@@ -249,7 +249,7 @@ func newCageShell() *cobra.Command {
 				return fmt.Errorf("%w: a command runs in the home's VM, as in o3s cage shell --vm -- %s", ErrUsage, strings.Join(args, " "))
 			}
 			dir, err := cageHome()
-			// Hand back a folder that holds no home
+			// Hand back a folder that lacks a home
 			if err != nil {
 				return err
 			}
@@ -265,7 +265,7 @@ func newCageShell() *cobra.Command {
 	return cmd
 }
 
-// cageHome finds the home a cage command works on, and turns away a folder that holds none.
+// cageHome finds the home a cage command works on, and turns away a folder that lacks one.
 func cageHome() (string, error) {
 	dir, err := workingHome()
 	// Hand back a working folder that stays unknown
@@ -313,16 +313,16 @@ func raise(cmd *cobra.Command, dir string) (cage, error) {
 		return cage{}, buildFailure(progress.String()+out.String(), logPath, err)
 	}
 	var r raised
-	// Hand back a result that names no container
+	// Hand back a result that lacks a container
 	if err := json.Unmarshal(out.Bytes(), &r); err != nil || r.ContainerID == "" {
 		return cage{}, fmt.Errorf("raise the cage: devcontainer up named no container in %q", out.String())
 	}
 	return cage{cli: cli, dir: dir, id: r.ContainerID}, nil
 }
 
-// orDiscard hands back a file to write to, or a writer that drops everything where there is none.
+// orDiscard hands back a file to write to, or a writer that drops everything where the file is missing.
 func orDiscard(f *os.File) io.Writer {
-	// Drop everything where no file is open
+	// Drop everything where the file is missing
 	if f == nil {
 		return io.Discard
 	}

@@ -47,14 +47,14 @@ func (c *Config) Need(by string, ch Change) error {
 	return nil
 }
 
-// Release takes a feature off every host and hands back the hosts it drops once nothing needs them.
+// Release takes a feature off every host and hands back the hosts it drops once they are left unneeded.
 func (c *Config) Release(by string) []string {
 	var dropped []string
 	kept := c.Hosts[:0:0]
 	// Take the feature off every host
 	for _, h := range c.Hosts {
 		h.By = slices.DeleteFunc(slices.Clone(h.By), func(b string) bool { return b == by })
-		// Drop a host nothing needs any more
+		// Drop a host left unneeded
 		if len(h.By) == 0 {
 			dropped = append(dropped, h.Name)
 			continue

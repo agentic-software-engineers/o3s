@@ -36,7 +36,7 @@ func (r *records) Write(p []byte) (int, error) {
 	}
 }
 
-// flush passes on a last line the output left without its end.
+// flush passes on a last line the output left open.
 func (r *records) flush() {
 	// Pass on what remains
 	if len(r.pending) > 0 {
@@ -49,7 +49,7 @@ func (r *records) flush() {
 // user.
 func (r *records) line(l []byte) {
 	var rec record
-	// Pass on a line that holds no log record
+	// Pass on a line that fails to read as a log record
 	if json.Unmarshal(bytes.TrimSpace(l), &rec) != nil || rec.Level == "" {
 		_, _ = r.user.Write(l)
 		return

@@ -9,7 +9,7 @@ import (
 
 // CheckStore holds a store's id to the one form a store takes, a registry and a repository in full.
 func CheckStore(id string) error {
-	// Turn away an id that names no repository in full
+	// Turn away an id that falls short of naming a repository in full
 	if _, err := name.NewRepository(id, name.StrictValidation); err != nil {
 		return fmt.Errorf("%w store %q: name it as a registry and a repository, as in ghcr.io/devcontainers/features", ErrInvalid, id)
 	}
@@ -18,7 +18,7 @@ func CheckStore(id string) error {
 
 // AddStore adds a store to the list and reports whether the list lacked it.
 func (c *Config) AddStore(id string) (bool, error) {
-	// Turn away an id that names no repository in full
+	// Turn away an id that falls short of naming a repository in full
 	if err := CheckStore(id); err != nil {
 		return false, err
 	}

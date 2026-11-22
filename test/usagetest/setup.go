@@ -20,7 +20,7 @@ type Setup struct {
 	Agent string
 	// Cols and Rows are the size of the user's terminal.
 	Cols, Rows int
-	// Fault is what breaks halfway through, "none" where nothing does.
+	// Fault is what breaks halfway through, "none" for a clean run.
 	Fault string
 }
 
@@ -47,7 +47,7 @@ func Setups() ([]Setup, error) {
 		c, r, ok := strings.Cut(f[2], "x")
 		cols, cerr := strconv.Atoi(c)
 		rows, rerr := strconv.Atoi(r)
-		// Turn away a size that reads as none
+		// Turn away a size that fails to read as columns and rows
 		if !ok || cerr != nil || rerr != nil {
 			return nil, fmt.Errorf("setups.golden size %q, want COLSxROWS", f[2])
 		}

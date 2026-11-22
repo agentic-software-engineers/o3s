@@ -163,7 +163,7 @@ func aLoggedInGh(t *testing.T) string {
 	return log
 }
 
-// A binary that has nothing to update to goes on to the home, with a note where the case gives one.
+// A binary already at the newest release goes on to the home, with a note where the case gives one.
 func TestSelfUpdateGoesOnToTheHome(t *testing.T) {
 	tests := []struct {
 		name, binary, version, note string
@@ -191,7 +191,7 @@ func TestSelfUpdateGoesOnToTheHome(t *testing.T) {
 		if err != nil || done || *restarted != nil || contents(path) != "old" {
 			t.Errorf("%s: selfUpdate() = %v, %v, restarted %q, want to go on", tt.name, done, err, *restarted)
 		}
-		// Require the note the case gives, or none
+		// Require the note the case gives, or an empty one
 		if strings.TrimSpace(out.String()) != tt.note {
 			t.Errorf("%s: selfUpdate() output = %q, want %q", tt.name, out.String(), tt.note)
 		}

@@ -1,3 +1,13 @@
+# NAME
+#        .golangci.yaml — the linters every change passes
+#
+# DESCRIPTION
+#        The checks and formatters golangci-lint runs on the code and on the tests behind
+#        their build tags, on every host system o3s runs on.
+#
+# SEE ALSO
+#        .github/workflows/test.yaml, CONTRIBUTING.md
+
 version: "2"
 
 # Lint the tests behind their build tags as well
@@ -53,7 +63,7 @@ linters:
         linters:
           - gosec
         text: "G204|G306|G703"
-      # Let tests name secrets, which are the names of environment variables rather than credentials
+      # Let tests name secrets, which there stand for the names of environment variables
       - path: _test\.go$
         linters:
           - gosec

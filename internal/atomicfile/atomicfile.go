@@ -10,7 +10,7 @@ import (
 // Write replaces a file with the data given, open to those the mode names.
 func Write(path string, data []byte, perm os.FileMode) error {
 	tmp, err := os.CreateTemp(filepath.Dir(path), "."+filepath.Base(path)+".*")
-	// Hand back a folder that takes no new file
+	// Hand back a folder that refuses a new file
 	if err != nil {
 		return err
 	}

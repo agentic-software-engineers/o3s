@@ -21,7 +21,7 @@ const (
 )
 
 var (
-	// ErrNoHome marks a folder that holds no o3s home.
+	// ErrNoHome marks a folder that lacks an o3s home.
 	ErrNoHome = errors.New("no o3s home")
 	// ErrMalformed marks a settings file that breaks a rule o3s writes it by.
 	ErrMalformed = errors.New("holds a broken entry")
@@ -43,7 +43,8 @@ type Config struct {
 	Schema string  `json:"$schema"`
 	Stores []Store `json:"stores"`
 	Hosts  []Host  `json:"hosts"`
-	// AppArmorProfile opts the cage out of its own AppArmor profile where it reads unconfined, for a Docker daemon without AppArmor.
+	// AppArmorProfile opts the cage out of its own AppArmor profile where it reads unconfined, for a Docker daemon
+	// that lacks AppArmor.
 	AppArmorProfile string `json:"appArmorProfile,omitempty"`
 	// Isolation opts the home out of its VM where it reads process, so the stack shares the kernel of the machine it runs on.
 	Isolation string `json:"isolation,omitempty"`
@@ -91,7 +92,7 @@ type Change struct {
 	NoSecret bool
 }
 
-// New hands back the settings of a new home, with both feature stores and no host.
+// New hands back the settings of a new home, with both feature stores and an empty host list.
 func New() Config {
 	return Config{
 		Stores: []Store{{ID: "ghcr.io/devcontainers/features"}, {ID: "ghcr.io/hansehart/devcontainer-features"}},
@@ -102,7 +103,7 @@ func New() Config {
 // Load reads the settings of the o3s home in a folder.
 func Load(home string) (Config, error) {
 	data, err := os.ReadFile(filepath.Join(home, File))
-	// Point a folder without a home at the command that starts one
+	// Point a folder that lacks a home at the command that starts one
 	if errors.Is(err, fs.ErrNotExist) {
 		return Config{}, fmt.Errorf("%w in %s, start one with o3s init", ErrNoHome, home)
 	}
@@ -137,7 +138,7 @@ func (c Config) check() error {
 	stores := map[string]bool{}
 	// Check every store
 	for _, s := range c.Stores {
-		// Name a store without an id or listed twice
+		// Name a store that lacks an id or is listed twice
 		if s.ID == "" || stores[s.ID] {
 			return fmt.Errorf("store %q is empty or listed twice", s.ID)
 		}
@@ -154,7 +155,7 @@ func (c Config) check() error {
 		if err := validateHost(h); err != nil {
 			return err
 		}
-		// Name a host that opens no port, that nothing needs, or that is listed twice
+		// Name a host that lacks a port or a reason, or that is listed twice
 		if len(h.Ports) == 0 || len(h.By) == 0 || hosts[h.Name] {
 			return fmt.Errorf("host %s lacks a port or a reason, or is listed twice", h.Name)
 		}

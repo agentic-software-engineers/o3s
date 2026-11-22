@@ -14,7 +14,7 @@ import (
 	"github.com/hansehart/o3s/internal/home"
 )
 
-// aHome works inside a new home with an empty allowlist and an engine that runs no stack.
+// aHome works inside a new home with an empty allowlist and an engine that stays idle.
 func aHome(t *testing.T) {
 	t.Helper()
 	engine := t.TempDir()

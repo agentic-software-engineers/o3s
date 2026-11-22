@@ -8,7 +8,7 @@ import (
 	"github.com/hansehart/o3s/internal/fixture"
 )
 
-// A duration reads as seconds alone or in Go's form, and anything else as no time.
+// A duration reads as seconds alone or in Go's form, and anything else as zero time.
 func TestParseForReadsSecondsAndDurations(t *testing.T) {
 	tests := map[string]time.Duration{"90": 90 * time.Second, "90s": 90 * time.Second, "20m": 20 * time.Minute, "1h": time.Hour, "1h30m": 90 * time.Minute}
 	// Read every form
@@ -20,7 +20,7 @@ func TestParseForReadsSecondsAndDurations(t *testing.T) {
 			t.Errorf("parseFor(%q) = %v, %v, want %v", in, got, err, want)
 		}
 	}
-	// Turn away what reads as no positive time
+	// Turn away what reads as zero or negative time
 	for _, in := range []string{"", "soon", "0", "-5m", "1d"} {
 		_, err := parseFor(in)
 
@@ -31,7 +31,7 @@ func TestParseForReadsSecondsAndDurations(t *testing.T) {
 	}
 }
 
-// A new end narrows a host that stays open, and one whose end comes later, and nothing else.
+// A new end narrows a host that stays open and one whose end comes later, and those alone.
 func TestNarrowsComparesTheEnds(t *testing.T) {
 	tests := []struct {
 		old, next string

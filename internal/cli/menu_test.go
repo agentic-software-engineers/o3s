@@ -57,7 +57,7 @@ func TestMenuHomeReadsTheHome(t *testing.T) {
 	}
 }
 
-// Outside a home the menu still starts, knowing only where it runs.
+// Outside a home the menu still starts, knowing just where it runs.
 func TestMenuHomeStartsOutsideAHome(t *testing.T) {
 	dir := t.TempDir()
 	t.Chdir(dir)
@@ -180,13 +180,13 @@ func TestMenuLookupShowsWhatLeavesWithAFeature(t *testing.T) {
 	}
 }
 
-// The menu opens at the group an old binary left for it, once, so no later menu opens there.
+// The menu opens at the group an old binary left for it, once, so later menus open as usual.
 func TestMenuAtReadsTheGroupOnce(t *testing.T) {
 	t.Setenv(menuAtEnv, "update")
 
 	first, second := menuAt(), menuAt()
 
-	// Require the group first and nothing after
+	// Require the group first and last
 	if !cmp.Equal([]string{"update"}, first) || len(second) != 0 {
 		t.Errorf("menuAt() = %v then %v, want [update] then nothing", first, second)
 	}

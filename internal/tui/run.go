@@ -87,7 +87,7 @@ func splitLines(data []byte, atEOF bool) (int, []byte, error) {
 		}
 		return i + 1, data[:i], nil
 	}
-	// Hand back the last line of output that ends without a newline
+	// Hand back the last line of output that lacks a closing newline
 	if atEOF && len(data) > 0 {
 		return len(data), data, nil
 	}

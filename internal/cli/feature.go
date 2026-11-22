@@ -41,7 +41,7 @@ func newFeatureAdd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			// Hand back an option no feature here takes as given
+			// Hand back an option outside every feature here as given
 			if err := applyOptions(setups, options); err != nil {
 				return err
 			}
@@ -86,7 +86,7 @@ func newFeatureAdd() *cobra.Command {
 			// Show what each feature brings, and collect the secrets they wait for
 			for _, s := range setups {
 				lines, wait := addLines(s, store)
-				// Show the change, unless the menu showed it already
+				// Show the change where the menu has yet to show it
 				if !noPreview {
 					// Print every line of the change
 					for _, line := range lines {
@@ -134,7 +134,7 @@ func resolveAll(cmd *cobra.Command, ids []string) ([]registry.Setup, error) {
 	// Resolve every id in the order given
 	for _, id := range ids {
 		ref, err := registry.ParseRef(id)
-		// Hand back an id that names no feature
+		// Hand back an id that names an unknown feature
 		if err != nil {
 			return nil, err
 		}
@@ -169,7 +169,7 @@ func newFeatureRm() *cobra.Command {
 			// Take every feature off the home, collecting what leaves with each
 			for _, id := range args {
 				ref, err := registry.ParseRef(id)
-				// Hand back an id that names no feature
+				// Hand back an id that names an unknown feature
 				if err != nil {
 					return err
 				}
@@ -189,7 +189,7 @@ func newFeatureRm() *cobra.Command {
 				for _, e := range gone.env {
 					dc.RemoveEnv(e.Name)
 				}
-				// Show what leaves with the feature, unless the menu showed it already
+				// Show what leaves with the feature where the menu has yet to show it
 				if !noPreview {
 					// Print every line of the change
 					for _, line := range rmLines(pkg, gone) {
@@ -242,7 +242,7 @@ func newFeatureConfigure() *cobra.Command {
 		Args:  usage(cobra.ExactArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ref, err := registry.ParseRef(args[0])
-			// Hand back an id that names no feature
+			// Hand back an id that names an unknown feature
 			if err != nil {
 				return err
 			}
@@ -264,12 +264,12 @@ func newFeatureConfigure() *cobra.Command {
 			}
 			had := dc.FeatureOptions(ref.Package())
 			out := cmd.OutOrStdout()
-			// Show the options and the values they hold where the command sets none
+			// Show the options and the values they hold where the command leaves them all unset
 			if len(options) == 0 {
 				return showOptions(out, s.Offered, had)
 			}
 			setups := []registry.Setup{s}
-			// Hand back an option the feature takes none of as given
+			// Hand back an option outside the feature's own as given
 			if err := applyOptions(setups, options); err != nil {
 				return err
 			}
@@ -306,7 +306,7 @@ func newFeatureOrder() *cobra.Command {
 			// Read every feature the command puts first
 			for _, id := range args {
 				ref, err := registry.ParseRef(id)
-				// Hand back an id that names no feature
+				// Hand back an id that names an unknown feature
 				if err != nil {
 					return err
 				}
@@ -366,7 +366,7 @@ func inInstallOrder(dc *devcontainer.Config) []string {
 	}
 	// Take every feature the order leaves out
 	for _, k := range keys {
-		// Take a feature not taken yet
+		// Take a feature still left to take
 		if !slices.Contains(out, k) {
 			out = append(out, k)
 		}
@@ -383,7 +383,7 @@ func reorder(cmd *cobra.Command, dc *devcontainer.Config, first []string) error 
 	// Read what every installed feature installs after, from the order it stands in
 	for _, key := range inInstallOrder(dc) {
 		ref, err := registry.ParseRef(key)
-		// Leave a feature no store offers out of the order
+		// Leave a feature outside every store out of the order
 		if err != nil {
 			continue
 		}
@@ -412,7 +412,7 @@ func installedKey(dc *devcontainer.Config, pkg string) (string, bool) {
 	return dc.Features()[i], true
 }
 
-// packageOfKey reads the package of a feature key, and the key itself where no store offers it.
+// packageOfKey reads the package of a feature key, and the key itself where every store lacks it.
 func packageOfKey(key string) string {
 	// Take the package of a feature a store offers
 	if ref, err := registry.ParseRef(key); err == nil {
@@ -437,7 +437,7 @@ func showOptions(out io.Writer, offered []registry.Option, had map[string]any) e
 	return w.Flush()
 }
 
-// valueOrDefault writes the value an option holds, or the one it falls back to where the config gives none.
+// valueOrDefault writes the value an option holds, or the one it falls back to where the config lacks it.
 func valueOrDefault(had map[string]any, name string, offered []registry.Option) string {
 	// Take the value the config gives the option
 	if v, ok := had[name]; ok {
@@ -460,7 +460,7 @@ func addLines(s registry.Setup, store secrets.Store) ([]string, []string) {
 		// Name the secret, and warn while it waits for its value
 		if h.Secret != "" {
 			line += "  " + h.Secret
-			// Warn about a secret without a value
+			// Warn about a secret that lacks a value
 			if _, ok := store.Value(h.Secret); !ok {
 				line += " !"
 				waiting = append(waiting, h.Secret)
@@ -475,7 +475,7 @@ func addLines(s registry.Setup, store secrets.Store) ([]string, []string) {
 	return lines, waiting
 }
 
-// removalOf is what removing a feature takes from a home: the hosts nothing else needs and the env it set.
+// removalOf is what removing a feature takes from a home: the hosts it alone needs and the env it set.
 type removalOf struct {
 	hosts []string
 	env   []registry.Env
@@ -491,7 +491,7 @@ func removal(c config.Config, dc *devcontainer.Config, s registry.Setup) removal
 	after := c
 	after.Hosts = slices.Clone(c.Hosts)
 	var r removalOf
-	// Name every host nothing else needs, with its ports
+	// Name every host the feature alone needs, with its ports
 	for _, name := range after.Release(s.Ref.Package()) {
 		r.hosts = append(r.hosts, name+":"+config.JoinPorts(ports[name]))
 	}
@@ -508,7 +508,7 @@ func removal(c config.Config, dc *devcontainer.Config, s registry.Setup) removal
 // rmLines shows what leaves with a feature.
 func rmLines(pkg string, r removalOf) []string {
 	lines := []string{pkg}
-	// Show every host nothing needs any more
+	// Show every host that falls out of use
 	for _, h := range r.hosts {
 		lines = append(lines, "  - "+h)
 	}

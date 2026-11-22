@@ -47,17 +47,17 @@ func ptySetup(env *testscript.Env) {
 	})
 }
 
-// sessionOf is the script's hold on o3s, stopping a script that drives none where it has to.
+// sessionOf is the script's hold on o3s, stopping a script whose session is missing where it has to run.
 func sessionOf(ts *testscript.TestScript, started bool) *script {
 	sc, _ := ts.Value(sessionKey{}).(*script)
-	// Stop a script whose session is missing or not started where it has to be
+	// Stop a script whose session is missing or still unstarted where it has to run
 	if sc == nil || started && sc.s == nil {
 		ts.Fatalf("no o3s in a pseudo-terminal, start it with pty")
 	}
 	return sc
 }
 
-// cmdPty starts o3s with the arguments given in a pseudo-terminal of the size given, 80x24 where none is.
+// cmdPty starts o3s with the arguments given in a pseudo-terminal of the size given, 80x24 by default.
 func cmdPty(ts *testscript.TestScript, neg bool, args []string) {
 	// Turn away a negated start
 	if neg {
@@ -69,7 +69,7 @@ func cmdPty(ts *testscript.TestScript, neg bool, args []string) {
 		cols, rows = size(ts, strings.TrimPrefix(args[0], "-size="))
 		args = args[1:]
 	}
-	// Turn away a start without a command
+	// Turn away a start that lacks a command
 	if len(args) == 0 {
 		ts.Fatalf("usage: pty [-size=COLSxROWS] o3s [args...]")
 	}
@@ -121,9 +121,9 @@ func cmdKeys(ts *testscript.TestScript, neg bool, args []string) {
 	ts.Check(sessionOf(ts, true).s.Press(args...))
 }
 
-// cmdScreen waits until o3s's screen matches the pattern, and with ! requires it to stay without it.
+// cmdScreen waits until o3s's screen matches the pattern, and with ! requires it to stay free of it.
 func cmdScreen(ts *testscript.TestScript, neg bool, args []string) {
-	// Turn away a call without one pattern
+	// Turn away a call that lacks a pattern
 	if len(args) != 1 {
 		ts.Fatalf("usage: [!] screen PATTERN")
 	}

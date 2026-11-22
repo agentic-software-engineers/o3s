@@ -28,7 +28,7 @@ func updateDialog(h Home, a Answers) (Question, bool) {
 		return Question{Key: "view", Kind: View, Title: "Update", Tabs: []Tab{t}}, false
 	}
 	_, marked := view(a)
-	// End where the user marked nothing
+	// End where the marks are empty
 	if len(marked) == 0 {
 		return Question{}, true
 	}
@@ -47,7 +47,7 @@ func updateDialog(h Home, a Answers) (Question, bool) {
 // them.
 func updatePlan(_ Home, a Answers) []Command {
 	_, marked := view(a)
-	// Go back where the user marked nothing
+	// Go back where the marks are empty
 	if len(marked) == 0 {
 		return []Command{{Note: "Everything is up to date."}}
 	}

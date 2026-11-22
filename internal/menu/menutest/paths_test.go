@@ -16,7 +16,7 @@ func TestPaths(t *testing.T) {
 	// Write the paths of every home
 	for _, h := range Homes() {
 		paths, err := Walk(h.Home)
-		// Report a menu the walk can't follow
+		// Report a menu the walk fails to follow
 		if err != nil {
 			t.Fatalf("%s: %v", h.Name, err)
 		}

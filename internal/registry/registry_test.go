@@ -98,7 +98,7 @@ var aTool = fmt.Sprintf(`{
 }`, fixture.Feature, fixture.Version, fixture.FloatingTag, fixture.FloatingTag, fixture.Host, fixture.Port, fixture.Secret)
 
 // A feature names the features it installs after, both those it depends on and those it follows, once each and
-// without their tags.
+// stripped of their tags.
 func TestCollectionReadsWhatAFeatureInstallsAfter(t *testing.T) {
 	r := aRegistry(t)
 	store := r.Host + "/features"
@@ -120,7 +120,7 @@ func TestCollectionReadsWhatAFeatureInstallsAfter(t *testing.T) {
 		t.Fatalf("Collection(features) = %v", err)
 	}
 	want := []string{store + "/" + fixture.ThirdFeature, store + "/" + fixture.OtherFeature}
-	// Report a feature without exactly the features it follows
+	// Report a feature whose followed features differ from the expected ones
 	if len(got) != 1 || !cmp.Equal(want, got[0].After) {
 		t.Errorf("Collection(features) After = %v, want %v", got, want)
 	}
@@ -132,13 +132,13 @@ func TestCollectionTurnsAwayAnAbsentStore(t *testing.T) {
 
 	_, err := registry.Collection(t.Context(), r.Host+"/absent")
 
-	// Require an error for a store that holds nothing
+	// Require an error for an empty store
 	if err == nil {
 		t.Errorf("Collection(absent) = nil, want an error")
 	}
 }
 
-// An artifact without a collection layer is named as no store.
+// An artifact that lacks a collection layer is named as a missing store.
 func TestCollectionTurnsAwayAnArtifactWithoutACollection(t *testing.T) {
 	r := aRegistry(t)
 	// Stop when the artifact fails to publish

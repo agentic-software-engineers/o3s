@@ -75,7 +75,7 @@ func firstLine(out, host string) string {
 	return ""
 }
 
-// A host allowed for a set time is reachable until its end and refused after it, without a restart in between.
+// A host allowed for a set time is reachable until its end and refused after it, with the stack running throughout.
 func TestATimedHostClosesAtItsEnd(t *testing.T) {
 	opened := time.Now()
 	_, err := stacktest.O3s(t, "firewall", "add", "github.com", "--port", strconv.Itoa(fixture.Port), "--for", "90s")

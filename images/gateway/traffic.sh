@@ -53,10 +53,10 @@ load_record() {
   now="$(date +%s)"
   SINCE="$now"
   allowed="$(allowed_hosts)"
-  # Start empty where no earlier record exists
+  # Start empty where an earlier record is absent
   [ -f "$RECORD" ] || return 0
   SINCE="$(yq -p=json '.since // 0' "$RECORD" 2>/dev/null || echo 0)"
-  # Take the tracking start of a record that holds none as now
+  # Take the tracking start as now where the record lacks one
   [ "$SINCE" -gt 0 ] 2>/dev/null || SINCE="$now"
   # Carry over every host the policy still allows
   while IFS=$'\t' read -r name bytes seen since; do
@@ -170,7 +170,7 @@ write_record() {
   mv "$tmp" "$RECORD"
 }
 
-# Record nothing where the state volume is not mounted
+# Skip recording where the state volume is absent
 [ -d "$STATE_DIR" ] || exit 0
 
 load_record

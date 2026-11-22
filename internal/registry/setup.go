@@ -35,8 +35,8 @@ type Resolver struct {
 	stores map[string][]Feature
 }
 
-// Resolve finds a feature in its store and works out what it sets up, its tag the store's major
-// version unless the id names one.
+// Resolve finds a feature in its store and works out what it sets up, its tag the one the id names,
+// else the store's major version.
 func (r *Resolver) Resolve(ctx context.Context, ref Ref) (Setup, error) {
 	features, err := r.Features(ctx, ref.Store)
 	// Name the store whose features stay out of reach
@@ -49,7 +49,7 @@ func (r *Resolver) Resolve(ctx context.Context, ref Ref) (Setup, error) {
 		return Setup{}, fmt.Errorf("%w %s", ErrUnknownFeature, ref.Package())
 	}
 	f := features[i]
-	// Follow the store's major version where the id names no tag
+	// Follow the store's major version where the id lacks a tag
 	if ref.Tag == "" {
 		ref.Tag = Major(f.Version)
 	}
@@ -85,19 +85,19 @@ func (r *Resolver) Features(ctx context.Context, store string) ([]Feature, error
 	return features, nil
 }
 
-// Major reads the major part of a version, and latest for a feature without one.
+// Major reads the major part of a version, and latest for a feature that lacks one.
 func Major(version string) string {
 	m, _, _ := strings.Cut(version, ".")
-	// Follow the newest release of a feature without a version
+	// Follow the newest release of a feature that lacks a version
 	if m == "" {
 		return "latest"
 	}
 	return m
 }
 
-// PortsOf hands back the ports a feature names for a host, the HTTPS port where it names none.
+// PortsOf hands back the ports a feature names for a host, the HTTPS port where it lacks them.
 func PortsOf(h Host) []int {
-	// Take the HTTPS port where the feature names none
+	// Take the HTTPS port where the feature lacks ports
 	if len(h.Ports) == 0 {
 		return []int{443}
 	}

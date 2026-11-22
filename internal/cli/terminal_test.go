@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-// The null device and a pipe read as streams with nobody behind them, so a confirmation asks to be given up front.
+// The null device and a pipe read as unattended streams, so a confirmation asks to be given up front.
 func TestIsTerminalTellsATerminalFromTheNullDeviceAndAPipe(t *testing.T) {
 	null, err := os.Open(os.DevNull)
 	// Stop when the null device fails to open
@@ -20,7 +20,7 @@ func TestIsTerminalTellsATerminalFromTheNullDeviceAndAPipe(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = r.Close(); _ = w.Close() })
 
-	// Check every stream that reaches no terminal
+	// Check every stream that stays off a terminal
 	for name, stream := range map[string]*os.File{"the null device": null, "a pipe": r} {
 		// Report a stream read as a terminal
 		if isTerminal(stream) {

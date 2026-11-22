@@ -37,11 +37,11 @@ func newInit() *cobra.Command {
 				return fmt.Errorf("%w: AppArmor always runs in the home's VM, pair --dangerously-skip-apparmor with --dangerously-skip-vm", ErrUsage)
 			}
 			_, vmErr := vm.Find(dir)
-			// Ask a new home at a terminal how it isolates the cage, in the menu's own dialog, where no flag chose already
+			// Ask a new home at a terminal how it isolates the cage, in the menu's own dialog, where the flags leave it open
 			if !guest && !skipVM && !yes && !home.Exists(dir) && vmErr != nil && isInteractive(cmd.InOrStdin(), cmd.OutOrStdout()) {
 				return openMenu(cmd.Context(), nil, []string{"init"})
 			}
-			// Make the home inside its VM, the default, where this folder holds no home of its own
+			// Make the home inside its VM, the default, where this folder lacks a home of its own
 			if !guest && !skipVM && !home.Exists(dir) {
 				return initVM(cmd, dir)
 			}
@@ -56,7 +56,7 @@ func newInit() *cobra.Command {
 			}
 			out := cmd.OutOrStdout()
 			fresh := !home.Exists(dir)
-			// Write a new home into a folder that holds none
+			// Write a new home into a folder that lacks one
 			if fresh {
 				written, err := home.Init(dir)
 				// Hand back a folder that fails to become a home
@@ -65,7 +65,7 @@ func newInit() *cobra.Command {
 				}
 				fmt.Fprintf(out, "Wrote %s\n", written[0])
 				fmt.Fprintf(out, "Wrote %s%c (%d files)\n", filepath.Join(dir, ".devcontainer"), filepath.Separator, len(written)-1)
-				// Record the choice of a home without its VM, which every later start reads
+				// Record the choice of a home outside its VM, which every later start reads
 				if skipVM {
 					// Hand back a choice that stays unrecorded
 					if err := recordProcess(dir, skipAppArmor); err != nil {
@@ -113,12 +113,12 @@ func newInit() *cobra.Command {
 func initVM(cmd *cobra.Command, dir string) error {
 	current := version()
 	folder, err := release.Folder(current)
-	// Hand back a build without release files to install from
+	// Hand back a build that lacks release files to install from
 	if err != nil {
 		return err
 	}
 	lima, err := vm.Manager()
-	// Hand back a host without the VM manager
+	// Hand back a host that lacks the VM manager
 	if err != nil {
 		return err
 	}
@@ -132,12 +132,12 @@ func initVM(cmd *cobra.Command, dir string) error {
 		return err
 	}
 	m, err := managed(dir, name)
-	// Hand back a host without the VM manager
+	// Hand back a host that lacks the VM manager
 	if err != nil {
 		return err
 	}
 	ctx, out, errOut := cmd.Context(), cmd.OutOrStdout(), cmd.ErrOrStderr()
-	// Warn that the VM runs slowly without the machine's own acceleration
+	// Warn that the VM runs slowly while the machine's own acceleration is missing
 	if !m.lima.Accelerated() {
 		warn(errOut, "this machine offers no KVM, so the home's VM runs slowly")
 	}
@@ -170,7 +170,7 @@ func initVM(cmd *cobra.Command, dir string) error {
 // installInVM checks the release files of a folder on this host and installs o3s from them in a home's VM.
 func installInVM(ctx context.Context, lima vm.Lima, dir, name, folder string, out io.Writer) error {
 	staging, err := os.MkdirTemp("", "o3s")
-	// Hand back a host without room for the release files
+	// Hand back a host that lacks room for the release files
 	if err != nil {
 		return err
 	}
@@ -191,7 +191,7 @@ func installInVM(ctx context.Context, lima vm.Lima, dir, name, folder string, ou
 	return nil
 }
 
-// recordProcess records in a home's settings that its stack runs on this machine's kernel, and without AppArmor where
+// recordProcess records in a home's settings that its stack runs on this machine's kernel, and free of AppArmor where
 // the home chose so.
 func recordProcess(dir string, skipAppArmor bool) error {
 	c, err := config.Load(dir)
@@ -200,7 +200,7 @@ func recordProcess(dir string, skipAppArmor bool) error {
 		return err
 	}
 	c.Isolation = config.Process
-	// Record the cage's run without AppArmor
+	// Record the cage's run outside AppArmor
 	if skipAppArmor {
 		c.AppArmorProfile = config.Unconfined
 	}
@@ -231,12 +231,12 @@ func prepare(cmd *cobra.Command, dir string) error {
 	} else {
 		fmt.Fprintf(out, "The proxy's CA is ready in %s\n", caDir)
 	}
-	// Name a home that runs without its VM on every start
+	// Name a home that runs outside its VM on every start
 	if c, err := config.Load(dir); err == nil && c.Isolation == config.Process {
 		warn(cmd.ErrOrStderr(), `the home runs without its VM, remove "isolation" from o3s.json to go back to the secure default`)
 	}
 	profile, err := appArmorProfile(cmd, dir)
-	// Hand back a cage that would run without the confinement it asks for
+	// Hand back a cage that would lack the confinement it asks for
 	if err != nil {
 		return err
 	}
@@ -305,7 +305,8 @@ func nextSteps(out io.Writer) {
 // cageProfile is the AppArmor profile the stack ships for the cage.
 const cageProfile = "o3s-cage"
 
-// appArmorProfile picks the cage's AppArmor profile: unconfined where the home opts out, its own where Docker confines with AppArmor, and none at all otherwise, since the cage would run less confined than it asks.
+// appArmorProfile picks the cage's AppArmor profile: unconfined where the home opts out, its own where Docker confines
+// with AppArmor, and turns the cage away otherwise, since it would run less confined than it asks.
 func appArmorProfile(cmd *cobra.Command, dir string) (string, error) {
 	c, err := config.Load(dir)
 	// Hand back a home whose settings fail to load
@@ -322,7 +323,7 @@ func appArmorProfile(cmd *cobra.Command, dir string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	// Refuse a cage Docker would start without its profile
+	// Refuse a cage Docker would start unconfined by its profile
 	if !confines {
 		return "", fmt.Errorf("the cage's profile %s needs AppArmor, but Docker reports it unavailable, so enable AppArmor on the daemon host or set \"appArmorProfile\": %q in %s", cageProfile, config.Unconfined, config.File)
 	}

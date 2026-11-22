@@ -18,10 +18,11 @@ import (
 // Linux, less the closing zero.
 const maxSocketPath = 103
 
-// socketMode lets the socket's owner and group connect and no one else.
+// socketMode lets the socket's owner and group alone connect.
 const socketMode = 0o660
 
-// defaultPoll is how often a listener checks that its socket is still in place when the transport names no interval.
+// defaultPoll is how often a listener checks that its socket is still in place when the transport leaves the interval
+// empty.
 const defaultPoll = 200 * time.Millisecond
 
 var (
@@ -47,7 +48,7 @@ func (u Unix) Path(s Service) string {
 // Listen makes the service's socket, taking the place of one a listener left behind, and watches it so the listener
 // ends when the socket goes.
 func (u Unix) Listen(s Service) (net.Listener, error) {
-	// Turn away a service the relay does not offer
+	// Turn away a service outside the relay's set
 	if err := known(s); err != nil {
 		return nil, err
 	}
@@ -62,21 +63,21 @@ func (u Unix) Listen(s Service) (net.Listener, error) {
 	}
 	var lc net.ListenConfig
 	l, err := lc.Listen(context.Background(), "unix", p)
-	// Hand back a socket that cannot be made
+	// Hand back a socket that fails to appear
 	if err != nil {
 		return nil, err
 	}
 	ul := l.(*net.UnixListener)
 	ul.SetUnlinkOnClose(false)
 	info, err := lockDown(p)
-	// Leave no socket behind when it cannot be locked down
+	// Remove the socket when it fails to be locked down
 	if err != nil {
 		_ = ul.Close()
 		_ = os.Remove(p)
 		return nil, err
 	}
 	poll := u.Poll
-	// Fall back to the default interval when none is named
+	// Fall back to the default interval when the interval is empty
 	if poll <= 0 {
 		poll = defaultPoll
 	}
@@ -85,7 +86,7 @@ func (u Unix) Listen(s Service) (net.Listener, error) {
 
 // Dial connects to the service's socket, as the cage does.
 func (u Unix) Dial(ctx context.Context, s Service) (net.Conn, error) {
-	// Turn away a service the relay does not offer
+	// Turn away a service outside the relay's set
 	if err := known(s); err != nil {
 		return nil, err
 	}
@@ -93,9 +94,9 @@ func (u Unix) Dial(ctx context.Context, s Service) (net.Conn, error) {
 	return d.DialContext(ctx, "unix", u.Path(s))
 }
 
-// clearStale removes a socket no listener answers on, and turns away one a listener still serves.
+// clearStale removes a socket that lacks a listener, and turns away one a listener still serves.
 func clearStale(p string) error {
-	// Go on when no socket is in the way
+	// Go on when the path is free
 	if _, err := os.Lstat(p); errors.Is(err, fs.ErrNotExist) {
 		return nil
 	}
@@ -106,7 +107,7 @@ func clearStale(p string) error {
 		_ = c.Close()
 		return fmt.Errorf("%w: %s", ErrSocketInUse, p)
 	}
-	// Remove the socket nobody answers on
+	// Remove the socket that lacks a listener
 	if err := os.Remove(p); err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return err
 	}
@@ -115,7 +116,7 @@ func clearStale(p string) error {
 
 // lockDown gives the socket its mode and reports what it is, so a watch can tell it from a later one.
 func lockDown(p string) (fs.FileInfo, error) {
-	// Hand back a mode that cannot be set
+	// Hand back a mode that fails to apply
 	if err := os.Chmod(p, socketMode); err != nil {
 		return nil, err
 	}
@@ -149,7 +150,7 @@ func (w *watched) watch(poll time.Duration) {
 			return
 		case <-t.C:
 		}
-		// End the listener once its socket is no longer the one it made
+		// End the listener once its socket differs from the one it made
 		if !w.inPlace() {
 			_ = w.UnixListener.Close()
 			return
@@ -163,11 +164,11 @@ func (w *watched) inPlace() bool {
 	return err == nil && os.SameFile(info, w.info)
 }
 
-// Close ends the listener and its watch, and removes its socket unless another has taken its place.
+// Close ends the listener and its watch, and removes its socket while it is still its own.
 func (w *watched) Close() error {
 	w.once.Do(func() { close(w.done) })
 	err := w.UnixListener.Close()
-	// Remove the socket only while it is still this listener's own
+	// Remove the socket while it is still this listener's own
 	if w.inPlace() {
 		_ = os.Remove(w.path)
 	}

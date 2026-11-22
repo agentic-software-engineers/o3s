@@ -89,7 +89,7 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      # install the Go toolchain the module names, without a cache another workflow could have written
+      # install the Go toolchain the module names, free of any cache another workflow could have written
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
@@ -155,7 +155,7 @@ jobs:
             grep -q "image: ghcr.io/hansehart/o3s-${image}:${TAG#v}@${digest}$" .devcontainer/compose.yaml
           done
 
-      # require a fresh home on this runner on the latest release to need nothing, which reads the real latest release
+      # require a fresh home on this runner on the latest release to be up to date, which reads the real latest release
       - name: Check the update
         run: |
           cd "$(mktemp -d)"
