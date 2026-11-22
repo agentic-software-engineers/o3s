@@ -54,7 +54,7 @@ func checkPorts(line string) (string, error) {
 // checkFor reads how long hosts stay open.
 func checkFor(line string) (string, error) {
 	d, err := config.ParseFor(strings.TrimSpace(line))
-	// Name a duration that reads as no time
+	// Name a line that fails to read as a duration
 	if err != nil {
 		return "", fmt.Errorf("%q is not a duration like 90s, 20m, 1h or 1h30m", strings.TrimSpace(line))
 	}
@@ -74,14 +74,14 @@ func checkSecretName(line string) (string, error) {
 // checkStore reads a store's id.
 func checkStore(line string) (string, error) {
 	id := strings.TrimSpace(line)
-	// Name an id that names no repository in full
+	// Name an id that falls short of a full repository
 	if config.CheckStore(id) != nil {
 		return "", fmt.Errorf("%q reads as no store, as in ghcr.io/devcontainers/features", id)
 	}
 	return "reads as a store", nil
 }
 
-// checkRepos reads repositories separated by spaces, naming the first one o3s cannot read, and where each clones.
+// checkRepos reads repositories separated by spaces, naming the first one o3s fails to read, and where each clones.
 func checkRepos(line string) (string, error) {
 	args := strings.Fields(line)
 	// Wait for a repository
@@ -92,7 +92,7 @@ func checkRepos(line string) (string, error) {
 	// Check every repository
 	for _, arg := range args {
 		r, err := project.Parse(arg)
-		// Name the repository o3s cannot read
+		// Name the repository o3s fails to read
 		if err != nil {
 			return "", fmt.Errorf("%q is not owner/repo, host/owner/repo or a git URL", arg)
 		}

@@ -111,7 +111,7 @@ func TestTheCageDeniesTheThermalThrottleCounters(t *testing.T) {
 		t.Fatalf("Setup: DevcontainerUp() = %v, want the stack raised", err)
 	}
 	dir, err := stacktest.ContainerExec(t, raised.ContainerID, "sh", "-c", "ls -d /sys/devices/system/cpu/cpu*/thermal_throttle | head -n1")
-	// Skip a host whose CPUs expose no thermal throttle counters
+	// Skip a host whose CPUs lack thermal throttle counters
 	if err != nil || strings.TrimSpace(dir) == "" {
 		t.Skipf("the host exposes no thermal_throttle folder: %v", err)
 	}
@@ -184,7 +184,7 @@ func TestTheNestedEngineRunsAContainer(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Setup: DevcontainerUp() = %v, want the stack raised", err)
 	}
-	// Build a one-file image from the cage's static yq, so the container needs no registry
+	// Build a one-file image from the cage's static yq, so the container builds free of a registry
 	if out, err := stacktest.ContainerExecAs(t, raised.ContainerID, "ubuntu", "sh", "-c", "for _ in $(seq 30); do docker info >/dev/null 2>&1 && break; sleep 1; done; tar -C /usr/local/bin -cf - yq | docker import - o3s-probe"); err != nil {
 		t.Fatalf("Setup: import the probe image = %v\n%s", err, out)
 	}

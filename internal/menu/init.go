@@ -29,7 +29,7 @@ func initDialog(h Home, a Answers) (Question, bool) {
 	// Name the shared kernel, and AppArmor's absence where the user turned it off
 	if a.get("isolation") == inProcess {
 		where = "on this machine's kernel"
-		// Name the cage's run without AppArmor
+		// Name the cage's run with AppArmor off
 		if a.get("apparmor") == off {
 			where += ", without AppArmor"
 		}
@@ -37,7 +37,7 @@ func initDialog(h Home, a Answers) (Question, bool) {
 	return ask(a, Question{Key: "apply", Kind: Confirm, Title: "Apply?", Summary: "Creates an o3s home in " + h.Dir + ", " + where, Default: []string{yes}})
 }
 
-// initPlan makes the home the way the user chose, handing the answers on so init asks nothing again: in the menu,
+// initPlan makes the home the way the user chose, handing the answers on so init is done asking: in the menu,
 // which shows its steps as they come, and on the real terminal where init asks for sudo to load the cage's AppArmor
 // profile on this machine.
 func initPlan(a Answers) []Command {
@@ -49,7 +49,7 @@ func initPlan(a Answers) []Command {
 	if a.get("isolation") != inProcess {
 		return []Command{{Args: []string{"init", "--yes"}}}
 	}
-	// Make the home on this machine without AppArmor in the menu, since it asks for no sudo
+	// Make the home on this machine with AppArmor off in the menu, since that path stays free of sudo
 	if a.get("apparmor") == off {
 		return []Command{{Args: []string{"init", "--dangerously-skip-vm", "--dangerously-skip-apparmor"}}}
 	}

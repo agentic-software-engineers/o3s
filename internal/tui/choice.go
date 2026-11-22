@@ -43,7 +43,7 @@ func (c choice) Update(msg tea.Msg) (field, result, tea.Cmd) {
 	// Follow the key the user pressed
 	switch k.String() {
 	case "esc":
-		// Step back where nothing is filtered, else clear the filter
+		// Step back where the filter is empty, else clear the filter
 		if c.filter == "" {
 			return c, result{outcome: back}, nil
 		}

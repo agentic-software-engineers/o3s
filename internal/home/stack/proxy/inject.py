@@ -1,17 +1,17 @@
 """Allowlist enforcement and credential injection for the egress proxy (mitmproxy addon).
 
 The gateway admits a connection by address, which any host sharing that address satisfies, so this
-addon authorises the name the client asks for in the TLS handshake and kills anything the allowlist
-does not declare. Permitted destinations pass through undecrypted unless they inject a secret.
+addon authorises the name the client asks for in the TLS handshake and kills anything outside the
+allowlist. Permitted destinations pass through undecrypted, and those that inject a secret are opened.
 
 The client sends a fixed placeholder in place of every secret. For each intercepted request, this
 addon replaces that placeholder with the real secret for the destination, chosen by the connection's
 verified identity, in the sites the allowlist declares for that host. Real secrets stay proxy-side
-and the client only ever holds the placeholder.
+and the client holds the placeholder alone.
 
 Sites default to headers, where a credential is a header the client deliberately set and the
 destination consumes at its edge. A host that authenticates by query parameter or by posting its
-secret in a body, as OAuth token exchange does, declares those sites itself. A request body is
+secret in a body, such as an OAuth token exchange, declares those sites itself. A request body is
 excluded by default because it carries client content: an agent whose conversation quotes the
 placeholder would otherwise have its real secret spliced into the prompt.
 
@@ -22,9 +22,9 @@ replacing inside the plaintext, and re-encoding it as the destination expects.
 Responses take the reverse trip. A secret appearing in one is masked before it reaches the client,
 so a destination that quotes request content back hands the client filler. Masking reads the same
 two forms as injection writes: the secret itself, and the secret inside any base64 that holds it,
-because base64 is a spelling rather than a lock and a client handed one decodes it in a single step.
+because base64 is a mere spelling and a client handed one decodes it in a single step.
 A destination that transforms the secret some other way first (URL-encoding, JSON escaping, hex)
-echoes it on, an arbitrary transformation having no general answer.
+echoes it on, since an arbitrary transformation lacks a general answer.
 
 Inputs:
   config    which destination injects which named secret, and into which sites
@@ -56,7 +56,7 @@ def _end_of(stamp: str) -> float:
         return 0.0
 
 
-# Where in a request a host may carry its credential, and what it carries there unless it says so.
+# Where in a request a host may carry its credential, and what it carries there by default.
 SITES = frozenset({"header", "query", "body"})
 DEFAULT_SITES = frozenset({"header"})
 
@@ -92,7 +92,7 @@ def _match_key(host):
 
 
 def _parse_sites(host, value):
-    """Resolve a host's declared injection sites, dropping any name this addon does not know."""
+    """Resolve a host's declared injection sites, keeping the names this addon knows."""
     if value is None:
         return DEFAULT_SITES
     if not isinstance(value, list):
@@ -141,16 +141,16 @@ def _secret_forms(token: str):
 
 
 def _swap_basic(value: str, marker: str, token: str, host: str):
-    """Swap the marker inside a Basic credential, whose payload is base64 rather than plain text.
+    """Swap the marker inside a Basic credential, whose payload is base64 in place of plain text.
 
-    A literal match cannot see a marker the client encoded before sending it, so the credential is
-    decoded, swapped inside the plaintext, and re-encoded. Returning None for anything that is not
+    A literal match misses a marker the client encoded before sending it, so the credential is
+    decoded, swapped inside the plaintext, and re-encoded. Returning None for anything other than
     a Basic credential holding the marker leaves every other header to the plaintext pass.
 
     The framework spells a credential "<scheme> 1*SP <payload>" with a case-insensitive scheme and
     padding optional on the payload (RFC 9110, Sections 11.1 and 11.4), so all three are accepted.
     The payload is a user-id, a colon and a password (RFC 7617, Section 2); replacing across the
-    whole of it covers a marker on either side without having to decide which side it sits on.
+    whole of it covers a marker on either side, leaving open which side it sits on.
     """
     parts = value.split(None, 1)
     if len(parts) != 2 or parts[0].lower() != "basic":
@@ -162,10 +162,10 @@ def _swap_basic(value: str, marker: str, token: str, host: str):
     try:
         raw = base64.b64decode(padded, validate=True).decode()
     except ValueError:
-        # The one form we cannot read: say so, or the marker leaves and the 401 explains nothing.
+        # Report the one form this addon fails to read, so the 401 that follows comes with its cause.
         logging.warning(f"o3s: {host} sent a Basic credential this addon cannot decode")
         return None
-    # Decoding alone claims nothing, so only a marker inside marks this as ours to rewrite.
+    # Decoding alone stays neutral, so a marker inside is what marks this as ours to rewrite.
     if marker not in raw:
         return None
     return scheme + " " + base64.b64encode(raw.replace(marker, token).encode()).decode()
@@ -220,7 +220,7 @@ class InjectCredentials:
         ends = {}
         # Index every host by its match key, keeping the secret and sites it declares alongside.
         for spec in listed if isinstance(listed, list) else ():
-            # Skip an entry that is no host
+            # Skip an entry that falls short of a host
             if not isinstance(spec, dict) or not isinstance(spec.get("name"), str):
                 continue
             host = spec["name"]
@@ -238,7 +238,7 @@ class InjectCredentials:
                 hosts[key] = secrets.get(name)  # None until the secret is filled in
                 sites[key] = _parse_sites(host, spec.get("inject"))
         self._hosts = hosts
-        # Derive the forms once per load, so a response is matched without deriving them per flow.
+        # Derive the forms once per load, so a response is matched against forms derived ahead of every flow.
         self._forms = {k: _secret_forms(t) if t else [] for k, t in hosts.items()}
         self._sites = sites
         self._keys = frozenset(keys)
@@ -262,7 +262,7 @@ class InjectCredentials:
         return None
 
     def _permits(self, sni: str) -> bool:
-        """Accept a name whose allowlist entry declares HTTPS and has not reached its end time."""
+        """Accept a name whose allowlist entry declares HTTPS and whose end time is still ahead."""
         key = self._resolve(sni)
         return key in self._allowed and time.time() < self._ends.get(key, float("inf"))
 
@@ -284,7 +284,7 @@ class InjectCredentials:
             if buf != raw and not logged:
                 logged = True
                 logging.warning(f"o3s: masked {host} secret echoed in a response body")
-            # Hold back for the form that could keep the most, so none is cut across the boundary.
+            # Hold back for the form that could keep the most, so each one stays whole across the boundary.
             held = max((_prefix_overlap(buf, t) for t in toks), default=0)
             # The final call arrives with b"" and releases whatever is still held back.
             cut = len(buf) - held if data else len(buf)
@@ -295,7 +295,7 @@ class InjectCredentials:
         return mask_chunk
 
     def _mask_headers(self, resp: http.Response, forms, host: str) -> None:
-        """Mask every form of the secret in response headers, which carry no length commitment."""
+        """Mask every form of the secret in response headers, which are free of a length commitment."""
         names = {k for k, v in resp.headers.items(multi=True) if any(f in v for f in forms)}
         if not names:
             return
@@ -306,7 +306,7 @@ class InjectCredentials:
         logging.warning(f"o3s: masked {host} secret echoed in a response header")
 
     def tls_clienthello(self, data: tls.ClientHelloData) -> None:
-        """Pass connections we do not inject straight through, untouched."""
+        """Pass connections outside injection straight through, untouched."""
         self._load()
         if self._resolve(data.client_hello.sni or "") not in self._hosts:
             data.ignore_connection = True
@@ -344,7 +344,7 @@ class InjectCredentials:
             resp.stream = True
             return
         self._mask_headers(resp, forms, host)
-        # A body is matched as bytes, so encode the forms the once rather than per chunk.
+        # A body is matched as bytes, so encode the forms the once, ahead of every chunk.
         raw = [f.encode() for f in forms]
         if resp.headers.get("content-encoding", "identity").lower() in ("", "identity"):
             resp.stream = self._masker(raw, host)
@@ -390,7 +390,7 @@ class InjectCredentials:
         if "header" in sites:
             for name, value in req.headers.items(multi=True):
                 key_name = name.lower()  # group case variants, which are the one header, together
-                # Write back the spelling the client chose, this addon having no business in it.
+                # Write back the spelling the client chose, which stays the client's own business.
                 spelling.setdefault(key_name, name)
                 new = _swap_header(value, m, token, host)
                 if new != value:

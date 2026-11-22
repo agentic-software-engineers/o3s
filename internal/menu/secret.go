@@ -85,7 +85,7 @@ func secretDialog(h Home, a Answers) (Question, bool) {
 // a host.
 func bindDialog(h Home, a Answers) (Question, bool) {
 	name := strings.TrimSpace(a.get("name"))
-	// Leave a secret some host carries already as it is, and offer no binding where the home allows no host
+	// Leave a secret some host carries already as it is, and skip the binding where the allowlist is empty
 	if len(carrying(h, name)) > 0 || len(h.Hosts) == 0 {
 		return Question{}, true
 	}
@@ -122,7 +122,7 @@ func bindDialog(h Home, a Answers) (Question, bool) {
 // secretPlan builds the commands the secret view's dialogs lead to.
 func secretPlan(a Answers) []Command {
 	_, picked := view(a)
-	// Go back to the view where the user picked nothing or stepped back
+	// Go back to the view where the pick is empty or the user stepped back
 	if len(picked) == 0 || a.get("action") == back {
 		return nil
 	}
@@ -137,7 +137,7 @@ func secretPlan(a Answers) []Command {
 		}
 		return cmds
 	}
-	// Store the value the user typed, where it replaces none or the user agreed to the replacement
+	// Store the value the user typed, where it is new or the user agreed to the replacement
 	if a.get("action") == setValue && (!a.has("apply") || confirmed(a)) {
 		return []Command{{Args: []string{"secret", "add", picked[0], "--no-bind-hint"}, Stdin: &value}}
 	}
@@ -171,7 +171,7 @@ func valueQuestion(name string) Question {
 	return Question{Key: valueKey(name), Kind: Hidden, Title: "Value for " + name, About: "Empty leaves it waiting, echo \"$TOKEN\" | o3s secret add " + name + " sets it later."}
 }
 
-// storeValue stores the value the user gave a secret, and nothing where the user left the secret waiting.
+// storeValue stores the value the user gave a secret, and stays idle where the user left the secret waiting.
 func storeValue(a Answers, name string) []Command {
 	value := a.get(valueKey(name))
 	// Leave a skipped secret waiting

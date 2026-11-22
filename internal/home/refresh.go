@@ -76,18 +76,18 @@ func Write(dir string, changes []FileChange) error {
 // withHomeKeys hands back the binary's config with the keys the home owns, as the home writes them.
 func withHomeKeys(shipped, home []byte) ([]byte, error) {
 	out, err := hujson.Parse(shipped)
-	// Hand back a shipped config that holds no JSON with comments
+	// Hand back a shipped config that fails to parse as JSON with comments
 	if err != nil {
 		return nil, err
 	}
 	have, err := hujson.Parse(home)
-	// Hand back a home config that holds no JSON with comments
+	// Hand back a home config that fails to parse as JSON with comments
 	if err != nil {
 		return nil, err
 	}
 	dst, ok1 := out.Value.(*hujson.Object)
 	src, ok2 := have.Value.(*hujson.Object)
-	// Take the binary's config as it is where either holds no object
+	// Take the binary's config as it is where either lacks an object
 	if !ok1 || !ok2 {
 		return shipped, nil
 	}
@@ -138,7 +138,7 @@ type ImageChange struct {
 // Images compares the tags of the o3s images in the home's compose with the ones this binary writes.
 func Images(dir string) ([]ImageChange, error) {
 	have, err := os.ReadFile(filepath.Join(dir, stackDir, "compose.yaml"))
-	// Name nothing for a home without a compose file, which a refresh writes in full
+	// Name an empty list for a home that lacks a compose file, which a refresh writes in full
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil, nil
 	}
@@ -164,7 +164,7 @@ func Images(dir string) ([]ImageChange, error) {
 	return changes, nil
 }
 
-// tagOf reads the tag a compose file gives an image, without its digest.
+// tagOf reads the tag a compose file gives an image, stripped of its digest.
 func tagOf(compose []byte, image string) string {
 	// Look at every line for the image
 	for line := range strings.Lines(string(compose)) {

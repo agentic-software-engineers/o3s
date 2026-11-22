@@ -23,10 +23,10 @@ import (
 // collection is the media type the Dev Container spec gives a store's collection.
 const collection types.MediaType = "application/vnd.devcontainers.collection.layer.v1+json"
 
-// ErrNoCollection marks an artifact that holds no feature collection.
+// ErrNoCollection marks an artifact that lacks a feature collection.
 var ErrNoCollection = errors.New("holds no feature collection")
 
-// ErrDenied marks a store its registry serves only to a user who logged in.
+// ErrDenied marks a store its registry serves to logged-in users alone.
 var ErrDenied = errors.New("denies access")
 
 // ErrOutOfReach marks a store whose registry fails to answer.
@@ -52,7 +52,7 @@ type Option struct {
 	// Type is boolean or string.
 	Type    string
 	Default string
-	// Enum lists the only values the option takes, and Proposals the ones it suggests beside any other.
+	// Enum lists the full set of values the option takes, and Proposals the ones it suggests while it takes others too.
 	Enum      []string
 	Proposals []string
 	// Description says what the option does.
@@ -149,7 +149,7 @@ func features(l v1.Layer) ([]Feature, error) {
 	for i, f := range c.Features {
 		o := f.Customizations.O3S
 		fs[i] = Feature{ID: f.ID, Version: f.Version, Name: f.Name, Description: f.Description, Hosts: o.Hosts, Env: o.Env}
-		// Take every feature this one names to follow, without its tag
+		// Take every feature this one names to follow, stripped of its tag
 		for _, id := range append(slices.Collect(maps.Keys(f.DependsOn)), f.InstallsAfter...) {
 			// Take each feature once
 			if pkg := packageOf(id); !slices.Contains(fs[i].After, pkg) {
@@ -190,12 +190,12 @@ func defaultOf(v any) string {
 	}
 }
 
-// served names why a registry turns a store away, by what it answered, and never with the addresses it was asked at:
+// served names why a registry turns a store away, by what it answered, keeping the addresses it was asked at out of it:
 // a login it wants, a store it lacks, or an answer it fails to give.
 func served(host string, err error) error {
 	var answer *transport.Error
 	var asked *url.Error
-	// Name the cause by the registry's answer, or by the request that found no answer
+	// Name the cause by the registry's answer, or by the request that went unanswered
 	switch {
 	case errors.As(err, &answer) && (answer.StatusCode == http.StatusUnauthorized || answer.StatusCode == http.StatusForbidden):
 		return fmt.Errorf("%w, log in with docker login %s", ErrDenied, host)

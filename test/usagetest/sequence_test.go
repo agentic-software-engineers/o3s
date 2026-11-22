@@ -22,7 +22,7 @@ func TestOrdersCoverEveryTriple(t *testing.T) {
 			cover(open, o)
 		}
 
-		// Report a triple no order holds
+		// Report a triple that every order leaves open
 		if len(open) > 0 {
 			t.Errorf("Orders(%d) leaves %d triples open", n, len(open))
 		}

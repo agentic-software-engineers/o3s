@@ -1,5 +1,5 @@
 // Package relay carries the cage's connections to the services o3s runs for it on the host, over the one transport
-// the cage can reach: a Unix socket for a home without its VM, vsock for a home inside one.
+// the cage can reach: a Unix socket for a home outside a VM, vsock for a home inside one.
 package relay
 
 import (
@@ -47,7 +47,7 @@ const (
 
 // known checks that the relay offers the service.
 func known(s Service) error {
-	// Turn away a service the relay does not offer
+	// Turn away a service outside the relay's set
 	if !slices.Contains(services, s) {
 		return fmt.Errorf("%w: %q", ErrUnknownService, s)
 	}
@@ -76,14 +76,14 @@ type Relay struct {
 	conns    map[net.Conn]struct{}
 }
 
-// New makes a relay over the transport, with no service handled yet.
+// New makes a relay over the transport, before it handles any service.
 func New(t Transport) *Relay {
 	return &Relay{transport: t, handlers: map[Service]Handler{}, conns: map[net.Conn]struct{}{}}
 }
 
 // Handle hands the service's connections to the handler.
 func (r *Relay) Handle(s Service, h Handler) error {
-	// Turn away a service the relay does not offer
+	// Turn away a service outside the relay's set
 	if err := known(s); err != nil {
 		return err
 	}
@@ -101,7 +101,7 @@ func (r *Relay) Handle(s Service, h Handler) error {
 func (r *Relay) Forward(s Service, dial func(context.Context) (net.Conn, error)) error {
 	return r.Handle(s, func(ctx context.Context, c net.Conn) {
 		target, err := dial(ctx)
-		// Drop the connection when its target cannot be reached
+		// Drop the connection when its target is out of reach
 		if err != nil {
 			return
 		}
@@ -145,7 +145,7 @@ func (r *Relay) serve(ctx context.Context, wg *sync.WaitGroup, s Service, h Hand
 	// Keep the service listening until the relay stops
 	for ctx.Err() == nil {
 		l, err := r.transport.Listen(s)
-		// Wait a growing while before trying again when the service cannot listen
+		// Wait a growing while before trying again when the service fails to listen
 		if err != nil {
 			wait = grow(wait)
 			// Stop when the relay stops while waiting
@@ -154,7 +154,7 @@ func (r *Relay) serve(ctx context.Context, wg *sync.WaitGroup, s Service, h Hand
 			}
 			continue
 		}
-		// Start the waits afresh after a listener that carried a connection, or wait longer after one that did not
+		// Start the waits afresh after a listener that carried a connection, or wait longer after one that stayed idle
 		if r.accept(ctx, wg, l, h) {
 			wait = 0
 		} else {
@@ -195,7 +195,7 @@ func (r *Relay) accept(ctx context.Context, wg *sync.WaitGroup, l net.Listener, 
 	}
 }
 
-// track records an open connection so a stop can close it, unless the relay is already stopping.
+// track records an open connection so a stop can close it, and refuses it once the relay is stopping.
 func (r *Relay) track(c net.Conn) bool {
 	r.mu.Lock()
 	defer r.mu.Unlock()
@@ -232,13 +232,13 @@ func grow(wait time.Duration) time.Duration {
 
 // pause waits for the given while and reports false when the context ends first.
 func pause(ctx context.Context, wait time.Duration) bool {
-	// Go on at once when there is nothing to wait for
+	// Go on at once when the wait is zero
 	if wait == 0 {
 		return ctx.Err() == nil
 	}
 	t := time.NewTimer(wait)
 	defer t.Stop()
-	// Wait for the timer, unless the context ends first
+	// Wait for the timer, or for the context to end first
 	select {
 	case <-ctx.Done():
 		return false
@@ -260,7 +260,7 @@ func pipe(a, b net.Conn) {
 	wg.Wait()
 }
 
-// copyHalf copies one direction to its end, then ends the writing side, or the whole connection where it cannot end
+// copyHalf copies one direction to its end, then ends the writing side, or the whole connection where it fails to end
 // one side alone.
 func copyHalf(dst, src net.Conn) {
 	_, _ = io.Copy(dst, src)

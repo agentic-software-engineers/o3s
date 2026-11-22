@@ -29,7 +29,7 @@ var (
 )
 
 // selfUpdate brings the binary to the newest release of its channel and hands the parts of the update left to it, and
-// reports whether it did. It ends with the binary where no part is left.
+// reports whether it did. It ends with the binary where the rest is empty.
 func selfUpdate(ctx context.Context, in io.Reader, out, errOut io.Writer, yes bool, rest []string) (bool, error) {
 	current := version()
 	// Leave a dev build to the way it was built
@@ -65,7 +65,7 @@ func selfUpdate(ctx context.Context, in io.Reader, out, errOut io.Writer, yes bo
 		return false, err
 	}
 	dir, err := os.MkdirTemp("", "o3s-update-")
-	// Hand back a download that finds no folder
+	// Hand back a download that lacks a folder
 	if err != nil {
 		return false, err
 	}
@@ -111,17 +111,17 @@ func selfUpdate(ctx context.Context, in io.Reader, out, errOut io.Writer, yes bo
 func newerRelease(ctx context.Context) (string, string, bool) {
 	current := version()
 	path, err := executable()
-	// Report nothing newer for a dev build or a binary whose file stays unknown
+	// Report the binary current for a dev build or a binary whose file stays unknown
 	if !release.IsRelease(current) || err != nil {
 		return "", current, false
 	}
 	channel, _ := release.ChannelOf(path)
-	// Report nothing newer for a binary pinned to its version
+	// Report the binary current for a binary pinned to its version
 	if channel == release.Pinned {
 		return "", current, false
 	}
 	target, err := newestOf(ctx, channel)
-	// Report nothing newer where the releases stay out of reach
+	// Report the binary current where the releases stay out of reach
 	if err != nil {
 		return "", current, false
 	}

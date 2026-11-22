@@ -78,7 +78,7 @@ type file struct {
 	data []byte
 }
 
-// stack hands back every file of the stack a home holds, its config without features.
+// stack hands back every file of the stack a home holds, its config free of features.
 func stack() ([]file, error) {
 	var stack []file
 	err := fs.WalkDir(files, source, func(path string, d fs.DirEntry, err error) error {
@@ -91,7 +91,7 @@ func stack() ([]file, error) {
 		if err != nil {
 			return err
 		}
-		// Start the config with no feature, the way a home starts with no host, and the binary as its start hook
+		// Start the config free of features, the way a home starts free of hosts, and the binary as its start hook
 		if d.Name() == "devcontainer.json" {
 			data, err = withoutFeatures(data)
 			// Hand back a config that fails to edit
@@ -112,7 +112,7 @@ func stack() ([]file, error) {
 
 // hooked names the release binary's own path as the start hook, so the editor finds it whatever its PATH holds.
 func hooked(config []byte) []byte {
-	// Keep the plain command for a build that names no release
+	// Keep the plain command for a build that lacks a release
 	if !release.IsRelease(Version) || Executable == "" {
 		return config
 	}
@@ -151,7 +151,7 @@ func Seed(dir string) ([]string, error) {
 		written = append(written, settings)
 	}
 	workspace := Workspace(dir)
-	// Start the workspace from its template where the home holds none
+	// Start the workspace from its template where the home lacks one
 	if _, err := os.Stat(workspace); errors.Is(err, fs.ErrNotExist) {
 		data, err := files.ReadFile("templates/o3s.code-workspace")
 		// Hand back a template the binary fails to hand over
@@ -169,7 +169,7 @@ func Seed(dir string) ([]string, error) {
 
 // pinned tags o3s's own images with the binary's release and the digests it carries, and leaves latest for any other build.
 func pinned(compose []byte) []byte {
-	// Keep latest for a build that names no release
+	// Keep latest for a build that lacks a release
 	if !release.IsRelease(Version) {
 		return compose
 	}
@@ -200,7 +200,7 @@ func writeFile(path string, data []byte) error {
 // withoutFeatures empties a config's features and keeps everything else.
 func withoutFeatures(data []byte) ([]byte, error) {
 	v, err := hujson.Parse(data)
-	// Hand back a config that holds no JSON with comments
+	// Hand back a config that fails to parse as JSON with comments
 	if err != nil {
 		return nil, err
 	}
@@ -211,7 +211,7 @@ func withoutFeatures(data []byte) ([]byte, error) {
 	return v.Pack(), nil
 }
 
-// SeedSecrets starts the secrets file from its template where the user holds none, in a folder for the user alone.
+// SeedSecrets starts the secrets file from its template where the user lacks one, in a folder for the user alone.
 func SeedSecrets(path string) (bool, error) {
 	// Keep a secrets file the user holds
 	if _, err := os.Stat(path); err == nil {

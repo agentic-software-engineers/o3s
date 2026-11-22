@@ -60,12 +60,12 @@ func newSecretAdd() *cobra.Command {
 			}
 			out := cmd.OutOrStdout()
 			stored := "Stored"
-			// Name a value that replaced the one the secret held, without either value
+			// Name a value that replaced the one the secret held, keeping both values hidden
 			if replaced {
 				stored = "Replaced"
 			}
 			fmt.Fprintf(out, "%s %s\n", stored, name)
-			// Point a name no host carries at the command that binds it, unless a feature binds it next
+			// Point a host-free name at the command that binds it, where a feature leaves the binding to the user
 			if !noBindHint && len(hostsNaming(name)) == 0 {
 				fmt.Fprintf(out, "Bind it to a host with: o3s firewall add <host> --secret %s\n", name)
 			}
@@ -142,7 +142,7 @@ func showSecrets(cmd *cobra.Command) error {
 	}
 	names := store.Names()
 	c, _ := homeConfig()
-	// Add the names the home's hosts carry, stored or not
+	// Add the names the home's hosts carry, stored or missing
 	for _, h := range c.Hosts {
 		// Add a name the file is yet to hold
 		if h.Secret != "" && !slices.Contains(names, h.Secret) {
@@ -181,10 +181,10 @@ func homeConfig() (config.Config, error) {
 	return config.Load(dir)
 }
 
-// hostsNaming lists the hosts of the home that carry a secret, and none outside a home.
+// hostsNaming lists the hosts of the home that carry a secret, and an empty list outside a home.
 func hostsNaming(name string) []string {
 	c, err := homeConfig()
-	// Read no hosts outside a home
+	// Hand back an empty host list outside a home
 	if err != nil && errors.Is(err, config.ErrNoHome) {
 		return nil
 	}
@@ -199,7 +199,7 @@ func hostsNaming(name string) []string {
 	return hosts
 }
 
-// isTerminal reports whether a stream reaches a terminal rather than a pipe or a file.
+// isTerminal reports whether a stream reaches a terminal.
 func isTerminal(stream any) bool {
 	f, ok := stream.(*os.File)
 	// Read anything but a file as a pipe

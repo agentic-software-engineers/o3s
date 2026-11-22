@@ -51,7 +51,7 @@ func TestParseReadsEveryForm(t *testing.T) {
 	}
 }
 
-// An argument that names no repository, or a folder outside the projects volume, is turned away as invalid.
+// An argument that lacks a repository, or a folder outside the projects volume, is turned away as invalid.
 func TestParseTurnsAwayWhatNamesNoRepository(t *testing.T) {
 	// Try every malformed argument
 	for _, arg := range []string{"linux", "", "a/b/c", "http://github.com/o/r", "git://github.com/o/r", "https://github.com/linux", "owner/..", "../linux", "github.com/../linux", "owner/a b", "git@..:o/r.git"} {

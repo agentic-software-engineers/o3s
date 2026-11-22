@@ -36,7 +36,7 @@ func keyOf(name string) hostKey {
 	}
 	bare := strings.TrimPrefix(name, "*.")
 	apex, err := publicsuffix.EffectiveTLDPlusOne(bare)
-	// Treat a name without a registrable domain as its own apex
+	// Treat a name that lacks a registrable domain as its own apex
 	if err != nil {
 		apex = bare
 	}

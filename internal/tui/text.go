@@ -45,7 +45,7 @@ func newText(q menu.Question) text {
 
 // reading is how the question reads the line so far, and the rule it breaks where it breaks one.
 func (t text) reading() (string, error) {
-	// Read nothing where the question checks nothing or nothing is typed yet
+	// Read an empty line where the question lacks a check or the line is still blank
 	if t.q.Check == nil || strings.TrimSpace(t.input.Value()) == "" {
 		return "", nil
 	}

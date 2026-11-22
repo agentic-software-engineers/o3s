@@ -18,7 +18,7 @@ func projectView(h Home) Question {
 	// Show every project by its name with its host
 	for _, p := range h.Projects {
 		r, err := project.Parse(p)
-		// Show a project o3s cannot read by its path alone
+		// Show a project o3s fails to read by its path alone
 		if err != nil {
 			t.Options = append(t.Options, Option{Value: p})
 			continue
@@ -58,11 +58,11 @@ func projectDialog(h Home, a Answers) (Question, bool) {
 	return Question{}, true
 }
 
-// openFirst asks to open the firewall for the hosts the new projects clone from where it blocks them, and asks
-// nothing where it lets every clone through.
+// openFirst asks to open the firewall for the hosts the new projects clone from where it blocks them, and stays
+// quiet where it lets every clone through.
 func openFirst(h Home, a Answers) (Question, bool) {
 	opens := opening(h, a, add)
-	// Ask nothing where the firewall lets every clone through
+	// Stay quiet where the firewall lets every clone through
 	if len(opens) == 0 {
 		return Question{}, true
 	}
@@ -86,10 +86,10 @@ type open struct {
 }
 
 // opening lists the hosts the firewall blocks for the projects the user clones, each with the ports it already opens
-// beside the one the clone needs, since a change of ports replaces them, and none for a new project, which clones
-// nothing.
+// beside the one the clone needs, since a change of ports replaces them, and an empty list for a new project, which
+// starts empty.
 func opening(h Home, a Answers, picked string) []open {
-	// Open nothing for a project the user creates
+	// Leave the firewall as it is for a project the user creates
 	if picked != add {
 		return nil
 	}
@@ -99,7 +99,7 @@ func opening(h Home, a Answers, picked string) []open {
 	// Note every host and port a clone needs that the firewall blocks
 	for arg := range strings.FieldsSeq(a.get("repos")) {
 		r, err := project.Parse(arg)
-		// Pass over a repository the firewall lets through, or one o3s cannot read
+		// Pass over a repository the firewall lets through, or one o3s fails to read
 		if err != nil || c.Allows(r.Host, r.Port) {
 			continue
 		}
@@ -123,7 +123,7 @@ func opening(h Home, a Answers, picked string) []open {
 // projectPlan builds the commands the project view's dialogs lead to.
 func projectPlan(h Home, a Answers) []Command {
 	_, picked := view(a)
-	// Go back to the view where the user picked nothing or stepped back
+	// Go back to the view where the pick is empty or the user stepped back
 	if len(picked) == 0 || a.get("action") == back {
 		return nil
 	}
@@ -152,10 +152,10 @@ func projectPlan(h Home, a Answers) []Command {
 	return []Command{{Args: []string{"project", "rm", picked[0], "--yes"}}}
 }
 
-// fullName reads the owner/name of a project, or its path where o3s cannot read it.
+// fullName reads the owner/name of a project, or its path where o3s fails to read it.
 func fullName(p string) string {
 	r, err := project.Parse(p)
-	// Take the path of a project o3s cannot read
+	// Take the path of a project o3s fails to read
 	if err != nil {
 		return p
 	}

@@ -12,7 +12,7 @@ import (
 var (
 	// failedFeature matches the line the devcontainer CLI names a feature that failed to install with.
 	failedFeature = regexp.MustCompile(`Feature "([^"]+)" \(([^)]+)\) failed to install`)
-	// unreachable match the lines curl, git, apt and Go's own network name a host they could not reach with.
+	// unreachable match the lines curl, git, apt and Go's own network name a host they failed to reach with.
 	unreachable = []*regexp.Regexp{
 		regexp.MustCompile(`Could not resolve host:? '?([A-Za-z0-9.-]+\.[A-Za-z]{2,})'?`),
 		regexp.MustCompile(`Temporary failure resolving '([^']+)'`),
@@ -50,7 +50,7 @@ func hostsIn(output string) []string {
 	for _, re := range unreachable {
 		// Take every host the pattern finds
 		for _, m := range re.FindAllStringSubmatch(output, -1) {
-			// Take a host not named yet
+			// Take a host still unnamed
 			if !slices.Contains(hosts, m[1]) {
 				hosts = append(hosts, m[1])
 			}
@@ -67,18 +67,18 @@ func buildFailure(output, logPath string, err error) error {
 	if m := failedFeature.FindStringSubmatch(output); m != nil {
 		f.step = fmt.Sprintf("the cage failed to build at the feature %s (%s)", m[1], m[2])
 	}
-	// Name the hosts the build could not reach and the command that allows them
+	// Name the hosts the build failed to reach and the command that allows them
 	if hosts := hostsIn(output); len(hosts) > 0 {
 		f.fixes = append(f.fixes, "it could not reach "+words.JoinAnd(hosts), "allow them with: o3s firewall add "+strings.Join(hosts, " "))
 	}
 	return f
 }
 
-// vmFailure names why a step of the home's VM failed, in the VM manager's words: the hosts this machine could not reach,
-// and that o3s init goes on where it stopped.
+// vmFailure names why a step of the home's VM failed, in the VM manager's words: the hosts this machine failed to
+// reach, and that o3s init goes on where it stopped.
 func vmFailure(step string, err error, logPath string) error {
 	f := failure{step: step, cause: err.Error(), log: logPath}
-	// Name the hosts this machine could not reach
+	// Name the hosts this machine failed to reach
 	if hosts := hostsIn(err.Error()); len(hosts) > 0 {
 		f.fixes = append(f.fixes, "this machine could not reach "+words.JoinAnd(hosts)+", check its network")
 	}

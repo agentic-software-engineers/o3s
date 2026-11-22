@@ -10,8 +10,8 @@ import (
 	"github.com/hansehart/o3s/internal/ptytest"
 )
 
-// Answer gives the question on the screen the answer a path of the menu holds, the way a user does, reading only what
-// the terminal shows: the arrows to the row and Enter, the marks with Space, y or n, the line typed, the tab with the
+// Answer gives the question on the screen the answer a path of the menu holds, the way a user does, reading what the
+// terminal shows: the arrows to the row and Enter, the marks with Space, y or n, the line typed, the tab with the
 // arrows and its key.
 func Answer(s *ptytest.Session, q menu.Question, values []string) error {
 	var err error
@@ -69,7 +69,7 @@ func row(o menu.Option) *regexp.Regexp {
 // moveTo presses ↓, then ↑, until the row of the value is highlighted.
 func moveTo(s *ptytest.Session, options []menu.Option, value string) error {
 	i := slices.IndexFunc(options, func(o menu.Option) bool { return o.Value == value })
-	// Turn away a value no option holds
+	// Turn away a value outside every option
 	if i < 0 {
 		return fmt.Errorf("no option %q", value)
 	}
@@ -83,7 +83,7 @@ func moveTo(s *ptytest.Session, options []menu.Option, value string) error {
 			if re.MatchString(s.Screen()) {
 				return nil
 			}
-			// Hand back a terminal that takes no more keys
+			// Hand back a terminal that refuses further keys
 			if err := s.Press(key); err != nil {
 				return err
 			}
@@ -107,7 +107,7 @@ func markOnly(s *ptytest.Session, options []menu.Option, values []string) error 
 		}
 		// Turn a row whose mark differs from the one wanted
 		if marked(s) != slices.Contains(values, o.Value) {
-			// Hand back a terminal that takes no more keys
+			// Hand back a terminal that refuses further keys
 			if err := s.Press("space"); err != nil {
 				return err
 			}
@@ -144,7 +144,7 @@ func inView(s *ptytest.Session, tabs []menu.Tab, values []string) error {
 
 // toTab presses → until the tab named is the one lit, where the view shows its tabs.
 func toTab(s *ptytest.Session, tabs []menu.Tab, name string) error {
-	// Take the one tab of a view that shows no tabs
+	// Take the one tab of a single-tab view
 	if len(tabs) == 1 {
 		return nil
 	}
@@ -155,7 +155,7 @@ func toTab(s *ptytest.Session, tabs []menu.Tab, name string) error {
 		if slices.ContainsFunc(s.Lit(), func(lit string) bool { return strings.TrimSpace(lit) == name }) {
 			return nil
 		}
-		// Hand back a terminal that takes no more keys
+		// Hand back a terminal that refuses further keys
 		if err := s.Press("right"); err != nil {
 			return err
 		}

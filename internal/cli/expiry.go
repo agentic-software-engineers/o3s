@@ -12,7 +12,7 @@ import (
 // parseFor reads how long a host stays open, a duration the allowlist turns away being a usage error.
 func parseFor(s string) (time.Duration, error) {
 	d, err := config.ParseFor(s)
-	// Mark a duration that reads as no time as a fault of the command line
+	// Mark a duration that reads as zero time as a fault of the command line
 	if err != nil {
 		return 0, fmt.Errorf("%w: %w", ErrUsage, err)
 	}

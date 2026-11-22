@@ -26,8 +26,8 @@ var navigation = []tea.Msg{
 	tea.KeyPressMsg{Code: tea.KeyDown, Mod: tea.ModCtrl},
 }
 
-// letters are the keys a walk presses where nothing is typed yet, each a key the menu acts on or the first letter of
-// a search, so a screen never fills with letters.
+// letters are the keys a walk presses where the line is still blank, each a key the menu acts on or the first letter
+// of a search, so a screen stays clear of piled-up letters.
 var letters = []tea.Msg{
 	space, typed("/")[0], typed("m")[0], typed("y")[0], typed("n")[0],
 	typed("1")[0], typed("2")[0], typed("3")[0], typed("4")[0],
@@ -48,7 +48,7 @@ func typing(m model) bool {
 	return false
 }
 
-// actions are what a walk does on a screen: every navigation key, the letters where nothing is typed yet, every key
+// actions are what a walk does on a screen: every navigation key, the letters where the line is still blank, every key
 // the view in front acts on, and on a line of text the line a test types for it.
 func actions(m model) [][]tea.Msg {
 	out := make([][]tea.Msg, 0, len(navigation)+len(letters)+2)
@@ -56,14 +56,14 @@ func actions(m model) [][]tea.Msg {
 	for _, k := range navigation {
 		out = append(out, []tea.Msg{k})
 	}
-	// Press every letter where the screen takes no text yet
+	// Press every letter where the screen is still free of typing
 	for _, k := range letters {
 		// Leave letters out where they would pile up as text
 		if m.state != asking || !typing(m) {
 			out = append(out, []tea.Msg{k})
 		}
 	}
-	// Press every key the view's tab in front acts on, where it takes no text
+	// Press every key the view's tab in front acts on, while it is free of typing
 	if v, isView := m.field.(view); isView && m.state == asking && !typing(m) {
 		tab, _ := v.current()
 		// Press every key of the tab
@@ -119,7 +119,7 @@ func TestRandomWalks(t *testing.T) {
 	// Walk from the paths of every home
 	for _, h := range menutest.Homes() {
 		paths, err := menutest.Walk(h.Home)
-		// Stop where the menu can't be walked
+		// Stop where the walk through the menu fails
 		if err != nil {
 			t.Fatalf("%s: %v", h.Name, err)
 		}
@@ -129,7 +129,7 @@ func TestRandomWalks(t *testing.T) {
 				randomWalk(t, h.Home, p, i, func(m model, pressed []string) {
 					// Report every break of the rules outside the known ones
 					for _, b := range screenBreaks(m) {
-						// Report a break no finding names
+						// Report a break outside the known findings
 						if _, known := knownBreaks[b]; !known {
 							t.Fatalf("%s from %s after %v, on:\n%s", b, menutest.Line(p), pressed, strings.Join(screen(m), "\n"))
 						}

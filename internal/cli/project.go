@@ -16,7 +16,7 @@ import (
 	"github.com/hansehart/o3s/internal/workspace"
 )
 
-// noAgent is the exit code the agent check gives where it reaches no agent.
+// noAgent is the exit code the agent check gives where it fails to reach an agent.
 const noAgent = 2
 
 // newProject builds the commands that show, clone, create and remove the projects in the home's workspace.
@@ -34,12 +34,12 @@ func newProjectAdd() *cobra.Command {
 		Args:  usage(cobra.MinimumNArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			repos, err := parseRepos(args)
-			// Hand back a repository o3s cannot read
+			// Hand back a repository o3s fails to read
 			if err != nil {
 				return err
 			}
 			dir, err := cageHome()
-			// Hand back a folder that holds no home
+			// Hand back a folder that lacks a home
 			if err != nil {
 				return err
 			}
@@ -122,7 +122,7 @@ func parseRepos(args []string) ([]project.Repository, error) {
 	// Read every repository in the order given
 	for _, arg := range args {
 		repo, err := project.Parse(arg)
-		// Hand back a repository o3s cannot read
+		// Hand back a repository o3s fails to read
 		if err != nil {
 			return nil, fmt.Errorf("%w: %w", ErrUsage, err)
 		}
@@ -139,12 +139,12 @@ func newProjectCreate() *cobra.Command {
 		Args:  usage(cobra.ExactArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			repo, err := project.Parse(args[0])
-			// Hand back a repository o3s cannot read
+			// Hand back a repository o3s fails to read
 			if err != nil {
 				return fmt.Errorf("%w: %w", ErrUsage, err)
 			}
 			dir, err := cageHome()
-			// Hand back a folder that holds no home
+			// Hand back a folder that lacks a home
 			if err != nil {
 				return err
 			}
@@ -168,7 +168,7 @@ func newProjectCreate() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			// Turn away a folder that holds files, so nothing there is overwritten
+			// Turn away a folder that holds files, so everything there stays intact
 			if strings.TrimSpace(held) != "" {
 				return fmt.Errorf("%s holds files already, add it with o3s project add or pick another name", path)
 			}
@@ -201,12 +201,12 @@ func newProjectRm() *cobra.Command {
 		Args:  usage(cobra.MinimumNArgs(1)),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			repos, err := parseRepos(args)
-			// Hand back a repository o3s cannot read
+			// Hand back a repository o3s fails to read
 			if err != nil {
 				return err
 			}
 			dir, err := cageHome()
-			// Hand back a folder that holds no home
+			// Hand back a folder that lacks a home
 			if err != nil {
 				return err
 			}
@@ -222,7 +222,7 @@ func newProjectRm() *cobra.Command {
 					return fmt.Errorf("unknown project %s, o3s project lists them", repo.FullName())
 				}
 			}
-			// Turn away a run where nobody can type the names
+			// Turn away a run that lacks a terminal to type the names at
 			if !yes && !isTerminal(cmd.InOrStdin()) {
 				return fmt.Errorf("%w: pass --yes to delete without a terminal", ErrUsage)
 			}
@@ -235,7 +235,7 @@ func newProjectRm() *cobra.Command {
 			for _, repo := range repos {
 				// Ask for owner/name before anything is deleted
 				if !yes {
-					// Hand back a deletion the user did not confirm
+					// Hand back a deletion the user left unconfirmed
 					if err := confirmName(cmd, repo.FullName()); err != nil {
 						return err
 					}
@@ -266,7 +266,7 @@ func newProjectRm() *cobra.Command {
 // showProjects writes the projects the workspace lists.
 func showProjects(cmd *cobra.Command) error {
 	dir, err := cageHome()
-	// Hand back a folder that holds no home
+	// Hand back a folder that lacks a home
 	if err != nil {
 		return err
 	}
@@ -311,14 +311,14 @@ func addFolder(dir string, ws *workspace.Workspace, repo project.Repository) err
 	return ws.Save(home.Workspace(dir))
 }
 
-// errNotConfirmed marks a deletion the user did not confirm.
+// errNotConfirmed marks a deletion the user declined to confirm.
 var errNotConfirmed = errors.New("the name does not match, nothing deleted")
 
-// confirmName asks the user to type a name before a deletion, so nothing is deleted by a stray key.
+// confirmName asks the user to type a name before a deletion, so every deletion is deliberate.
 func confirmName(cmd *cobra.Command, want string) error {
 	fmt.Fprintf(cmd.OutOrStdout(), "Type %q to confirm deletion: ", want)
 	line, err := bufio.NewReader(cmd.InOrStdin()).ReadString('\n')
-	// Read a failed read that typed nothing as a refusal
+	// Read a failed read of an empty line as a refusal
 	if err != nil && line == "" {
 		return errNotConfirmed
 	}

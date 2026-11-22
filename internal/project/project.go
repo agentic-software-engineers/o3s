@@ -17,7 +17,7 @@ const Dir = "/home/ubuntu/projects"
 // defaultHost is the host a repository names where it leaves the host out.
 const defaultHost = "github.com"
 
-// ErrInvalid marks a repository or project name o3s cannot read.
+// ErrInvalid marks a repository or project name o3s fails to read.
 var ErrInvalid = errors.New("invalid")
 
 // Repository is a repository o3s project clones.
@@ -70,7 +70,7 @@ var segment = regexp.MustCompile(`^[A-Za-z0-9._-]+$`)
 // Parse reads a repository given as a URL, in git's short SSH form, or as host/owner/name or owner/name on the default host, the short forms cloned over SSH.
 func Parse(arg string) (Repository, error) {
 	r, err := parse(arg)
-	// Name the forms o3s takes where the argument matches none
+	// Name the forms o3s takes when the argument fails to match them
 	if err != nil {
 		return Repository{}, fmt.Errorf("%w repository %q, want owner/repo, host/owner/repo or a git URL: %w", ErrInvalid, arg, err)
 	}
@@ -98,7 +98,7 @@ func parse(arg string) (Repository, error) {
 		// Take the port the URL names
 		if p := u.Port(); p != "" {
 			port, err = strconv.Atoi(p)
-			// Hand back a port that holds no number
+			// Hand back a port that fails to read as a number
 			if err != nil {
 				return Repository{}, err
 			}
@@ -117,7 +117,7 @@ func parse(arg string) (Repository, error) {
 	return Repository{}, errors.New("no form matches")
 }
 
-// short builds the SSH clone of a repository named without a URL.
+// short builds the SSH clone of a repository named in short form.
 func short(host, p string) (Repository, error) {
 	p = strings.TrimSuffix(p, ".git")
 	return fromPath(host, 22, p, "git@"+host+":"+p+".git", true)
@@ -127,11 +127,11 @@ func short(host, p string) (Repository, error) {
 func fromPath(host string, port int, p, cloneURL string, ssh bool) (Repository, error) {
 	p = strings.TrimSuffix(strings.Trim(p, "/"), ".git")
 	parts := append([]string{host}, strings.Split(p, "/")...)
-	// Turn away a path without an owner
+	// Turn away a path that lacks an owner
 	if len(parts) < 3 {
 		return Repository{}, errors.New("want a host, an owner and a name")
 	}
-	// Turn away any part that makes no folder of its own in the projects volume
+	// Turn away any part that fails to make a folder of its own in the projects volume
 	for _, part := range parts {
 		// Name the part that would leave its place
 		if !segment.MatchString(part) || strings.Trim(part, ".") == "" {

@@ -45,11 +45,11 @@ exit 0
 `
 
 // fakeLimactl stands in for Lima, keeping its VMs in a file, so a script sees each VM o3s boots, runs commands in and
-// deletes. Like Lima, it writes its log records as JSON on stderr and a download's progress as plain lines, and it fails
+// deletes. It writes its log records as JSON on stderr and a download's progress as plain lines, and it fails
 // with a fatal record where $WORK/lima-fails holds the message.
 const fakeLimactl = `#!/bin/sh
 echo "LIMA_HOME=$LIMA_HOME $*" >> "$WORK/limactl.log"
-# Read past the global flags to the command, as Lima does
+# Read past the global flags to the command
 while [ "${1#--}" != "$1" ]; do shift; done
 # Fail with the record a test asks for
 if [ -f "$WORK/lima-fails" ] && [ "$1" = start ]; then
@@ -93,7 +93,7 @@ const fakeCmd = `#!/bin/sh
 echo 'C:\Users\ubuntu\AppData\Roaming'
 `
 
-// fakeAaEnabled answers as a host whose kernel runs no AppArmor, so no script asks for sudo.
+// fakeAaEnabled answers as a host whose kernel lacks AppArmor, so every script runs free of sudo.
 const fakeAaEnabled = `#!/bin/sh
 exit 1
 `

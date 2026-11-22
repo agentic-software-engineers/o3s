@@ -18,12 +18,12 @@ import (
 func theShippedSchema(t *testing.T) *jsonschema.Schema {
 	t.Helper()
 	data, err := os.ReadFile("../home/stack/o3s.schema.json")
-	// Stop when the stack ships no schema
+	// Stop when the stack lacks a schema
 	if err != nil {
 		t.Fatalf("Setup: read the shipped schema: %v", err)
 	}
 	doc, err := jsonschema.UnmarshalJSON(bytes.NewReader(data))
-	// Stop when the schema holds no JSON
+	// Stop when the schema holds invalid JSON
 	if err != nil {
 		t.Fatalf("Setup: read the shipped schema: %v", err)
 	}
@@ -44,7 +44,7 @@ func theShippedSchema(t *testing.T) *jsonschema.Schema {
 func check(t *testing.T, schema *jsonschema.Schema, data []byte) error {
 	t.Helper()
 	doc, err := jsonschema.UnmarshalJSON(bytes.NewReader(data))
-	// Stop when the settings hold no JSON
+	// Stop when the settings hold invalid JSON
 	if err != nil {
 		t.Fatalf("read settings %s: %v", data, err)
 	}
@@ -127,7 +127,7 @@ func TestTheSchemaAgreesWithO3s(t *testing.T) {
 	}
 }
 
-// The schema turns away keys o3s never writes.
+// The schema turns away keys outside the ones o3s writes.
 func TestTheSchemaTurnsAwayUnknownKeys(t *testing.T) {
 	schema := theShippedSchema(t)
 	files := map[string]string{

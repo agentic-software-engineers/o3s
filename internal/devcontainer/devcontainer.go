@@ -31,11 +31,11 @@ func Load(home string) (*Config, error) {
 		return nil, err
 	}
 	v, err := hujson.Parse(data)
-	// Hand back a config that holds no JSON with comments
+	// Hand back a config that fails to parse as JSON with comments
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", File, err)
 	}
-	// Turn away a config that holds no object
+	// Turn away a config that lacks an object
 	if _, ok := v.Value.(*hujson.Object); !ok {
 		return nil, fmt.Errorf("%s holds no object", File)
 	}
@@ -65,7 +65,8 @@ func (c *Config) SetFeature(pkg, key string, options map[string]any) {
 	c.set("features", func(m hujson.ObjectMember) bool { return samePackage(name(m), pkg) }, key, merged)
 }
 
-// FeatureOptions hands back the options a feature holds whatever its tag, and none for a feature the config lacks.
+// FeatureOptions hands back the options a feature holds whatever its tag, and an empty set for a feature the config
+// lacks.
 func (c *Config) FeatureOptions(pkg string) map[string]any {
 	options := map[string]any{}
 	// Read the options of the feature of that package
@@ -144,7 +145,7 @@ func (c *Config) remove(object string, match func(hujson.ObjectMember) bool) boo
 	o := c.find(object)
 	// Find the member that matches
 	for i, m := range o.Members {
-		// Drop it, and close the object where it held nothing else
+		// Drop it, and close the object where it was the sole member
 		if match(m) {
 			o.Members = append(o.Members[:i], o.Members[i+1:]...)
 			// Close an emptied object on the line it opens
@@ -184,7 +185,7 @@ func (c *Config) find(key string) *hujson.Object {
 	return &hujson.Object{}
 }
 
-// unit is the indent the config's top-level members carry, four spaces where it shows none.
+// unit is the indent the config's top-level members carry, four spaces where it lacks one.
 func (c *Config) unit() string {
 	root := c.v.Value.(*hujson.Object)
 	// Take the indent of the first top-level member
@@ -202,7 +203,7 @@ func (c *Config) unit() string {
 func appendMember(o *hujson.Object, key string, v hujson.Value, indent, unit string) {
 	v.BeforeExtra = hujson.Extra(" ")
 	m := hujson.ObjectMember{Name: hujson.Value{BeforeExtra: hujson.Extra("\n" + indent), Value: hujson.String(key)}, Value: v}
-	// Close the object on its own line where it held nothing
+	// Close the object on its own line where it was empty
 	if len(o.Members) == 0 && len(o.AfterExtra) == 0 {
 		o.AfterExtra = hujson.Extra("\n" + strings.TrimSuffix(indent, unit))
 	}
@@ -217,12 +218,12 @@ func appendMember(o *hujson.Object, key string, v hujson.Value, indent, unit str
 // literal writes a value as JSON laid out at the given indent.
 func literal(value any, indent, unit string) hujson.Value {
 	data, err := json.MarshalIndent(value, indent, unit)
-	// Fall back to an empty string for a value JSON cannot hold, which strings and string maps never are
+	// Fall back to an empty string for a value JSON fails to hold, while JSON always holds strings and string maps
 	if err != nil {
 		data = []byte(`""`)
 	}
 	v, err := hujson.Parse(data)
-	// Fall back to an empty string for JSON that fails to parse back, which JSON from the encoder never is
+	// Fall back to an empty string for JSON that fails to parse back, while JSON from the encoder always parses back
 	if err != nil {
 		return hujson.Value{Value: hujson.String("")}
 	}
@@ -232,7 +233,7 @@ func literal(value any, indent, unit string) hujson.Value {
 // name reads a member's name.
 func name(m hujson.ObjectMember) string {
 	l, ok := m.Name.Value.(hujson.Literal)
-	// Take a name that holds no string as empty
+	// Take a name that lacks a string as empty
 	if !ok {
 		return ""
 	}

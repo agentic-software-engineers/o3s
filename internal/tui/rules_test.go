@@ -13,8 +13,8 @@ import (
 	"github.com/hansehart/o3s/internal/tui/screentest"
 )
 
-// instant are the commands that run without a confirmation, each because undoing it is as quick as doing it, or
-// because it changes nothing in the home.
+// instant are the commands that run at once, each because undoing it is as quick as doing it, or because it leaves
+// the home as it is.
 var instant = map[string]string{
 	"cage ide":          "opens an editor, changing nothing",
 	"cage shell":        "opens a shell, changing nothing",
@@ -52,7 +52,7 @@ func breaks(t *testing.T) map[string]bool {
 		// Walk every path of every home
 		for _, h := range menutest.Homes() {
 			paths, err := menutest.Walk(h.Home)
-			// Stop where the menu can't be walked
+			// Stop where the walk through the menu fails
 			if err != nil {
 				t.Fatalf("%s: %v", h.Name, err)
 			}
@@ -88,7 +88,7 @@ func breaks(t *testing.T) map[string]bool {
 }
 
 // screenBreaks are the rules a screen breaks: a crumb that shows an inner value or a label's note, the rules of the
-// screen's text, and a question that offers nothing to pick.
+// screen's text, and a question with an empty list to pick from.
 func screenBreaks(m model) []string {
 	var out []string
 	trail := strings.Join(m.crumbs(), " / ")
@@ -103,14 +103,14 @@ func screenBreaks(m model) []string {
 	for _, b := range screentest.Breaks(screen(m), m.width, m.height) {
 		out = append(out, b+": "+trail)
 	}
-	// Note a choice that offers nothing to pick
+	// Note a choice with an empty list to pick from
 	if (m.q.Kind == menu.Select || m.q.Kind == menu.Multi) && len(m.q.Options) == 0 {
 		out = append(out, "nothing to pick: "+trail)
 	}
 	return out
 }
 
-// planBreaks are the commands of a path that change the home without the user's Yes, or the name typed back where
+// planBreaks are the commands of a path that change the home before the user's Yes, or the name typed back where
 // the change deletes the user's own work, and outside the instant ones.
 func planBreaks(p menutest.Path) []string {
 	var out []string
@@ -118,7 +118,7 @@ func planBreaks(p menutest.Path) []string {
 	// Check every command of the plan
 	for _, c := range p.Plan {
 		line := strings.Join(c.Args, " ")
-		// Note a command that runs unconfirmed and isn't instant
+		// Note a command outside the instant ones that runs unconfirmed
 		if len(c.Args) > 0 && !yes && !slices.ContainsFunc(slices.Collect(maps.Keys(instant)), func(i string) bool { return strings.HasPrefix(line, i) }) {
 			out = append(out, "unconfirmed: o3s "+line)
 		}

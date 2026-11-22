@@ -4,22 +4,22 @@
 listen-address=__GW_CAGE_IP__
 # Also serve loopback so the container healthcheck can query dnsmasq
 listen-address=127.0.0.1
-# Bind only the listed addresses, not every interface
+# Bind the listed addresses alone
 bind-interfaces
 
-# Do not read /etc/resolv.conf for upstream servers
+# Leave /etc/resolv.conf unread, taking upstream servers from this config alone
 no-resolv
-# Do not read /etc/hosts
+# Leave /etc/hosts unread
 no-hosts
-# IPv4-only gateway: strip AAAA so clients receive only A records and use IPv4
+# Keep the gateway on IPv4: strip AAAA so clients receive A records alone and use IPv4
 filter-AAAA
-# No catch-all upstream: only allow-listed domains get a per-domain server= line
-# (appended by entrypoint.sh). Everything else is REFUSED and never forwarded,
-# which closes the DNS exfiltration/tunneling channel.
+# Leave out a catch-all upstream: allow-listed domains each get their own server= line
+# at start, and every other name is REFUSED and stays in the gateway, which closes
+# the DNS exfiltration/tunneling channel.
 
-# Never forward unqualified names (no dot) upstream
+# Keep unqualified (dotless) names local
 domain-needed
-# Never forward reverse lookups for private IP ranges upstream
+# Keep reverse lookups for private IP ranges local
 bogus-priv
 
 # Cache up to 1000 resolved names

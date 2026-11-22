@@ -19,7 +19,7 @@ func TestFlowFeatureOptionEditLandsOnItsRow(t *testing.T) {
 	}
 }
 
-// Moving a feature and dropping it where it was runs nothing, Esc puts a moved one back.
+// Moving a feature and dropping it where it was stays idle, Esc puts a moved one back.
 func TestFlowFeatureRowMovesBack(t *testing.T) {
 	m, ran := onHome(t, homeNamed(t, "running"), usualWidth, usualHeight)
 	m, _ = drive(m, keys("feat", enter, "m", down)...)

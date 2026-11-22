@@ -65,7 +65,7 @@ func TestLoadReadsWhatSaveWrote(t *testing.T) {
 	}
 }
 
-// Loading a folder without an o3s home is turned away.
+// Loading a folder that lacks an o3s home is turned away.
 func TestLoadTurnsAwayAFolderWithoutAHome(t *testing.T) {
 	home := t.TempDir()
 
@@ -77,7 +77,7 @@ func TestLoadTurnsAwayAFolderWithoutAHome(t *testing.T) {
 	}
 }
 
-// Loading a file that holds no valid JSON is turned away.
+// Loading a file that holds invalid JSON is turned away.
 func TestLoadTurnsAwayAMalformedFile(t *testing.T) {
 	home := t.TempDir()
 	// Stop when the broken file stays unwritten
@@ -93,7 +93,7 @@ func TestLoadTurnsAwayAMalformedFile(t *testing.T) {
 	}
 }
 
-// A new home offers the official and the o3s feature stores, and allows no host.
+// A new home offers the official and the o3s feature stores, and starts with an empty host list.
 func TestNewOffersBothStoresAndNoHost(t *testing.T) {
 	got := config.New()
 

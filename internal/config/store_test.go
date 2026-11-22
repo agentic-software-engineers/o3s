@@ -31,7 +31,7 @@ func TestAddStoreAddsAStoreOnce(t *testing.T) {
 	}
 }
 
-// A store id that names no repository is turned away and leaves the list as it was.
+// A store id that falls short of naming a repository is turned away and leaves the list as it was.
 func TestAddStoreTurnsAwayAMalformedID(t *testing.T) {
 	// Check every malformed id
 	for _, id := range []string{"", "Registry.example.com/Features", "registry.example.com/features:latest", "registry.example.com/features@sha256:0"} {

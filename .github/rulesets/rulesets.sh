@@ -1,7 +1,18 @@
 #!/bin/sh
-# Checks and applies the rulesets the JSON files of this folder define:
-#   .github/rulesets/rulesets.sh check   fails where a live ruleset is missing or differs from its file
-#   .github/rulesets/rulesets.sh apply   creates or updates the live rulesets from their files (admins only)
+# NAME
+#        rulesets.sh — keep the repository's live rulesets equal to their files
+#
+# SYNOPSIS
+#        .github/rulesets/rulesets.sh check
+#        .github/rulesets/rulesets.sh apply
+#
+# DESCRIPTION
+#        check fails where a live ruleset is missing or differs from the JSON file of this
+#        folder that defines it. apply creates or updates the live rulesets from their files,
+#        a step for admins.
+#
+# SEE ALSO
+#        .github/workflows/rulesets.yaml, main.json
 set -eu
 
 repo="${GITHUB_REPOSITORY:-agentic-software-engineers/o3s}"
@@ -9,7 +20,7 @@ dir="$(dirname "$0")"
 
 # drift prints how a live ruleset differs from its file: every value of the file must equal the live one, while the
 # live ruleset may hold fields the file leaves out, such as its id. Rules compare by type, and a live rule the file
-# lacks is a difference too. The bypass actors compare only where the API shows them, which it does to admins alone.
+# lacks is a difference too. The bypass actors compare where the API shows them, which it does to admins alone.
 drift() {
 	jq -rn --argjson want "$1" --argjson live "$2" '
 		def diff($path; $w; $l):
@@ -28,7 +39,7 @@ drift() {
 			| ".rules.\(.type): live, not in the file")'
 }
 
-# id prints the id of the repository's own ruleset of the name given, empty where it has none.
+# id prints the id of the repository's own ruleset of the name given, empty where it lacks one.
 id() {
 	gh api "repos/$repo/rulesets?includes_parents=false&per_page=100" --jq ".[] | select(.name == \"$1\") | .id"
 }
@@ -40,7 +51,7 @@ check() {
 	for file in "$dir"/*.json; do
 		name="$(jq -r .name "$file")"
 		rid="$(id "$name")"
-		# Name a ruleset nobody applied yet
+		# Name a ruleset still waiting to be applied
 		if [ -z "$rid" ]; then
 			echo "::error file=$file::$repo has no ruleset named \"$name\". An admin applies it with .github/rulesets/rulesets.sh apply."
 			failed=1

@@ -10,7 +10,7 @@ import (
 	"github.com/hansehart/o3s/internal/paths"
 )
 
-// A home's state folder names the home and holds a socket folder only the user reaches.
+// A home's state folder names the home and holds a socket folder private to the user.
 func TestHomeStateRecordsTheHome(t *testing.T) {
 	t.Setenv("XDG_STATE_HOME", t.TempDir())
 	home := "/home/ubuntu/o3s"

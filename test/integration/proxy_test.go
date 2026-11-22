@@ -48,7 +48,7 @@ func TestTheProxyReadsTheHomesPolicy(t *testing.T) {
 	}
 }
 
-// The proxy injects the value o3s stores, in a file that held the name without a value.
+// The proxy injects the value o3s stores, in a file that held the name with an empty value.
 func TestTheProxyReadsTheSecretsO3sStores(t *testing.T) {
 	path := filepath.Join(t.TempDir(), secrets.File)
 	// Stop when the secrets file stays unwritten

@@ -99,7 +99,7 @@ func TestResolverReadsEachStoreOnce(t *testing.T) {
 	}
 }
 
-// A feature without a version follows the newest release.
+// A feature that lacks a version follows the newest release.
 func TestMajorReadsTheMajorPart(t *testing.T) {
 	// Check every version
 	for in, want := range map[string]string{fixture.NewerVersion: fixture.NewerMajor, "3": "3", "": fixture.FloatingTag} {

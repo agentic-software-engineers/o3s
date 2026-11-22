@@ -8,7 +8,7 @@ import (
 	"runtime"
 )
 
-// ErrNoQEMU marks a Linux host without QEMU, which the VM manager runs VMs with there.
+// ErrNoQEMU marks a Linux host that lacks QEMU, which the VM manager runs VMs with there.
 var ErrNoQEMU = errors.New("this machine lacks QEMU, which runs the home's VM on Linux")
 
 // Check names what this host lacks to run the engine's VMs, before anything downloads: QEMU's tools for the qemu

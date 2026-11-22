@@ -61,7 +61,7 @@ func Latest(ctx context.Context) (string, error) {
 	}
 	defer resp.Body.Close()
 	tag := path.Base(resp.Header.Get("Location"))
-	// Turn away an answer that names no release
+	// Turn away an answer that lacks a release
 	if resp.StatusCode/100 != 3 || !strings.HasPrefix(tag, "v") {
 		return "", fmt.Errorf("the releases page names no latest release (%s)", resp.Status)
 	}
@@ -95,7 +95,7 @@ func Fetch(ctx context.Context, version, dir string) (string, error) {
 	return target, atomicfile.Write(target, data, 0o755)
 }
 
-// ErrNoFolder marks a build that has no release to take its files from.
+// ErrNoFolder marks a build that lacks a release to take its files from.
 var ErrNoFolder = errors.New("a dev build installs o3s into its VM from the folder O3S_RELEASE_URL names, holding o3s-linux-<arch>, install.sh and checksums.txt")
 
 // Folder is where a version's release files live: the folder O3S_RELEASE_URL names, else the release's own downloads.
@@ -104,7 +104,7 @@ func Folder(version string) (string, error) {
 	if folder := os.Getenv("O3S_RELEASE_URL"); folder != "" {
 		return strings.TrimSuffix(folder, "/"), nil
 	}
-	// Turn away a build that names no release
+	// Turn away a build outside every release
 	if !IsRelease(version) {
 		return "", ErrNoFolder
 	}
@@ -147,7 +147,7 @@ func VerifyHint(binary string) string {
 
 // Newer reports whether version a comes after version b by semver, a release candidate below the release it leads to.
 func Newer(a, b string) bool {
-	// Order nothing that reads as no release
+	// Keep versions outside the releases unranked
 	if !IsRelease(a) || !IsRelease(b) {
 		return false
 	}

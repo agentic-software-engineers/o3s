@@ -44,7 +44,7 @@ func TestChecksReadWhatHoldsAndNameWhatBreaks(t *testing.T) {
 	}
 }
 
-// A store that reads as none is turned away with an example of the shape a store takes.
+// A line that fails to read as a store is turned away with an example of the shape a store takes.
 func TestStoreCheckNamesTheShapeItWants(t *testing.T) {
 	_, err := checkStore("not a store")
 

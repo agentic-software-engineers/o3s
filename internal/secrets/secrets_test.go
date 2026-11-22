@@ -43,7 +43,7 @@ func load(t *testing.T, path string) secrets.Store {
 	return s
 }
 
-// Reading follows the proxy, the last set value winning. A value with a line break counts as none.
+// Reading follows the proxy, the last set value winning. A value with a line break counts as missing.
 func TestValueReadsLikeTheProxy(t *testing.T) {
 	path := aSecretsFile(t, header+fmt.Sprintf("\n%[1]s = \"first\"\n%[1]s='second'\n%[1]s=\nBROKEN=a\rb\n", fixture.Secret))
 	s := load(t, path)
@@ -55,13 +55,13 @@ func TestValueReadsLikeTheProxy(t *testing.T) {
 	if !ok || got != "second" {
 		t.Errorf("Value(%s) = %q, %v, want %q, true", fixture.Secret, got, ok, "second")
 	}
-	// Require a value with a line break to count as none
+	// Require a value with a line break to count as empty
 	if brokenOK || broken != "" {
 		t.Errorf("Value(BROKEN) = %q, %v, want none", broken, brokenOK)
 	}
 }
 
-// Setting a name fills a line that holds it without a value, and keeps every other line as it was.
+// Setting a name fills a line that holds it with an empty value, and keeps every other line as it was.
 func TestSetFillsALineWithoutAValue(t *testing.T) {
 	path := aSecretsFile(t, header+fixture.Secret+"=\n")
 	s := load(t, path)
@@ -72,7 +72,7 @@ func TestSetFillsALineWithoutAValue(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Set(%s) = %v", fixture.Secret, err)
 	}
-	// Require a line without a value to count as no earlier value
+	// Require a valueless line to count as a fresh entry
 	if replaced {
 		t.Errorf("Set(%s) replaced = true, want false for a line without a value", fixture.Secret)
 	}
@@ -158,7 +158,7 @@ func TestRemoveDropsEveryLineOfAName(t *testing.T) {
 	}
 }
 
-// Names lists every name the file holds, with or without a value, in order.
+// Names lists every name the file holds, valued or empty, in order.
 func TestNamesListsEveryName(t *testing.T) {
 	s := load(t, aSecretsFile(t, header+fmt.Sprintf("%s=b\n%s=\n", fixture.OtherSecret, fixture.Secret)))
 

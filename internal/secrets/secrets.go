@@ -72,7 +72,7 @@ func (s Store) Value(name string) (string, bool) {
 	return value, value != ""
 }
 
-// Names lists every name the file holds, with or without a value, in order.
+// Names lists every name the file holds, valued or empty, in order.
 func (s Store) Names() []string {
 	var names []string
 	// Collect the name of every entry line
@@ -86,14 +86,14 @@ func (s Store) Names() []string {
 	return names
 }
 
-// Set stores a secret so no older value shadows it, and reports whether it replaced one.
+// Set stores a secret so it outranks every older value, and reports whether it replaced one.
 func (s *Store) Set(name, value string) (bool, error) {
 	value = strings.TrimSpace(value)
-	// Turn away a name the proxy reads under no variable
+	// Turn away a name outside the proxy's variable names
 	if !config.IsSecretName(name) {
 		return false, fmt.Errorf("%w secret %q, want an uppercase env name", ErrInvalid, name)
 	}
-	// Turn away a value the proxy reads as none
+	// Turn away a value the proxy reads as empty
 	if value == "" || strings.ContainsAny(value, "\r\n") {
 		return false, fmt.Errorf("%w value for %s, want one line that holds something", ErrInvalid, name)
 	}
@@ -154,13 +154,13 @@ func (s Store) Save(path string) error {
 // parse reads one line the way the proxy does.
 func parse(line string) (string, string, bool) {
 	line = strings.TrimSpace(line)
-	// Skip a line that holds no entry
+	// Skip a line that lacks an entry
 	if line == "" || strings.HasPrefix(line, "#") || !strings.Contains(line, "=") {
 		return "", "", false
 	}
 	name, value, _ := strings.Cut(line, "=")
 	value = strings.Trim(strings.Trim(strings.TrimSpace(value), `"`), `'`)
-	// Read a value with a line break as none
+	// Read a value with a line break as empty
 	if strings.ContainsAny(value, "\r\n") {
 		value = ""
 	}

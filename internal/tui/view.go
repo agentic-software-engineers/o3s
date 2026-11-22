@@ -51,7 +51,7 @@ func newView(q menu.Question) view {
 func (v view) place() []string {
 	t, l := v.current()
 	o, ok := l.highlighted()
-	// Name the tab alone where no row is under the cursor
+	// Name the tab alone where the cursor lacks a row
 	if !ok {
 		return []string{t.Name}
 	}
@@ -60,7 +60,7 @@ func (v view) place() []string {
 
 // current is the tab in view and its list.
 func (v view) current() (menu.Tab, *list) {
-	// Read a view without tabs as one empty tab
+	// Read a tabless view as one empty tab
 	if len(v.q.Tabs) == 0 {
 		return menu.Tab{}, &list{}
 	}
@@ -149,7 +149,7 @@ func (v view) Update(msg tea.Msg) (field, result, tea.Cmd) {
 }
 
 // movable reports whether the user may pick the row under the cursor up: on a tab that lets rows move, with another
-// row to move past and no search narrowing the rows.
+// row to move past and the search empty.
 func (v view) movable() bool {
 	t, l := v.current()
 	return t.Reorder && len(l.options) > 1 && l.filter == ""
@@ -189,8 +189,8 @@ func (v view) carry(k tea.KeyPressMsg, l *list) (field, result, tea.Cmd) {
 	return v, result{}, nil
 }
 
-// View draws the tabs, what the tab in view holds, the search box and the rows, or what the tab says while it holds
-// nothing.
+// View draws the tabs, what the tab in view holds, the search box and the rows, or what the tab says while it is
+// empty.
 func (v view) View(width, height int) string {
 	t, l := v.current()
 	var lines []string
@@ -216,7 +216,7 @@ func (v view) View(width, height int) string {
 	if t.About != "" {
 		lines = append(lines, dim.Render(cut(t.About, width)))
 	}
-	// Say what the tab holds while it holds nothing
+	// Say what the tab holds while it is empty
 	if len(t.Options) == 0 {
 		return strings.Join(append(lines, "", t.Empty), "\n")
 	}

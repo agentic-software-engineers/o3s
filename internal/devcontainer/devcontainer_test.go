@@ -23,7 +23,7 @@ var (
 	toolState    = "/home/ubuntu/features/" + tool
 )
 
-// aConfig is a config as the user keeps it, with comments, four-space indent and no features.
+// aConfig is a config as the user keeps it, with comments, four-space indent and free of features.
 const aConfig = `// The cage
 {
     // Name for the dev container
@@ -255,7 +255,7 @@ func TestFeaturesListsTheConfigsFeatures(t *testing.T) {
 	}
 }
 
-// A config that holds no object is turned away.
+// A config that lacks an object is turned away.
 func TestLoadTurnsAwayABrokenConfig(t *testing.T) {
 	home := aHomeWith(t, `{"features": `)
 
@@ -312,7 +312,7 @@ func TestEnvReadsAVariable(t *testing.T) {
 	value, ok := c.Env("EXAMPLE_MODE")
 	_, absent := c.Env("EXAMPLE_HOME")
 
-	// Require the value set, and none for a variable the config lacks
+	// Require the value set, and the variable the config lacks reported absent
 	if value != "strict" || !ok || absent {
 		t.Errorf("Env() = %q, %v and %v, want strict, true and false", value, ok, absent)
 	}

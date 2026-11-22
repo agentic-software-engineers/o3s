@@ -37,7 +37,7 @@ func values(s Setup) map[string]string {
 }
 
 // The table holds every two values of the model together in some setup, outside the pair the model rules out: an
-// agent that goes away from a session that held none.
+// agent that goes away from a session that lacked one.
 func TestSetupsCoverEveryPair(t *testing.T) {
 	setups, err := Setups()
 	// Stop where the table stays unread
@@ -73,7 +73,7 @@ func TestSetupsCoverEveryPair(t *testing.T) {
 					pair := a + "=" + x + " " + b + "=" + y
 					ruledOut := a == "Fault" && x == "agent-gone" && b == "Agent" && y == "none" ||
 						b == "Fault" && y == "agent-gone" && a == "Agent" && x == "none"
-					// Report a pair the model allows that no setup holds
+					// Report a pair the model allows that every setup misses
 					if !ruledOut && !seen[pair] {
 						t.Errorf("no setup holds %s", pair)
 					}

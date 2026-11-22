@@ -22,7 +22,7 @@ func validEndTime(s string) bool {
 	return err == nil && t.Format(EndTimeLayout) == s
 }
 
-// Expired reports whether a host's end time has come, and never for a host that stays open.
+// Expired reports whether a host's end time has come, and false for a host that stays open.
 func (h Host) Expired(now time.Time) bool {
 	end, err := time.Parse(EndTimeLayout, h.Expires)
 	return h.Expires != "" && err == nil && !now.Before(end)
@@ -62,7 +62,7 @@ func ParseFor(s string) (time.Duration, error) {
 	if n, nerr := strconv.Atoi(s); nerr == nil {
 		d, err = time.Duration(n)*time.Second, nil
 	}
-	// Turn away anything that reads as no positive time
+	// Turn away anything that fails to read as a positive time
 	if err != nil || d <= 0 {
 		return 0, fmt.Errorf("%w duration %q, want seconds or a duration like 90s, 20m, 1h or 1h30m", ErrInvalid, s)
 	}
@@ -84,19 +84,19 @@ func ClosesAt(end string, now time.Time) string {
 	return t.Format("15:04")
 }
 
-// ClosesAtOrNone writes the local clock time a host closes, and nothing for a host that stays open.
+// ClosesAtOrNone writes the local clock time a host closes, and an empty string for a host that stays open.
 func ClosesAtOrNone(end string, now time.Time) string {
-	// Keep nothing for a host that stays open
+	// Keep it empty for a host that stays open
 	if end == "" {
 		return ""
 	}
 	return ClosesAt(end, now)
 }
 
-// Until writes how long a host stays open, expired once its end has come, and nothing for a host that stays open.
+// Until writes how long a host stays open, expired once its end has come, and empty for a host that stays open.
 func Until(end string, now time.Time) string {
 	t, err := time.Parse(EndTimeLayout, end)
-	// Show nothing for a host that stays open
+	// Show an empty string for a host that stays open
 	if end == "" || err != nil {
 		return ""
 	}

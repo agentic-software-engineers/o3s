@@ -21,7 +21,7 @@ import (
 func socketDir(t *testing.T) string {
 	t.Helper()
 	dir, err := os.MkdirTemp("", "o3s") //nolint:usetesting // t.TempDir's long path outgrows a socket's path limit
-	// Stop when no folder can be made
+	// Stop when the folder fails to appear
 	if err != nil {
 		t.Fatalf("Setup: MkdirTemp = %v", err)
 	}
@@ -56,7 +56,7 @@ func TestUnixPathNamesTheService(t *testing.T) {
 func TestUnixListenRemovesAStaleSocket(t *testing.T) {
 	u := relay.Unix{Dir: socketDir(t)}
 	stale, err := net.ListenUnix("unix", &net.UnixAddr{Name: u.Path(relay.DNS), Net: "unix"})
-	// Stop when the stale socket cannot be made
+	// Stop when the stale socket fails to appear
 	if err != nil {
 		t.Fatalf("Setup: ListenUnix = %v", err)
 	}
@@ -76,7 +76,7 @@ func TestUnixListenRemovesAStaleSocket(t *testing.T) {
 func TestUnixListenRefusesALiveSocket(t *testing.T) {
 	u := relay.Unix{Dir: socketDir(t)}
 	first, err := u.Listen(relay.SSH)
-	// Stop when the first listener cannot listen
+	// Stop when the first listener fails to listen
 	if err != nil {
 		t.Fatalf("Setup: Listen(%s) = %v", relay.SSH, err)
 	}
@@ -102,7 +102,7 @@ func TestUnixListenRefusesALongPath(t *testing.T) {
 	}
 }
 
-// A service outside the relay's set gets no socket.
+// A service outside the relay's set stays free of a socket.
 func TestUnixListenRefusesAnUnknownService(t *testing.T) {
 	u := relay.Unix{Dir: socketDir(t)}
 
@@ -114,11 +114,11 @@ func TestUnixListenRefusesAnUnknownService(t *testing.T) {
 	}
 }
 
-// A socket lets its owner and group connect and no one else.
+// A socket lets its owner and group alone connect.
 func TestUnixListenOpensTheSocketToOwnerAndGroup(t *testing.T) {
 	u := relay.Unix{Dir: socketDir(t)}
 	l, err := u.Listen(relay.Proxy)
-	// Stop when the service cannot listen
+	// Stop when the service fails to listen
 	if err != nil {
 		t.Fatalf("Setup: Listen(%s) = %v", relay.Proxy, err)
 	}
@@ -137,14 +137,14 @@ func TestRelayPassesAHalfClose(t *testing.T) {
 	u := relay.Unix{Dir: socketDir(t)}
 	var lc net.ListenConfig
 	target, err := lc.Listen(t.Context(), "unix", filepath.Join(socketDir(t), "target.sock"))
-	// Stop when the target cannot listen
+	// Stop when the target fails to listen
 	if err != nil {
 		t.Fatalf("Setup: target Listen = %v", err)
 	}
 	t.Cleanup(func() { _ = target.Close() })
 	go func() {
 		c, err := target.Accept()
-		// Leave the target idle when nothing arrives
+		// Leave the target idle while the connection stays away
 		if err != nil {
 			return
 		}

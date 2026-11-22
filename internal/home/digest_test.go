@@ -95,7 +95,8 @@ func TestImagesShowsTagsWithoutDigests(t *testing.T) {
 	}
 }
 
-// A home on the same release without digests names no image change, and the refresh names the compose file that brings the pin.
+// A home on the same release that lacks digests keeps its images unchanged, and the refresh names the compose file
+// that brings the pin.
 func TestRefreshBringsTheDigestsToATaggedHome(t *testing.T) {
 	aRelease(t, fixture.Version, nil)
 	dir := anInitializedHome(t)
@@ -112,7 +113,7 @@ func TestRefreshBringsTheDigestsToATaggedHome(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Refresh() = %v", err)
 	}
-	// Require no image change on the same release
+	// Require the images unchanged on the same release
 	if len(moved) != 0 {
 		t.Errorf("Images() = %v, want none", moved)
 	}

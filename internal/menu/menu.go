@@ -107,7 +107,7 @@ const (
 	Input
 	// Hidden takes a line of text the screen keeps hidden.
 	Hidden
-	// Confirm takes yes or no.
+	// Confirm takes an agreement or a refusal.
 	Confirm
 	// View shows a group's tabs and takes the tab with the row or the key the user picks in it.
 	View
@@ -155,8 +155,8 @@ type Fact struct {
 	Label, Value string
 }
 
-// Tab is one tab of a view: what it holds, what it says while it holds nothing, how its rows answer, and the labels of
-// its columns.
+// Tab is one tab of a view: what it holds, what it says while it is empty, how its rows answer, and the labels of its
+// columns.
 type Tab struct {
 	Name, About, Empty string
 	Options            []Option
@@ -182,7 +182,7 @@ type Key struct {
 // Option is one choice of a question, shown by its label with its columns lined up and a line that says what it is.
 type Option struct {
 	Value string
-	// Label is how the option shows, its value where it has none.
+	// Label is how the option shows, its value where the label is empty.
 	Label string
 	Note  string
 	// Columns line up beside the label across the rows of a list.
@@ -222,7 +222,7 @@ func (a Answers) has(key string) bool {
 // get hands back the first value given a question.
 func (a Answers) get(key string) string {
 	values := a.all(key)
-	// Read a question without a value as empty
+	// Read a question lacking a value as empty
 	if len(values) == 0 {
 		return ""
 	}
@@ -239,14 +239,14 @@ func (a Answers) all(key string) []string {
 	return a[i].Values
 }
 
-// Command is the command line a dialog ends in, the value it hands on stdin, and a note where it runs none.
+// Command is the command line a dialog ends in, the value it hands on stdin, and a note where it stays idle.
 type Command struct {
 	Args  []string
 	Stdin *string
 	Note  string
 	// Terminal marks a command that needs the real terminal: to ask for sudo or to hand it to a shell.
 	Terminal bool
-	// Quiet marks a command whose success shows as the view it changed, without its output.
+	// Quiet marks a command whose success shows as the view it changed, its output hidden.
 	Quiet bool
 	// Restart marks a command that replaces the binary the menu runs, which opens the menu again at the group's view
 	// once the command succeeds.
@@ -261,11 +261,11 @@ const (
 	yes   = "yes"
 	add   = "+add"
 	back  = "+back"
-	// always keeps a host open without an end time.
+	// always keeps a host open for good.
 	always = "always"
 )
 
-// Next hands back the question a dialog asks next, or reports that it asks nothing more.
+// Next hands back the question a dialog asks next, or reports that it is done asking.
 func Next(h Home, a Answers) (Question, bool) {
 	return next(h, a)
 }
@@ -340,7 +340,7 @@ func stackState(h Home) string {
 	return "stopped"
 }
 
-// next hands back the question a dialog asks next, or reports that it asks nothing more.
+// next hands back the question a dialog asks next, or reports that it is done asking.
 func next(h Home, a Answers) (Question, bool) {
 	// Ask what to do first
 	if !a.has("do") {
@@ -397,7 +397,7 @@ func view(a Answers) (string, []string) {
 // answered with.
 func pickedIn(a Answers, key string) (string, []string) {
 	v := a.all(key)
-	// Read a view not yet answered as empty
+	// Read a view awaiting an answer as empty
 	if len(v) == 0 {
 		return "", nil
 	}
@@ -410,10 +410,10 @@ func confirmed(a Answers) bool {
 }
 
 // apply asks to apply a change, showing it above the question and summing it up beside it. A change that takes
-// something away starts on no.
+// something away starts on the refusal.
 func apply(lines []string, summary string, removes bool) Question {
 	q := Question{Key: "apply", Kind: Confirm, Title: "Apply?", Preview: lines, Summary: summary, Default: []string{yes}}
-	// Start a removal on no, so Enter alone keeps everything
+	// Start a removal on the refusal, so Enter alone keeps everything
 	if removes {
 		q.Default = []string{"no"}
 	}

@@ -36,14 +36,14 @@ func (m multi) Update(msg tea.Msg) (field, result, tea.Cmd) {
 	// Follow the key the user pressed
 	switch k.String() {
 	case "esc":
-		// Step back where nothing is filtered, else clear the filter
+		// Step back where the filter is empty, else clear the filter
 		if m.filter == "" {
 			return m, result{outcome: back}, nil
 		}
 		m.filter, m.cursor = "", 0
 	case "enter":
 		values := m.marked()
-		// Take the highlighted option where the user marked none
+		// Take the highlighted option where the marks are empty
 		if o, ok := m.highlighted(); len(values) == 0 && ok {
 			values = []string{o.Value}
 		}

@@ -72,7 +72,7 @@ func aHostWith(t *testing.T, c confinement) (string, string) {
 	return profile, log
 }
 
-// The profile gets loaded where the kernel lacks it, kept where it holds it, and left alone without AppArmor.
+// The profile gets loaded where the kernel lacks it, kept where it holds it, and left alone where AppArmor is absent.
 func TestProfileLoadsWhatTheKernelLacks(t *testing.T) {
 	tests := []struct {
 		name    string

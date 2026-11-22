@@ -17,7 +17,7 @@ import (
 	"github.com/hansehart/o3s/internal/menu"
 )
 
-// stripped is a view without its colors.
+// stripped is a view stripped of its colors.
 func stripped(s string) string {
 	return ansi.Strip(s)
 }
@@ -27,7 +27,7 @@ func stripped(s string) string {
 // and a spinner's next frame, which a test sends itself where it needs one.
 func settle(m model, cmd tea.Cmd) (model, bool) {
 	cmds := []tea.Cmd{cmd}
-	// Run commands until none is left
+	// Run commands until the queue is empty
 	for len(cmds) > 0 {
 		next := cmds[0]
 		cmds = cmds[1:]
@@ -60,7 +60,7 @@ func anApp(t *testing.T, scripts map[string]string) (model, *[]string) {
 		Command: func(args []string) *exec.Cmd {
 			line := strings.Join(args, " ")
 			script, ok := scripts[line]
-			// Echo a command without its own script
+			// Echo a command lacking its own script
 			if !ok {
 				script = "echo ran " + line
 			}
@@ -130,7 +130,7 @@ func TestAppStepsBackWithTheAnswer(t *testing.T) {
 	if view := stripped(m.field.View(usualWidth, usualHeight)); m.q.Key != "hosts" || !strings.Contains(view, "❯ "+fixture.Host) {
 		t.Errorf("after esc = %q, view:\n%s", m.q.Key, view)
 	}
-	// Require the trail without the host
+	// Require the trail free of the host
 	if strings.Join(m.crumbs(), " / ") != "firewall / Allowed / Allow a host" {
 		t.Errorf("trail = %q, want firewall / Allowed / Allow a host", strings.Join(m.crumbs(), " / "))
 	}
@@ -169,20 +169,20 @@ func TestAppOpenedAtAGroupStaysThere(t *testing.T) {
 	}
 }
 
-// A declined change goes straight back to the view it came from, with nothing run, the way a declined confirmation
-// prints nothing.
+// A declined change goes straight back to the view it came from, with every command held back, the way a
+// declined confirmation stays silent.
 func TestAppGoesBackOnADeclinedChange(t *testing.T) {
 	m, _ := anApp(t, nil)
 
 	m, _ = drive(m, append(allowing(), typed("n")...)...)
 
-	// Require the firewall's view again, with nothing run
+	// Require the firewall's view again, every command held back
 	if view := stripped(m.View().Content); m.state != asking || m.q.Key != "view" || strings.Contains(view, "$ o3s") {
 		t.Errorf("state %v on %q, view:\n%s", m.state, m.q.Key, view)
 	}
 }
 
-// Quiet commands that succeed show the view they changed, at the row they name, without their output.
+// Quiet commands that succeed show the view they changed, at the row they name, their output hidden.
 func TestAppShowsTheViewAfterQuietCommands(t *testing.T) {
 	m, _ := anApp(t, nil)
 	m.cfg.Home = func() menu.Home {
@@ -192,7 +192,7 @@ func TestAppShowsTheViewAfterQuietCommands(t *testing.T) {
 
 	m, _ = drive(m, keys("feat", enter, tea.KeyPressMsg{Code: tea.KeyDown, Mod: tea.ModCtrl}, enter)...)
 
-	// Require the feature view again, without a result screen
+	// Require the feature view again, skipping the result screen
 	if m.state != asking || m.q.Key != "view" {
 		t.Errorf("after the move, state %v on %q, want the feature view", m.state, m.q.Key)
 	}
@@ -368,7 +368,7 @@ func TestAppPagesThroughALongPreview(t *testing.T) {
 	}
 }
 
-// A preview that fits shows whole, without the way to scroll it.
+// A preview that fits shows whole, free of the way to scroll it.
 func TestAppShowsAShortPreviewWhole(t *testing.T) {
 	q := menu.Question{Key: "apply", Kind: menu.Confirm, Title: "Apply?", Preview: []string{"  + line 00", "  + line 01"}, Summary: "Adds 1 feature"}
 	m := model{width: usualWidth, height: usualHeight, state: asking, q: q, field: newField(q)}
@@ -389,7 +389,7 @@ func TestAppRedrawsALineTheCommandRedraws(t *testing.T) {
 	m, _ = drive(m, append(allowing(), enter)...)
 
 	var trimmed []string
-	// Take every line without the padding the pane fills it to the width with
+	// Take every line stripped of the padding the pane fills it to the width with
 	for line := range strings.SplitSeq(stripped(m.View().Content), "\n") {
 		trimmed = append(trimmed, strings.TrimRight(line, " "))
 	}
@@ -414,13 +414,13 @@ func (s slowStore) Peek(store string) ([]menu.Offer, bool, error) {
 	return catalog, *s.ready, err
 }
 
-// Add shows nothing a feature brings.
+// Add shows an empty list of what a feature brings.
 func (slowStore) Add(string) (menu.Preview, error) { return menu.Preview{}, nil }
 
-// Remove shows nothing that leaves.
+// Remove shows an empty list of what leaves.
 func (slowStore) Remove(string) (menu.Preview, error) { return menu.Preview{}, nil }
 
-// Updates lists nothing newer.
+// Updates shows an empty list of what is newer.
 func (slowStore) Updates() ([]menu.Update, error) { return nil, nil }
 
 // A view waiting for rows asks again at the tab the user is on, and shows the rows once they come in.
@@ -468,7 +468,7 @@ func TestAppLeavesForTheNewBinary(t *testing.T) {
 
 	m, quit = updating("exit 3")
 
-	// Require the failure in the menu, and nothing to open again
+	// Require the failure in the menu, with the reopen left empty
 	if quit || m.reopen != nil || !strings.Contains(stripped(m.View().Content), "✗ failed") {
 		t.Errorf("quit %v, reopen %v, view:\n%s", quit, m.reopen, stripped(m.View().Content))
 	}
@@ -540,7 +540,7 @@ func TestAppReopensTheViewAChangeCameFrom(t *testing.T) {
 }
 
 // A tab of marks shows in the trail by what the marks change against the ones it started with, and by how many are
-// marked where it started with none or they stay as they started.
+// marked where it started empty or they stay as they started.
 func TestCrumbNamesWhatMarksChange(t *testing.T) {
 	tool, other := fixture.Store+"/"+fixture.Feature, fixture.Store+"/"+fixture.OtherFeature
 	rows := []menu.Option{{Value: tool}, {Value: other}, {Value: fixture.ThirdFeature}}
@@ -585,7 +585,7 @@ func TestTrailShowsATypedAnswerInPlaceOfItsChoice(t *testing.T) {
 	}
 }
 
-// While the app works without a result to show, the screen says so with a spinner, and a run with output shows it.
+// While the app works with its result still to come, the screen says so with a spinner, and a run with output shows it.
 func TestAppShowsThatItWorks(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -621,7 +621,7 @@ func TestAppTurnsTheSpinnerWhileItWorks(t *testing.T) {
 	m.state = asking
 	_, asking := m.Update(tick)
 
-	// Require a next frame while working and none once asking
+	// Require a next frame while working and a halt to frames once asking
 	if working == nil || asking != nil {
 		t.Errorf("next frame while working %v, while asking %v, want one and none", working != nil, asking != nil)
 	}

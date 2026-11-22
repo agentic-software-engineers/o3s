@@ -6,7 +6,7 @@ import (
 	"github.com/hansehart/o3s/internal/fixture"
 )
 
-// A host line the firewall can't read stays on the screen with the rule it breaks, and the fixed line goes on.
+// A host line the firewall fails to read stays on the screen with the rule it breaks, and the fixed line goes on.
 func TestFlowFirewallHoldsAnUnreadableHost(t *testing.T) {
 	m, _ := onHome(t, homeNamed(t, "running"), usualWidth, usualHeight)
 	m, _ = drive(m, keys("fir", enter, enter, fixture.NewHost+" bad_name", enter)...)

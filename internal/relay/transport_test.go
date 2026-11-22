@@ -13,7 +13,7 @@ import (
 	"github.com/hansehart/o3s/internal/relay"
 )
 
-// errNoListener is the fake transport's answer to a dial no listener takes.
+// errNoListener is the fake transport's answer to a dial that lacks a listener.
 var errNoListener = errors.New("no listener for the service")
 
 // pipeTransport is an in-memory transport for the relay's tests, held to the real one by the transport contract.
@@ -22,7 +22,7 @@ type pipeTransport struct {
 	listeners map[relay.Service]*pipeListener
 }
 
-// newPipeTransport hands a test an in-memory transport with no listener yet.
+// newPipeTransport hands a test an in-memory transport before any listener joins.
 func newPipeTransport(*testing.T) relay.Transport {
 	return &pipeTransport{listeners: map[relay.Service]*pipeListener{}}
 }
@@ -47,12 +47,12 @@ func (p *pipeTransport) Dial(ctx context.Context, s relay.Service) (net.Conn, er
 	p.mu.Lock()
 	l, ok := p.listeners[s]
 	p.mu.Unlock()
-	// Refuse a service nobody listens on
+	// Refuse a service that lacks a listener
 	if !ok {
 		return nil, errNoListener
 	}
 	near, far := net.Pipe()
-	// Hand the far end to the listener, unless it closes or the dial gives up first
+	// Hand the far end to the listener while it stays open and the dial keeps waiting
 	select {
 	case l.conns <- far:
 		return near, nil
@@ -105,7 +105,7 @@ func holdsTransportContract(t *testing.T, newTransport func(*testing.T) relay.Tr
 	t.Run("a dial reaches the listener of its service", func(t *testing.T) {
 		tr := newTransport(t)
 		l, err := tr.Listen(relay.Proxy)
-		// Stop when the service cannot listen
+		// Stop when the service fails to listen
 		if err != nil {
 			t.Fatalf("Setup: Listen(%s) = %v", relay.Proxy, err)
 		}
@@ -113,7 +113,7 @@ func holdsTransportContract(t *testing.T, newTransport func(*testing.T) relay.Tr
 		got := make(chan string, 1)
 		go func() {
 			c, err := l.Accept()
-			// Report nothing when no connection arrives
+			// Report an empty string when the connection fails to arrive
 			if err != nil {
 				got <- ""
 				return
@@ -138,7 +138,7 @@ func holdsTransportContract(t *testing.T, newTransport func(*testing.T) relay.Tr
 		}
 	})
 
-	// A dial to a service nobody listens on fails.
+	// A dial to a service that lacks a listener fails.
 	t.Run("a dial to a service nobody listens on fails", func(t *testing.T) {
 		tr := newTransport(t)
 
@@ -154,7 +154,7 @@ func holdsTransportContract(t *testing.T, newTransport func(*testing.T) relay.Tr
 	t.Run("closing a listener ends its Accept", func(t *testing.T) {
 		tr := newTransport(t)
 		l, err := tr.Listen(relay.SSH)
-		// Stop when the service cannot listen
+		// Stop when the service fails to listen
 		if err != nil {
 			t.Fatalf("Setup: Listen(%s) = %v", relay.SSH, err)
 		}

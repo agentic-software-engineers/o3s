@@ -114,13 +114,13 @@ func TestCheckFollowsTheStoresMajorVersion(t *testing.T) {
 	}
 }
 
-// A host the user needs as well stays, so the feature's update drops none.
+// A host the user needs as well stays, so the feature's update keeps it.
 func TestCheckKeepsAHostTheUserNeeds(t *testing.T) {
 	dir, _ := aHomeWithTheTool(t, fixture.Major, fixture.OtherHost)
 
 	got, err := update.Check(t.Context(), dir)
 
-	// Require the feature to drop no host
+	// Require the feature to keep every host
 	if err != nil || len(got.Features) != 1 || len(got.Features[0].HostsDropped) != 0 {
 		t.Errorf("Check() = %+v, %v, want one feature that drops no host", got.Features, err)
 	}
@@ -161,13 +161,13 @@ func TestCheckNamesAStoreOutOfReach(t *testing.T) {
 
 	got, err := update.Check(t.Context(), dir)
 
-	// Require nothing to change and the store to be named
+	// Require an empty change and the store to be named
 	if err != nil || !got.Empty() || len(got.Warnings) != 1 {
 		t.Errorf("Check() = %+v, %v, want no change and one warning", got, err)
 	}
 }
 
-// Applying an update brings the home to what the binary and the stores ship, so a second check finds nothing.
+// Applying an update brings the home to what the binary and the stores ship, so a second check comes back empty.
 func TestApplyLeavesNothingToUpdate(t *testing.T) {
 	dir, pkg := aHomeWithTheTool(t, fixture.Major)
 	plan, err := update.Check(t.Context(), dir)
@@ -183,7 +183,7 @@ func TestApplyLeavesNothingToUpdate(t *testing.T) {
 		t.Fatalf("Apply() = %v, %v, want the hosts changed", hosts, err)
 	}
 	again, err := update.Check(t.Context(), dir)
-	// Require nothing left to update
+	// Require an empty update the second time
 	if err != nil || !again.Empty() {
 		t.Errorf("Check() after Apply = %+v, %v, want nothing", again, err)
 	}

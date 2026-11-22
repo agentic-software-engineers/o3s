@@ -36,7 +36,7 @@ func TestEnvHandsOnEveryValue(t *testing.T) {
 	}
 	// Require every constant among them
 	for name, v := range values {
-		// Report a constant a script never sees
+		// Report a constant missing from the script's environment
 		if !handed[v] {
 			t.Errorf("Env() lacks %s (%q)", name, v)
 		}
@@ -56,17 +56,17 @@ func TestTheMomentsMatchTheirText(t *testing.T) {
 	}
 }
 
-// Only tests take values from the set, so nothing a user runs depends on it.
+// Tests alone take values from the set, so everything a user runs stays free of it.
 func TestOnlyTestsUseTheSet(t *testing.T) {
 	root := moduleRoot(t)
 	var users []string
 
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
-		// Hand back a walk that fails, and pass over folders that hold no code of the module
+		// Hand back a walk that fails, and pass over folders outside the module's code
 		if err != nil || d.IsDir() && (d.Name() == "testdata" || d.Name() == "node_modules" || strings.HasPrefix(d.Name(), ".")) {
 			return err
 		}
-		// Pass over the helper packages only tests import, named for what they test as httptest is
+		// Pass over the helper packages that tests alone import, each named for what it tests plus a test suffix
 		if d.IsDir() && strings.HasSuffix(d.Name(), "test") {
 			return filepath.SkipDir
 		}

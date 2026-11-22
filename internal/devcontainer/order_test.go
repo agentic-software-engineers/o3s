@@ -39,13 +39,13 @@ func TestSetInstallOrderKeepsTheLayout(t *testing.T) {
 	if diff := cmp.Diff(want, got); diff != "" {
 		t.Errorf("config (-want +got):\n%s", diff)
 	}
-	// Report an order that stays once no feature is left
+	// Report an order that stays once the features are all gone
 	if got := edited(t, want, func(c *devcontainer.Config) { c.SetInstallOrder(nil) }); got != aConfig {
 		t.Errorf("config after SetInstallOrder(nil) = %s, want the config without an order", got)
 	}
 }
 
-// The order reads back as the config holds it, and as none where it holds none.
+// The order reads back as the config holds it, and as empty where the config lacks one.
 func TestInstallOrderReadsTheOrder(t *testing.T) {
 	var got, none []string
 	edited(t, aConfig, func(c *devcontainer.Config) {
@@ -54,7 +54,7 @@ func TestInstallOrderReadsTheOrder(t *testing.T) {
 		got = c.InstallOrder()
 	})
 
-	// Report an order read from a config that holds none
+	// Report an order read from a config that lacks one
 	if none != nil {
 		t.Errorf("InstallOrder() = %v, want none", none)
 	}
@@ -64,7 +64,7 @@ func TestInstallOrderReadsTheOrder(t *testing.T) {
 	}
 }
 
-// Features keep the order they stand in, each moved only as far as it must to follow the ones it installs after.
+// Features keep the order they stand in, each moved just as far as it must to follow the ones it installs after.
 func TestOrderedMovesAFeatureBehindWhatItFollows(t *testing.T) {
 	tests := []struct {
 		name            string
@@ -90,7 +90,7 @@ func TestOrderedMovesAFeatureBehindWhatItFollows(t *testing.T) {
 	}
 }
 
-// A feature named before one it installs after, or one not installed, is turned away with both named.
+// A feature named before one it installs after, or one left uninstalled, is turned away with both named.
 func TestOrderedTurnsAwayAnOrderThatBreaksAFeature(t *testing.T) {
 	_, err := devcontainer.Ordered([]string{tool, other}, map[string][]string{tool: {other}}, []string{tool})
 

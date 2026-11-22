@@ -14,11 +14,11 @@ type State string
 
 // The states a home's VM is in.
 const (
-	// Absent is a home whose VM the manager lacks, gone or never made.
+	// Absent is a home whose VM the manager lacks, gone or yet to be made.
 	Absent State = "absent"
 	// Unfinished is a VM that o3s init started making and has yet to finish.
 	Unfinished State = "unfinished"
-	// Stopped is a finished VM that is not running.
+	// Stopped is a finished VM at rest.
 	Stopped State = "stopped"
 	// Running is a finished VM that runs.
 	Running State = "running"
@@ -41,7 +41,7 @@ func ready(dir string) bool {
 // State reads where the VM of the home in a folder stands, with the VM's name.
 func (l Lima) State(ctx context.Context, dir string) (State, string, error) {
 	name, err := Find(dir)
-	// Hand back a folder without a VM
+	// Hand back a folder that lacks a VM
 	if err != nil {
 		return Absent, "", err
 	}

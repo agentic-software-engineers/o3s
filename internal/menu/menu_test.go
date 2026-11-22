@@ -48,7 +48,7 @@ func walk(t *testing.T, h Home, answers ...[]string) ([]Question, []Command) {
 	// Answer every question until the dialog ends
 	for {
 		q, done := next(h, a)
-		// End the walk once the dialog asks nothing more
+		// End the walk once the dialog is done asking
 		if done {
 			return asked, plan(h, a)
 		}
@@ -249,7 +249,7 @@ func TestEveryFirewallDialogEndsInItsCommand(t *testing.T) {
 	}.check(t, aHome)
 }
 
-// A host's detail shows its facts, and offers the removal only of a host the user added.
+// A host's detail shows its facts, and offers the removal for a host the user added.
 func TestAHostsDetailShowsItsFacts(t *testing.T) {
 	asked, _ := walk(t, aHome, []string{"firewall"}, []string{"Allowed", fixture.Host}, []string{back})
 
@@ -422,7 +422,7 @@ func TestAProjectsRemovalChecksTheTypedName(t *testing.T) {
 	if _, err := asked[3].Check(fixture.OtherRepo); err == nil {
 		t.Errorf("Check(%s) = nil, want the name named", fixture.OtherRepo)
 	}
-	// Require nothing deleted for a name that differs
+	// Require every project kept for a name that differs
 	if len(cmds) != 0 {
 		t.Errorf("commands = %v, want none", cmds)
 	}
@@ -451,7 +451,7 @@ func TestHostRowShowsAHostTheSameEverywhere(t *testing.T) {
 	}
 }
 
-// An installed feature shows the same row piped and in its view: its tag without a colon, its store, and the hosts
+// An installed feature shows the same row piped and in its view: its tag free of a colon, its store, and the hosts
 // that name it among their reasons.
 func TestInstalledRowShowsAFeatureTheSameEverywhere(t *testing.T) {
 	pkg := fixture.Store + "/" + fixture.Feature
@@ -472,8 +472,8 @@ func TestInstalledRowShowsAFeatureTheSameEverywhere(t *testing.T) {
 	}
 }
 
-// A feature option shows the same row piped and in its view: the value the feature sets, a dash where it sets none,
-// and its default.
+// A feature option shows the same row piped and in its view: the value the feature sets, a dash where it leaves the
+// value empty, and its default.
 func TestOptionRowShowsAnOptionTheSameEverywhere(t *testing.T) {
 	o := FeatureOption{Name: "version", Type: "string", Default: fixture.FloatingTag}
 	tests := []struct {

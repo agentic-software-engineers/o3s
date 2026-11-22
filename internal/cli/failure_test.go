@@ -8,7 +8,7 @@ import (
 	"github.com/hansehart/o3s/internal/fixture"
 )
 
-// A build that fails names the feature, every host it could not reach once with the command that allows them, and the
+// A build that fails names the feature, every host it failed to reach once with the command that allows them, and the
 // log.
 func TestBuildFailureNamesTheStepAndItsCause(t *testing.T) {
 	output := `#16 7.237   Temporary failure resolving '` + fixture.Host + `'
@@ -28,7 +28,7 @@ func TestBuildFailureNamesTheStepAndItsCause(t *testing.T) {
 	}
 }
 
-// A build that fails without a feature or a host to name still names the failure and the log.
+// A build that fails with zero features or hosts to name still names the failure and the log.
 func TestBuildFailureNamesAPlainFailure(t *testing.T) {
 	err := buildFailure("something else broke", fixture.LogFile, errors.New("exit status 1"))
 
@@ -38,7 +38,7 @@ func TestBuildFailureNamesAPlainFailure(t *testing.T) {
 	}
 }
 
-// A step of the VM that fails names the manager's words, the host this machine could not reach, and that init goes on
+// A step of the VM that fails names the manager's words, the host this machine failed to reach, and that init goes on
 // where it stopped.
 func TestVMFailureNamesTheCauseAndTheRetry(t *testing.T) {
 	cause := errors.New(`failed to download the image: Get "https://` + fixture.Host + `/image": dial tcp: lookup ` + fixture.Host + ` on 127.0.0.11:53: server misbehaving`)

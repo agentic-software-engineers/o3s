@@ -58,7 +58,7 @@ func Breaks(lines []string, width, height int) []string {
 var nextStep = regexp.MustCompile(`\bo3s [a-z]`)
 
 // OutputBreaks are the rules what a command printed breaks: a link with a query, a line of the devcontainer CLI's
-// log, and a failure that names no o3s command to run next.
+// log, and a failure that lacks an o3s command to run next.
 func OutputBreaks(out string, failed bool) []string {
 	var breaks []string
 	// Note a link with a query
@@ -73,7 +73,7 @@ func OutputBreaks(out string, failed bool) []string {
 			break
 		}
 	}
-	// Note a failure that names no next step
+	// Note a failure that lacks a next step
 	if failed && !nextStep.MatchString(out) {
 		breaks = append(breaks, "no next step")
 	}

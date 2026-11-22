@@ -37,7 +37,7 @@ func CA(dir string) (bool, error) {
 	}
 	pemPath, crtPath, dhPath := filepath.Join(dir, "mitmproxy-ca.pem"), filepath.Join(dir, "mitmproxy-ca.crt"), filepath.Join(dir, "mitmproxy-dhparam.pem")
 	made := false
-	// Make the CA where the folder holds none
+	// Make the CA where the folder lacks one
 	if missing(pemPath) {
 		key, cert, err := newCA()
 		// Hand back a CA that fails to make
@@ -70,7 +70,7 @@ func CA(dir string) (bool, error) {
 	if err := os.Chmod(crtPath, 0o644); err != nil { //nolint:gosec // the cage trusts this public cert, so every reader may read it
 		return made, err
 	}
-	// Write the DH group where the folder holds none, so the proxy finds its config complete
+	// Write the DH group where the folder lacks one, so the proxy finds its config complete
 	if missing(dhPath) {
 		// Hand back DH parameters that stay unwritten
 		if err := atomicfile.Write(dhPath, dhParams(), 0o600); err != nil {

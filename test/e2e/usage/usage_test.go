@@ -282,9 +282,9 @@ var events = []event{
 	}},
 }
 
-// unless is the difference given where the condition fails, and none where it holds.
+// unless gives the difference where the condition fails, and an empty one where it holds.
 func unless(ok bool, differs string) string {
-	// Name no difference where the condition holds
+	// Give an empty difference where the condition holds
 	if ok {
 		return ""
 	}
@@ -365,7 +365,7 @@ func TestUsage(t *testing.T) {
 		t.Run(s.Name(), func(t *testing.T) {
 			f := use(t, s)
 
-			// Report every break no finding names
+			// Report every break the findings leave unnamed
 			for _, b := range slices.Sorted(maps.Keys(f)) {
 				// Report a break outside the known ones
 				if _, known := knownBreaks[b]; !known {
@@ -439,7 +439,7 @@ func runOrder(u *user, f found, fl fault, order []int) {
 		}
 		// Check the cage reaches the agent the session holds, where the project needs it
 		if ev.name == "add a project over SSH" && u.agent.pid != "" {
-			// Note a cage without the session's agent
+			// Note a cage that lacks the session's agent
 			if !u.inCage("ssh-add", "-l") {
 				f.note(u.t, ev.name, out, "the cage misses the session's agent")
 			}
@@ -457,7 +457,7 @@ func walkMenu(u *user, f found) {
 	}
 	t.Chdir(u.home)
 	paths, err := menutest.Walk(cli.MenuHome(t.Context()))
-	// Stop where the menu can't be walked
+	// Stop where the menu fails to walk
 	if err != nil {
 		t.Fatalf("menutest.Walk() = %v", err)
 	}
@@ -470,7 +470,7 @@ func walkMenu(u *user, f found) {
 		if err != nil {
 			t.Fatalf("ptytest.Start() = %v", err)
 		}
-		// Stop where o3s draws no menu in the user's terminal
+		// Stop where o3s fails to draw a menu in the user's terminal
 		if !s.Until(func(screen string) bool { return strings.Contains(screen, "o3s  ") }) {
 			t.Fatalf("o3s drew no menu within %v, on:\n%s", ptytest.Wait(), s.Screen())
 		}
@@ -478,7 +478,7 @@ func walkMenu(u *user, f found) {
 		// Answer every question up to the last, checking every screen
 		for j, a := range p.Answers[:max(len(p.Answers)-1, 0)] {
 			f.note(t, where, s.Screen(), screentest.Breaks(strings.Split(s.Screen(), "\n"), u.setup.Cols, u.setup.Rows)...)
-			// Note a path whose rows a user can't reach
+			// Note a path whose rows sit out of a user's reach
 			if err := usagetest.Answer(s, p.Asked[j], a.Values); err != nil {
 				f.note(t, where, s.Screen(), "row out of sight")
 				break

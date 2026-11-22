@@ -23,7 +23,7 @@ inside the VM`
 	}
 	r.flush()
 
-	// Require the progress and the command's own line for the user, and nothing of the records
+	// Require the progress and the command's own line for the user, with the records kept out
 	if want := "1.00 MiB / 819.29 MiB [--] 0.12%\r819.29 MiB / 819.29 MiB [--] 100.00%\ninside the VM"; user.String() != want {
 		t.Errorf("user = %q, want %q", user.String(), want)
 	}
@@ -48,7 +48,8 @@ func TestErrorReadsInTheManagersWords(t *testing.T) {
 	}
 }
 
-// The qemu engine needs QEMU's tools on PATH, named with how to install them, and the other engines need nothing.
+// The qemu engine needs QEMU's tools on PATH, named with how to install them, and the other engines are ready
+// as they are.
 func TestCheckNamesTheMissingQEMU(t *testing.T) {
 	t.Setenv("PATH", t.TempDir())
 
@@ -58,7 +59,7 @@ func TestCheckNamesTheMissingQEMU(t *testing.T) {
 	if !errors.Is(err, ErrNoQEMU) || !strings.Contains(err.Error(), "install it as in:") {
 		t.Errorf("Check() = %v, want %v with how to install it", err, ErrNoQEMU)
 	}
-	// Require nothing of an engine that ships with its system
+	// Let an engine that ships with its system pass
 	if err := (Lima{engine: "vz"}).Check(); err != nil {
 		t.Errorf("Check() for vz = %v, want nil", err)
 	}

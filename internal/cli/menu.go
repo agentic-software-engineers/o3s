@@ -66,8 +66,8 @@ func openMenu(ctx context.Context, resume, path []string) error {
 // itself.
 const menuAtEnv = "O3S_MENU_AT"
 
-// menuAt takes the group whose view the menu opens at from an old binary that replaced itself, so no later menu
-// reads it.
+// menuAt takes the group whose view the menu opens at from an old binary that replaced itself, so it serves one
+// menu alone.
 func menuAt() []string {
 	at := os.Getenv(menuAtEnv)
 	_ = os.Unsetenv(menuAtEnv)
@@ -129,7 +129,7 @@ func (l menuLookup) Updates() ([]menu.Update, error) {
 // Add shows what adding a feature brings, as feature add prints it.
 func (l menuLookup) Add(id string) (menu.Preview, error) {
 	ref, err := registry.ParseRef(id)
-	// Hand back an id that names no feature
+	// Hand back an id that names an unknown feature
 	if err != nil {
 		return menu.Preview{}, err
 	}
@@ -165,7 +165,7 @@ func userOptions(offered []registry.Option) []menu.FeatureOption {
 // Remove shows what leaves with a feature, as feature rm prints it.
 func (l menuLookup) Remove(pkg string) (menu.Preview, error) {
 	ref, err := registry.ParseRef(pkg)
-	// Hand back an id that names no feature
+	// Hand back an id that names an unknown feature
 	if err != nil {
 		return menu.Preview{}, err
 	}
@@ -194,7 +194,7 @@ func menuHome(ctx context.Context, cats *catalogs) menu.Home {
 	lookup := menuLookup{ctx: ctx, r: &registry.Resolver{}, cats: cats}
 	now := time.Now()
 	dir, err := workingHome()
-	// Start without a folder where the working folder stays unknown
+	// Start folderless where the working folder stays unknown
 	if err != nil {
 		return menu.Home{Lookup: lookup, Now: now}
 	}
@@ -256,7 +256,7 @@ func installed(dc *devcontainer.Config) []menu.Installed {
 	// Take every feature that names a store
 	for _, key := range inInstallOrder(dc) {
 		ref, err := registry.ParseRef(key)
-		// Leave out a feature no store offers
+		// Leave out a feature outside every store
 		if err != nil {
 			continue
 		}
@@ -273,9 +273,9 @@ func installed(dc *devcontainer.Config) []menu.Installed {
 	return out
 }
 
-// stackFacts names where each part of the stack stands, and nothing outside a home.
+// stackFacts names where each part of the stack stands, and stays empty outside a home.
 func stackFacts(ctx context.Context, dir string, exists bool) []menu.Fact {
-	// Name nothing outside a home
+	// Hand back an empty list outside a home
 	if !exists {
 		return nil
 	}

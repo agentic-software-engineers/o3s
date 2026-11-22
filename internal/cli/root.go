@@ -50,7 +50,7 @@ func group(use, short string, show func(cmd *cobra.Command) error) *cobra.Comman
 		Short: short,
 		Args:  usage(cobra.NoArgs),
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			// Open the group's view for a user at a terminal who asks for no other form with a flag of its own
+			// Open the group's view for a user at a terminal whose call sets zero flags of its own
 			if cmd.LocalNonPersistentFlags().NFlag() == 0 && isInteractive(cmd.InOrStdin(), cmd.OutOrStdout()) {
 				return openMenu(cmd.Context(), nil, strings.Fields(cmd.CommandPath())[1:])
 			}

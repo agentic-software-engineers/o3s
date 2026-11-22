@@ -8,7 +8,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 )
 
-// ErrInvalid marks a feature id that names no feature in a store.
+// ErrInvalid marks a feature id that fails to name a feature in a store.
 var ErrInvalid = errors.New("invalid feature")
 
 // Ref names a feature as a store, the feature's id in it, and an optional tag.
@@ -22,7 +22,7 @@ type Ref struct {
 func ParseRef(s string) (Ref, error) {
 	bad := fmt.Errorf("%w %q: name it as a store and a feature, as in ghcr.io/devcontainers/features/go:1", ErrInvalid, s)
 	store, id, ok := strings.CutLast(s, "/")
-	// Turn away an id that names no store
+	// Turn away an id that fails to name a store
 	if !ok {
 		return Ref{}, bad
 	}
@@ -35,7 +35,7 @@ func ParseRef(s string) (Ref, error) {
 			return Ref{}, bad
 		}
 	}
-	// Turn away a store that names no repository in full
+	// Turn away a store that falls short of naming a repository in full
 	if _, err := name.NewRepository(r.Store, name.StrictValidation); err != nil {
 		return Ref{}, bad
 	}
@@ -46,14 +46,14 @@ func ParseRef(s string) (Ref, error) {
 	return r, nil
 }
 
-// Package is the feature's id without its tag, the name a host lists it by.
+// Package is the feature's id stripped of its tag, the name a host lists it by.
 func (r Ref) Package() string {
 	return r.Store + "/" + r.ID
 }
 
 // String writes the full id with its tag when it carries one.
 func (r Ref) String() string {
-	// Name the package alone when no tag is set
+	// Name the package alone when the tag is empty
 	if r.Tag == "" {
 		return r.Package()
 	}

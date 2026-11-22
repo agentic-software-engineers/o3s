@@ -37,7 +37,7 @@ type Config struct {
 	Home func() menu.Home
 	// Command builds the command line of a dialog's command, the binary's own.
 	Command func(args []string) *exec.Cmd
-	// Exec hands the terminal to a command, as tea.ExecProcess does.
+	// Exec hands the terminal to a command and calls back once the command ends.
 	Exec func(cmd *exec.Cmd, fn tea.ExecCallback) tea.Cmd
 	// Start are the answers the menu opens with, such as the group whose view a command named.
 	Start menu.Answers
@@ -74,8 +74,8 @@ type model struct {
 	// spin turns while the app works, and spinning marks a turn on its way.
 	spin     spinner.Model
 	spinning bool
-	// shown marks a run that left something to read on the screen: a note, or the output of a command neither quiet
-	// nor handed the real terminal.
+	// shown marks a run that left something to read on the screen: a note, or the output of a command that prints
+	// into the menu.
 	shown bool
 	// restart marks commands that replace the binary the menu runs, and reopen is the group whose view the new binary
 	// opens at once they succeeded.
@@ -92,7 +92,7 @@ type model struct {
 // Run shows the menu until the user leaves, or until commands replaced the binary it runs, where it hands back the path
 // of the group whose view the new binary opens at.
 func Run(ctx context.Context, cfg Config) ([]string, error) {
-	// Hand the terminal to a command by default, unless the caller does it otherwise
+	// Hand the terminal to a command the usual way where the caller leaves the way open
 	if cfg.Exec == nil {
 		cfg.Exec = tea.ExecProcess
 	}
@@ -112,7 +112,7 @@ func (m model) reload() tea.Cmd {
 	return func() tea.Msg { return homeMsg(read()) }
 }
 
-// ask works out the next question of the dialog, or that it asks nothing more, away from the screen.
+// ask works out the next question of the dialog, or that it is done asking, away from the screen.
 func (m model) ask() tea.Cmd {
 	h, a := m.home, m.answers
 	return func() tea.Msg {
@@ -150,8 +150,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return next, cmd
 }
 
-// busy reports whether the app works without a result to show: reading the home, asking the menu, planning, or running
-// commands whose output stays off the screen.
+// busy reports whether the app works with its result still to come: reading the home, asking the menu, planning, or
+// running commands whose output stays off the screen.
 func (m model) busy() bool {
 	return m.state == loading || m.state == running && !m.shown
 }
@@ -215,9 +215,9 @@ func (m model) update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// asked shows the next question, or plans the commands of a dialog that asks nothing more.
+// asked shows the next question, or plans the commands of a dialog that is done asking.
 func (m model) asked(msg askedMsg) (tea.Model, tea.Cmd) {
-	// Plan the commands once the dialog asks nothing more
+	// Plan the commands once the dialog is done asking
 	if msg.done {
 		return m, m.plan()
 	}
@@ -333,7 +333,7 @@ func (m model) follow(r result, cmd tea.Cmd) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-// runNext runs the next command of the dialog, shows a note in its place, or ends once none is left.
+// runNext runs the next command of the dialog, shows a note in its place, or ends once the commands run out.
 func (m model) runNext() (tea.Model, tea.Cmd) {
 	// Show every note before the next command
 	for len(m.queue) > 0 && m.queue[0].Note != "" && len(m.queue[0].Args) == 0 {
@@ -364,7 +364,7 @@ func (m model) runNext() (tea.Model, tea.Cmd) {
 
 // finish ends a run whose commands all succeeded: the new binary takes over where a command replaced this one, the
 // result stays on the screen where the run left something to read, and the menu goes straight back to where the change
-// came from otherwise, as a quiet change, a declined one and a command on the real terminal leave nothing more to read.
+// came from otherwise, as a quiet change, a declined one and a command on the real terminal leave the screen clear.
 func (m model) finish() (tea.Model, tea.Cmd) {
 	// Leave for the new binary, which opens at the group's view
 	if m.restart {
@@ -404,10 +404,10 @@ func (m model) ended(end endMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// path is the group the dialog runs in, as the menu opens at it, and none at the main menu.
+// path is the group the dialog runs in, as the menu opens at it, and empty at the main menu.
 func (m model) path() []string {
 	g := m.group()
-	// Name no group at the main menu
+	// Name an empty path at the main menu
 	if len(g) == 0 || len(g[0].Values) == 0 {
 		return []string{}
 	}
@@ -415,9 +415,9 @@ func (m model) path() []string {
 }
 
 // group is the answers that open the view a change came from: the last view the dialog answered, else the group's
-// own view, which the answers the menu started with open where they name the same group, and none at the main menu.
+// own view, which the answers the menu started with open where they name the same group, and empty at the main menu.
 func (m model) group() menu.Answers {
-	// Open the main menu where the dialog names no group
+	// Open the main menu where the dialog lacks a group
 	if len(m.answers) == 0 || m.answers[0].Key != "do" {
 		return nil
 	}
@@ -436,7 +436,7 @@ func (m model) group() menu.Answers {
 // row, the row a new order names, or the choice a group's own question took.
 func (m model) place() []string {
 	i := len(m.group())
-	// Name no place where the dialog answered nothing past the group
+	// Leave the place empty where the answers end at the group
 	if i >= len(m.answers) || i >= len(m.steps) || len(m.answers[i].Values) == 0 {
 		return nil
 	}
@@ -452,7 +452,8 @@ func (m model) place() []string {
 	return v[:min(len(v), 2)]
 }
 
-// lastView is where the last answer a view took stands among the answers, and -1 where no view took one.
+// lastView is where the last answer a view took stands among the answers, and -1 where every answer came from
+// elsewhere.
 func (m model) lastView() int {
 	// Look back from the last answer for one a view took
 	for i, s := range slices.Backward(m.steps) {
@@ -529,9 +530,9 @@ func crumb(q menu.Question, values []string) string {
 }
 
 // marksChange names what the marks a tab hands back change against the ones it started with, and how many are marked
-// where it started with none or they stay as they started.
+// where it started empty or they stay as they started.
 func marksChange(before, after []string) string {
-	// Count the marks where the tab started with none
+	// Count the marks where the tab started empty
 	if len(before) == 0 {
 		return fmt.Sprintf("%d marked", len(after))
 	}
@@ -576,11 +577,11 @@ func keyOptions(t menu.Tab) []menu.Option {
 	return out
 }
 
-// label is how a value shows among options: its label without the sign and the dots of a row that leads on, or the value
-// itself.
+// label is how a value shows among options: its label stripped of the sign and the dots of a row that leads on, or the
+// value itself.
 func label(options []menu.Option, value string) string {
 	i := slices.IndexFunc(options, func(o menu.Option) bool { return o.Value == value })
-	// Show a value no option holds as it is
+	// Show a value outside the options as it is
 	if i < 0 {
 		return value
 	}
@@ -604,7 +605,7 @@ func (m model) previewLines() []string {
 
 // summaryLines are the summary of a question, broken to the width.
 func (m model) summaryLines() []string {
-	// Show a summary only where the question holds one
+	// Skip the summary where the question lacks one
 	if m.q.Summary == "" {
 		return nil
 	}

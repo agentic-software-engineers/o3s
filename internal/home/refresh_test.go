@@ -118,7 +118,7 @@ func TestRefreshKeepsTheHomesFeaturesEnvAndOrder(t *testing.T) {
 	}
 }
 
-// A binary of a newer release names each o3s image whose tag it moves, and one of the same release names none.
+// A binary of a newer release names each o3s image whose tag it moves, and one of the same release names an empty list.
 func TestImagesNamesTheTagsAReleaseMoves(t *testing.T) {
 	home.Version = fixture.Version
 	t.Cleanup(func() { home.Version = "dev" })
@@ -136,7 +136,7 @@ func TestImagesNamesTheTagsAReleaseMoves(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Images() = %v", err)
 	}
-	// Require no change from the release that wrote the home
+	// Require the release that wrote the home to leave it unchanged
 	if len(same) != 0 {
 		t.Errorf("Images() at the same release = %v, want none", same)
 	}

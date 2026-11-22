@@ -17,7 +17,7 @@ type given struct {
 // parseOption reads an option given as name=value, or as id:name=value for the feature with that id.
 func parseOption(arg string) (given, error) {
 	left, value, ok := strings.Cut(arg, "=")
-	// Turn away an option without a value or a name
+	// Turn away an option that lacks a value or a name
 	if !ok || left == "" {
 		return given{}, fmt.Errorf("%w: invalid option %q, want name=value or id:name=value", ErrUsage, arg)
 	}
@@ -49,7 +49,7 @@ func applyOptions(setups []registry.Setup, args []string) error {
 				offering = append(offering, i)
 			}
 		}
-		// Turn away an option no feature here offers
+		// Turn away an option outside every feature here
 		if len(offering) == 0 {
 			return fmt.Errorf("%w: no feature here offers the option %s", ErrUsage, g.name)
 		}
@@ -64,11 +64,11 @@ func applyOptions(setups []registry.Setup, args []string) error {
 		}
 		s := &setups[offering[0]]
 		value, err := valueFor(option(*s, g.name), g.value)
-		// Hand back a value the option takes none of
+		// Hand back a value outside the option's own
 		if err != nil {
 			return err
 		}
-		// Start the options of a feature that holds none yet
+		// Start the options of a feature whose options are still empty
 		if s.Options == nil {
 			s.Options = map[string]any{}
 		}

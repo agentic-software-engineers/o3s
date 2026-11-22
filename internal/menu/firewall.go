@@ -72,7 +72,7 @@ func firewallDialog(h Home, a Answers) (Question, bool) {
 func allowDialog(h Home, a Answers, hosts []string) (Question, bool) {
 	// Ask the ports, the time and the secret in turn
 	for _, step := range []func(Home, Answers) (Question, bool){portsQuestion, forQuestion(true), secretQuestion(true)} {
-		// Ask a question not yet answered
+		// Ask a question awaiting an answer
 		if q, open := step(h, a); open {
 			return q, false
 		}
@@ -108,7 +108,7 @@ func hostDialog(h Home, a Answers, name string) (Question, bool) {
 	}
 	// Ask every step the change needs
 	for _, step := range steps {
-		// Ask a step not yet answered
+		// Ask a step awaiting an answer
 		if q, open := step(h, a); open {
 			return q, false
 		}
@@ -155,14 +155,14 @@ func forQuestion(forGood bool) func(Home, Answers) (Question, bool) {
 	}
 }
 
-// secretQuestion asks the secret the proxy injects and where it goes, offering none where hosts may go without one, and
-// reports whether it asks.
+// secretQuestion asks the secret the proxy injects and where it goes, offering an empty choice where hosts may go
+// bare, and reports whether it asks.
 func secretQuestion(withNone bool) func(Home, Answers) (Question, bool) {
 	return func(h Home, a Answers) (Question, bool) {
 		// Ask the secret first
 		if !a.has("secret") {
 			q := Question{Key: "secret", Kind: Select, Title: "Secret the proxy injects", Numbered: true}
-			// Offer to go without a secret where hosts may
+			// Offer the empty choice where hosts may go bare
 			if withNone {
 				q.Options = append(q.Options, Option{Value: none, Label: "None"})
 			}
@@ -192,7 +192,7 @@ func secretQuestion(withNone bool) func(Home, Answers) (Question, bool) {
 // firewallPlan builds the commands the firewall's dialogs lead to.
 func firewallPlan(_ Home, a Answers) []Command {
 	tab, picked := view(a)
-	// Go back to the view where the user picked nothing to change
+	// Go back to the view where the pick is empty or the user stepped back
 	if len(picked) == 0 || a.get("action") == back {
 		return nil
 	}
@@ -227,14 +227,14 @@ func allowArgs(a Answers, hosts []string) []string {
 		args = append(args, "--port", ports)
 	}
 	limit := chosenFor(a)
-	// Name the time the user chose, opening a host for good again where its end time changes to none
+	// Name the time the user chose, opening a host for good again where the user drops its end time
 	switch {
 	case limit == always && a.get("action") == changeEnd:
 		args = append(args, "--for", config.OpenForGood)
 	case limit != "" && limit != always:
 		args = append(args, "--for", limit)
 	}
-	// Name the secret and where it goes, or take a host's secret off where its secret changes to none
+	// Name the secret and where it goes, or take a host's secret off where the user drops it
 	switch s := chosenSecret(a); {
 	case s != "":
 		args = append(args, "--secret", s, "--inject", strings.Join(a.all("inject"), ","))
@@ -244,7 +244,7 @@ func allowArgs(a Answers, hosts []string) []string {
 	return append(args, "--yes")
 }
 
-// chosenPorts hands back the ports the user picked or typed, without spaces.
+// chosenPorts hands back the ports the user picked or typed, free of spaces.
 func chosenPorts(a Answers) string {
 	// Take the ports the user typed
 	if a.get("ports") == typed {
@@ -262,14 +262,14 @@ func chosenFor(a Answers) string {
 	return a.get("for")
 }
 
-// chosenSecret hands back the secret hosts are to carry, and empty for none.
+// chosenSecret hands back the secret hosts are to carry, and empty for the empty choice.
 func chosenSecret(a Answers) string {
 	s := a.get("secret")
 	// Take the name the user typed for a new secret
 	if s == fresh {
 		return a.get("secretName")
 	}
-	// Read none as no secret
+	// Read the empty choice as an empty secret
 	if s == none {
 		return ""
 	}
@@ -284,7 +284,7 @@ func allowLines(h Home, a Answers, hosts []string) []string {
 	for _, name := range hosts {
 		current, known := (&config.Config{Hosts: h.Hosts}).Find(name)
 		sign, ports := "+", chosenPorts(a)
-		// Mark a host the allowlist holds already, keeping its ports where the change names none
+		// Mark a host the allowlist holds already, keeping its ports where the change leaves them empty
 		if known {
 			sign = "~"
 			// Keep the ports the host opens where the change leaves them
@@ -302,7 +302,7 @@ func allowLines(h Home, a Answers, hosts []string) []string {
 		case chosenFor(a) == always && a.get("action") == changeEnd:
 			line += "   open for good"
 		}
-		// Name the secret the host carries, or that it carries none where its secret changes
+		// Name the secret the host carries, or that it goes bare where its secret changes
 		switch s := chosenSecret(a); {
 		case s != "":
 			line += "   " + s + " in " + strings.Join(a.all("inject"), ", ")

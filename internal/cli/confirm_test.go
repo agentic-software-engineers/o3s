@@ -6,7 +6,7 @@ import (
 	"testing"
 )
 
-// The user's answer at a terminal decides, and --yes applies without asking.
+// The user's answer at a terminal decides, and --yes applies at once.
 func TestConfirmFollowsTheAnswer(t *testing.T) {
 	tests := []struct {
 		answer   string
@@ -34,7 +34,7 @@ func TestConfirmFollowsTheAnswer(t *testing.T) {
 	}
 }
 
-// Without a terminal and without --yes, nothing can answer, so the command is a usage error that names its action.
+// Lacking both a terminal and --yes, the command is a usage error that names its action.
 func TestConfirmTurnsAwayAMissingTerminal(t *testing.T) {
 	var out strings.Builder
 

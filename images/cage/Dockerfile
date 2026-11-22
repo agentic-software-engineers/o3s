@@ -1,3 +1,14 @@
+# NAME
+#        Dockerfile — the cage image every home's dev container starts from
+#
+# DESCRIPTION
+#        A pinned Ubuntu with the everyday tools of a dev container, the allowlist's markers
+#        loaded into every shell, one PATH entry per directory, and the system's CA bundle as
+#        the trust store of every runtime, so the proxy's certificates hold everywhere.
+#
+# SEE ALSO
+#        dedupe-path.sh, compose.yaml, .github/workflows/publish.yaml
+
 FROM ubuntu:24.04@sha256:73b999393d07f2bf65a40373778a44dc9a6d54ad7718d29247d8ff9413c4d6a8
 
 # Predictable UTF-8 locale

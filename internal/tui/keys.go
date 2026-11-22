@@ -53,7 +53,7 @@ func footer(width int, bindings []key.Binding) string {
 	h.Styles.ShortKey, h.Styles.ShortDesc, h.Styles.ShortSeparator, h.Styles.Ellipsis = dim, dim, dim, dim
 	h.SetWidth(width)
 	line := h.ShortHelpView(bindings)
-	// Leave out the last key until the line fits, as help keeps one key too many where no ellipsis fits after the rest
+	// Leave out the last key until the line fits, since help keeps one key too many where the ellipsis lacks room
 	for width > 0 && ansi.StringWidth(line) > width && len(bindings) > 0 {
 		bindings = bindings[:len(bindings)-1]
 		line = h.ShortHelpView(bindings)

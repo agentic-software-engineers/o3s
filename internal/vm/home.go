@@ -15,7 +15,7 @@ import (
 // IDFile is where a host folder keeps the ID of its home's VM, which travels with the folder.
 var IDFile = filepath.Join(".o3s", "id")
 
-// ErrNoVM marks a folder whose home has no VM.
+// ErrNoVM marks a folder whose home lacks a VM.
 var ErrNoVM = errors.New("no o3s home with a VM here, run o3s init")
 
 // releaseDir is where the VM keeps the files that install o3s in it.
@@ -24,7 +24,7 @@ const releaseDir = "/tmp/o3s-release"
 // Find names the VM of the home in a folder.
 func Find(dir string) (string, error) {
 	id, err := os.ReadFile(filepath.Join(dir, IDFile))
-	// Point a folder without a VM at the command that makes one
+	// Point a folder that lacks a VM at the command that makes one
 	if errors.Is(err, fs.ErrNotExist) {
 		return "", ErrNoVM
 	}
@@ -35,7 +35,7 @@ func Find(dir string) (string, error) {
 	return "o3s-" + strings.TrimSpace(string(id)), nil
 }
 
-// Bind names the VM of the home in a folder, giving the folder a new ID where it holds none.
+// Bind names the VM of the home in a folder, giving the folder a new ID where it lacks one.
 func Bind(dir string) (string, error) {
 	name, err := Find(dir)
 	// Keep the ID the folder already holds

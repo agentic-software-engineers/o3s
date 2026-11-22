@@ -3,7 +3,7 @@
 #
 # DESCRIPTION
 #        Three services on two networks. The cage sits alone in its network with
-#        the gateway as its only route and resolver. The gateway NATs the cage out through its
+#        the gateway as its sole route and resolver. The gateway NATs the cage out through its
 #        own egress interface, resolves and admits the allow-listed hosts, and redirects cage
 #        HTTPS to the proxy, which shares the gateway's network namespace and injects this
 #        host's secrets into the hosts that declare one.
@@ -29,7 +29,7 @@ services:
   # The dev container the work happens in, reaching the internet through the gateway alone.
   cage:
     image: ghcr.io/hansehart/o3s-cage:latest
-    # Each release pins its own tag, so only pull the cage image when absent
+    # Each release pins its own tag, so pull the cage image when absent
     pull_policy: missing
     env_file: .env
     volumes:
@@ -85,7 +85,7 @@ services:
   # Sole path to the internet for the cage.
   gateway:
     image: ghcr.io/hansehart/o3s-gateway:latest
-    # Each release pins its own tag, so only pull the gateway image when absent
+    # Each release pins its own tag, so pull the gateway image when absent
     pull_policy: missing
     # Required to manage iptables/ipset and route/NAT the cage network
     cap_add:
@@ -125,10 +125,10 @@ services:
       timeout: 5s
       retries: 3
 
-  # Injects the upstream API key into inject-host HTTPS so the keys live here, never in the cage.
+  # Injects the upstream API key into inject-host HTTPS so the keys live here, outside the cage.
   proxy:
     image: ghcr.io/mitmproxy/mitmproxy:12.2.3@sha256:00b77b5d8804c8ad18cb6caefbf9d5849e895e8986c5ce011f4ae30f4385962f
-    # The digest pins the image, so only pull the proxy image when absent
+    # The digest pins the image, so pull the proxy image when absent
     pull_policy: missing
     # Share the gateway's network namespace so its iptables REDIRECT lands here and resolves the original dst
     network_mode: "service:gateway"
@@ -153,7 +153,7 @@ services:
       - ${O3S_SECRETS_DIR}:/secrets:ro
       # Which hosts are allowed and which of them inject which secret
       - ../o3s.json:/etc/o3s/o3s.json:ro
-      # Injection logic (not secret)
+      # Injection logic (public)
       - ./proxy/inject.py:/addons/inject.py:ro
     # Take the redirected cage HTTPS, holding each connection until the handshake names its host
     command:
@@ -192,13 +192,13 @@ services:
         condition: service_healthy
 
 networks:
-  # Only the gateway (which NATs via its own egress interface) can reach the internet
+  # The gateway alone (which NATs via its own egress interface) reaches the internet
   cage:
     name: o3s-cage
     driver: bridge
     driver_opts:
       com.docker.network.bridge.enable_ip_masquerade: "false"
-      # The bridge holds no IPv4 address, so the gateway is the cage's only route out
+      # The bridge lacks an IPv4 address, so the gateway is the cage's sole route out
       com.docker.network.bridge.inhibit_ipv4: "true"
     ipam:
       config:

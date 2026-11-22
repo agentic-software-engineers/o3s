@@ -33,7 +33,7 @@ func anInitializedHome(t *testing.T) string {
 func readConfig(t *testing.T, data []byte) map[string]any {
 	t.Helper()
 	plain, err := hujson.Standardize(data)
-	// Stop when the config holds no JSON with comments
+	// Stop when the config fails to parse as JSON with comments
 	if err != nil {
 		t.Fatalf("Standardize: %v", err)
 	}
@@ -45,7 +45,7 @@ func readConfig(t *testing.T, data []byte) map[string]any {
 	return v
 }
 
-// A new home holds the settings of a new home, both stores and no host.
+// A new home holds the settings of a new home, both stores and an empty host list.
 func TestInitWritesTheSettingsOfANewHome(t *testing.T) {
 	dir := t.TempDir()
 
@@ -92,7 +92,7 @@ func TestInitCopiesTheStack(t *testing.T) {
 	}
 }
 
-// A new home's config keeps the stack's settings and suggests no feature.
+// A new home's config keeps the stack's settings and starts free of features.
 func TestInitStartsTheConfigWithoutFeatures(t *testing.T) {
 	dir := anInitializedHome(t)
 	source, _ := home.Files.ReadFile("stack/devcontainer.json")
@@ -166,7 +166,7 @@ func TestInitPinsTheImagesToTheRelease(t *testing.T) {
 	}
 }
 
-// Every image of a new home's stack is pulled once per version, so a start needs no download.
+// Every image of a new home's stack is pulled once per version, so a start finds every image in place.
 func TestInitPullsEachImageOnlyWhenMissing(t *testing.T) {
 	dir := anInitializedHome(t)
 
@@ -202,7 +202,7 @@ func TestInitLeavesTheTemplatesInTheBinary(t *testing.T) {
 
 	_, err := os.Stat(filepath.Join(dir, ".devcontainer", "templates"))
 
-	// Require the home without a copy of the templates
+	// Require the home free of a copy of the templates
 	if !errors.Is(err, fs.ErrNotExist) {
 		t.Errorf("home holds .devcontainer/templates (%v), want it absent", err)
 	}

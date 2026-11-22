@@ -52,7 +52,7 @@ var (
 	bothPorts = strconv.Itoa(fixture.OtherPort) + "," + port
 )
 
-// The footer fits every width, leaving out the keys that fit no more, as the screen it closes does.
+// The footer fits every width, leaving out the keys past its edge, as the screen it closes does.
 func TestFooterFitsEveryWidth(t *testing.T) {
 	bindings := []key.Binding{keyNavigate, keySwitch, keyPick, keySearch, keySelect, keyBack}
 

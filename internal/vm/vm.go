@@ -68,7 +68,7 @@ func Manager() (Lima, error) {
 	return Lima{path: path, engine: engine}, nil
 }
 
-// Engine is the VM type this host system runs natively, unless the user names another.
+// Engine is the VM type this host system runs natively, or the one the user names.
 func Engine() (string, error) {
 	// Take the engine the user names
 	if engine := os.Getenv("O3S_ENGINE"); engine != "" {
@@ -89,8 +89,8 @@ func Engine() (string, error) {
 	}
 }
 
-// firstStart is how long a home's VM may take to boot the first time, its setup included, longer than the VM manager's default,
-// which fits a VM that boots without one.
+// firstStart is how long a home's VM may take to boot the first time, its setup included, longer than the VM
+// manager's default, which fits a VM that boots with its setup done.
 const firstStart = 30 * time.Minute
 
 // Start boots a home's VM, created from the template on its first start, with its progress on out.
@@ -123,7 +123,7 @@ func (l Lima) Exec(ctx context.Context, name string, in io.Reader, out, errOut i
 }
 
 // Status reads the state of a home's VM as the VM manager names it, such as Running or Stopped, and Absent where
-// the home has none.
+// the home lacks one.
 func (l Lima) Status(ctx context.Context, name string) (string, error) {
 	names, err := l.output(ctx, "list", "--quiet")
 	// Hand back a VM manager that fails to list its VMs

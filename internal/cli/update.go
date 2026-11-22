@@ -49,7 +49,7 @@ func newUpdate() *cobra.Command {
 				return err
 			}
 			plan, err = t.narrow(plan)
-			// Hand back a feature the update finds nothing for
+			// Hand back a name the update finds current or missing
 			if err != nil {
 				return err
 			}
@@ -82,7 +82,7 @@ func newUpdate() *cobra.Command {
 				}
 			}
 			cli, ok := rebuild.CLI()
-			// Leave the rebuild to the user where the host holds no devcontainer CLI
+			// Leave the rebuild to the user where the host lacks the devcontainer CLI
 			if !ok {
 				fmt.Fprintln(out, "Updated")
 				fmt.Fprintln(out, "Rebuild the cage to apply it")
@@ -100,16 +100,16 @@ func newUpdate() *cobra.Command {
 	return cmd
 }
 
-// targets are the parts an update brings up to date: every part where none is named, or the binary, the stack and
+// targets are the parts an update brings up to date: every part by default, or the binary, the stack and
 // the features named.
 type targets struct {
 	all, binary, stack bool
 	features           []string
 }
 
-// readTargets reads the parts a command line names, every part where it names none.
+// readTargets reads the parts a command line names, and every part by default.
 func readTargets(args []string) targets {
-	// Take every part where the command names none
+	// Take every part where the command leaves the parts unnamed
 	if len(args) == 0 {
 		return targets{all: true, binary: true, stack: true}
 	}
@@ -130,9 +130,9 @@ func readTargets(args []string) targets {
 }
 
 // rest are the arguments that carry the update on in a new binary: the parts left once the binary is up to date,
-// and none where the binary was all the update named.
+// and empty where the binary was all the update named.
 func (t targets) rest() []string {
-	// Carry every part on where the command named none
+	// Carry every part on where the command left the parts unnamed
 	if t.all {
 		return []string{}
 	}
@@ -144,13 +144,13 @@ func (t targets) rest() []string {
 	return append(out, t.features...)
 }
 
-// narrow keeps the parts of a plan the update names, and turns away a feature the plan finds nothing for.
+// narrow keeps the parts of a plan the update names, and turns away a feature missing from the plan.
 func (t targets) narrow(p update.Plan) (update.Plan, error) {
-	// Keep the whole plan where the command named no part
+	// Keep the whole plan where the command left the parts unnamed
 	if t.all {
 		return p, nil
 	}
-	// Leave the stack out where the command named none
+	// Leave the stack out where the command left the parts unnamed
 	if !t.stack {
 		p.Images, p.Files = nil, nil
 	}
@@ -160,7 +160,7 @@ func (t targets) narrow(p update.Plan) (update.Plan, error) {
 		i := slices.IndexFunc(p.Features, func(fc update.FeatureChange) bool {
 			return fc.Package == name || path.Base(fc.Package) == name || packageOfKey(name) == fc.Package
 		})
-		// Turn away a name the update finds no feature change for
+		// Turn away a name the update finds current or missing
 		if i < 0 {
 			return update.Plan{}, fmt.Errorf("%w: %s is up to date or not installed, the names update takes are o3s, stack and the features it lists", ErrUsage, name)
 		}

@@ -11,7 +11,7 @@ import (
 )
 
 // Path is one way through the menu: the questions it asks, the answers it takes, and the commands it ends in. A stuck
-// path ends at a question that offers no answer.
+// path ends at a question with an empty list of answers.
 type Path struct {
 	Asked   []menu.Question
 	Answers menu.Answers
@@ -36,15 +36,15 @@ var typed = map[string][]string{
 }
 
 // Walk follows the menu on a home from the main menu until it covers every answer of every question at least once,
-// the edge coverage model-based testing aims for, as GraphWalker's edge_coverage(100). An answer counts once per
-// dialog it is given in, so a path takes an answer already covered only where it has to go on.
+// full edge coverage. An answer counts once per dialog it is given in, so a path takes an answer already covered
+// just where it has to go on.
 func Walk(h menu.Home) ([]Path, error) {
 	var out []Path
 	covered := map[string]bool{}
 	var walk func(p Path) error
 	walk = func(p Path) error {
 		q, done := menu.Next(h, p.Answers)
-		// End a path once the menu asks nothing more
+		// End a path once the menu is done asking
 		if done {
 			p.Plan = menu.Plan(h, p.Answers)
 			out = append(out, p)
@@ -55,19 +55,19 @@ func Walk(h menu.Home) ([]Path, error) {
 			return fmt.Errorf("the menu asks beyond %d questions after %v", maxDepth, p.Answers)
 		}
 		answers, err := Answers(q)
-		// Hand back a question the walk can't answer
+		// Hand back a question the walk fails to answer
 		if err != nil {
 			return err
 		}
 		p.Asked = append(slices.Clone(p.Asked), q)
-		// End a path at a question that offers no answer
+		// End a path at a question with an empty list of answers
 		if len(answers) == 0 {
 			p.Stuck = true
 			out = append(out, p)
 			return nil
 		}
 		followed := false
-		// Follow every answer not covered yet
+		// Follow every answer the walk has yet to cover
 		for _, values := range answers {
 			e := edge(p.Answers, q.Key, values)
 			// Skip an answer covered already
@@ -138,7 +138,7 @@ func Answers(q menu.Question) ([][]string, error) {
 		out = [][]string{{fixture.SecretValue}}
 	case menu.Input:
 		line, err := typedLine(q)
-		// Hand back a question without a line to type
+		// Hand back a question lacking a line to type
 		if err != nil {
 			return nil, err
 		}
@@ -165,13 +165,13 @@ func Typed(key string) ([]string, bool) {
 // typedLine is the line a test types for a question that takes text, the first its check takes.
 func typedLine(q menu.Question) (string, error) {
 	lines, ok := Typed(q.Key)
-	// Name a question no line is set for
+	// Name a question lacking a set line
 	if !ok {
 		return "", fmt.Errorf("no line to type for %q, add one to menutest's typed lines", q.Key)
 	}
 	// Take the first line the question's check takes
 	for _, line := range lines {
-		// Take a line the check takes, or any where it checks nothing
+		// Take a line the check takes, or any where the question lacks a check
 		if q.Check == nil {
 			return line, nil
 		}
@@ -183,8 +183,8 @@ func typedLine(q menu.Question) (string, error) {
 	return "", fmt.Errorf("%q's check takes none of %v", q.Key, lines)
 }
 
-// tabAnswers are every answer a view's tab takes: each row and key, the marks as they stand, each mark turned and
-// none, and the first row moved one place down.
+// tabAnswers are every answer a view's tab takes: each row and key, the marks as they stand, each mark turned, the
+// marks cleared, and the first row moved one place down.
 func tabAnswers(t menu.Tab) [][]string {
 	var out [][]string
 	// Act on every key of the tab
@@ -212,7 +212,8 @@ func tabAnswers(t menu.Tab) [][]string {
 	return out
 }
 
-// markAnswers are the marks a tab hands back: as they stand, with each row turned, and none, each in the rows' order.
+// markAnswers are the marks a tab hands back: as they stand, with each row turned, and cleared, each in the rows'
+// order.
 func markAnswers(t menu.Tab) [][]string {
 	var out [][]string
 	marks := func(on func(menu.Option) bool) []string {
@@ -232,15 +233,15 @@ func markAnswers(t menu.Tab) [][]string {
 	for _, turned := range t.Options {
 		out = append(out, marks(func(o menu.Option) bool { return marked(o) != (o.Value == turned.Value) }))
 	}
-	// Hand back no marks where some stand
+	// Hand back the marks cleared where some stand
 	if len(t.Marked) > 0 {
 		out = append(out, []string{t.Name})
 	}
 	return out
 }
 
-// Line reads a path the way the trail shows it, then where it ends: the commands it runs, what it notes, nothing, or
-// the question it is stuck at.
+// Line reads a path the way the trail shows it, then where it ends: the commands it runs, what it notes, an idle
+// end, or the question it is stuck at.
 func Line(p Path) string {
 	var parts []string
 	// Show every answer by how it shows, an answer a later one finishes left out for the one that finishes it
@@ -254,7 +255,7 @@ func Line(p Path) string {
 	return strings.Join(parts, " / ") + " → " + End(p)
 }
 
-// End is where a path ends: the commands it runs, what it notes, nothing, or the question it is stuck at.
+// End is where a path ends: the commands it runs, what it notes, an idle end, or the question it is stuck at.
 func End(p Path) string {
 	// Name the question a stuck path ends at
 	if p.Stuck {
@@ -270,7 +271,7 @@ func End(p Path) string {
 		}
 		ends = append(ends, "o3s "+strings.Join(c.Args, " ")+marks(c))
 	}
-	// Name a path that runs nothing
+	// Name a path with an empty plan
 	if len(ends) == 0 {
 		return "back"
 	}
@@ -290,7 +291,7 @@ func marks(c menu.Command) string {
 			out = append(out, m.name)
 		}
 	}
-	// Name nothing for a plain command
+	// Leave a plain command bare
 	if len(out) == 0 {
 		return ""
 	}
@@ -337,7 +338,7 @@ func keyOptions(t menu.Tab) []menu.Option {
 	return out
 }
 
-// shown are values by their options' labels, a value no option names as it is.
+// shown are values by their options' labels, a value outside the options as it is.
 func shown(options []menu.Option, values []string) []string {
 	out := make([]string, len(values))
 	// Show every value by its option

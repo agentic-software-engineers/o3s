@@ -49,7 +49,7 @@ func homeMachine() (machine, bool, error) {
 // managed builds the machine of a VM by its name, its manager writing to the home's VM log.
 func managed(dir, name string) (machine, error) {
 	lima, err := vm.Manager()
-	// Hand back a host without the VM manager
+	// Hand back a host that lacks the VM manager
 	if err != nil {
 		return machine{}, err
 	}
@@ -67,7 +67,8 @@ func vmLogPath(dir string) string {
 	return filepath.Join(paths.Home(dir), "vm.log")
 }
 
-// vmLog appends the VM manager's records to the home's VM log, opening it for each write so no file stays open.
+// vmLog appends the VM manager's records to the home's VM log, opening it for each write so the file stays closed
+// between writes.
 type vmLog struct {
 	path string
 }

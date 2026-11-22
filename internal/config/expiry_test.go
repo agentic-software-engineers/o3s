@@ -35,7 +35,7 @@ func TestAllowGivesANewHostItsEndTime(t *testing.T) {
 	}
 }
 
-// A new end time takes the place of the old one and reports the change, and a change without one keeps it.
+// A new end time takes the place of the old one and reports the change, and a change that lacks one keeps it.
 func TestAllowRenewsTheEndTimeAndKeepsItOtherwise(t *testing.T) {
 	c := aConfigThatAllows(config.Host{Name: fixture.Host, Ports: []int{fixture.Port}, By: []string{"user"}, Expires: fixture.InAnHourText})
 
@@ -54,7 +54,7 @@ func TestAllowRenewsTheEndTimeAndKeepsItOtherwise(t *testing.T) {
 	if _, err := c.Allow(config.Change{Name: fixture.Host, Ports: []int{fixture.OtherPort, fixture.Port}}); err != nil {
 		t.Fatalf("Allow(ports) = %v", err)
 	}
-	// Report an end time a change without one dropped
+	// Report an end time a change that lacked one dropped
 	if got := c.Hosts[0].Expires; got != fixture.InTwoHoursText {
 		t.Errorf("Expires after a change of ports = %q, want it kept", got)
 	}
@@ -96,7 +96,7 @@ func TestPruneTakesOffTheExpiredHosts(t *testing.T) {
 	}
 }
 
-// A host expires once its end time passes, and a host without one never does.
+// A host expires once its end time passes, and a host that lacks one stays open for good.
 func TestExpiredComparesTheEndTime(t *testing.T) {
 	tests := []struct {
 		expires string
@@ -130,7 +130,7 @@ func TestAllowTurnsAwayAMalformedEndTime(t *testing.T) {
 	}
 }
 
-// The time left reads in its largest whole unit, expired once the end has come, and empty without an end.
+// The time left reads in its largest whole unit, expired once the end has come, and empty for a host that lacks an end.
 func TestUntilWritesTheTimeLeft(t *testing.T) {
 	after := func(d time.Duration) string { return fixture.Now.Add(d).Format(time.RFC3339) }
 	tests := map[string]string{"": "", after(-time.Hour): "expired", after(30 * time.Second): "in 30s", after(52 * time.Minute): "in 52m", after(3 * time.Hour): "in 3h", after(72 * time.Hour): "in 3d", after(2*time.Hour - time.Second): "in 2h", after(time.Hour - 30*time.Second): "in 1h"}

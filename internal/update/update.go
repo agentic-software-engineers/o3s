@@ -72,7 +72,7 @@ func Check(ctx context.Context, dir string) (Plan, error) {
 	// Check every feature a store offers
 	for _, key := range dc.Features() {
 		ref, err := registry.ParseRef(key)
-		// Leave a feature that comes from no store
+		// Leave a feature that lacks a store reference
 		if err != nil {
 			continue
 		}
@@ -113,9 +113,9 @@ func change(c config.Config, dc *devcontainer.Config, tag string, s registry.Set
 			fc.HostsAdded = append(fc.HostsAdded, h)
 		}
 	}
-	// Name every host the feature leaves and nothing else needs
+	// Name every host the feature leaves that the rest of the setup leaves too
 	for _, name := range dropped {
-		// Take a host the feature no longer needs
+		// Take a host the feature has stopped needing
 		if !slices.ContainsFunc(s.Hosts, func(h registry.Host) bool { return h.Name == name }) {
 			fc.HostsDropped = append(fc.HostsDropped, name)
 		}

@@ -97,16 +97,16 @@ func (s *Session) Press(keys ...string) error {
 	// Press every key in turn
 	for _, k := range keys {
 		seq, named := Keys[k]
-		// Type a word that names no key
+		// Type a word outside the named keys as its own text
 		if !named {
 			seq = k
 		}
-		// Hand back a terminal that takes no more keys
+		// Hand back a terminal that refuses further keys
 		if _, err := io.WriteString(s.pty, seq); err != nil {
 			return err
 		}
 		pause := 50 * time.Millisecond
-		// Give a lone Esc the time a terminal leaves before it reads it as a key of its own, not the start of a sequence
+		// Give a lone Esc the time a terminal waits before it reads it as a key of its own, apart from any sequence
 		if seq == Keys["esc"] {
 			pause = 300 * time.Millisecond
 		}
@@ -155,7 +155,7 @@ func (s *Session) Stop() {
 	}
 }
 
-// Failed reports whether the error a program left with is its own failure, not a failure to run it.
+// Failed reports whether the error a program left with comes from the program itself, once it ran.
 func Failed(err error) bool {
 	var exit *exec.ExitError
 	return errors.As(err, &exit)
@@ -180,7 +180,7 @@ func Size(text string) (int, int, error) {
 	c, r, ok := strings.Cut(text, "x")
 	cols, cerr := strconv.Atoi(c)
 	rows, rerr := strconv.Atoi(r)
-	// Turn away a size that reads as none
+	// Turn away a size that fails to read as at least one column and row
 	if !ok || cerr != nil || rerr != nil || cols < 1 || rows < 1 {
 		return 0, 0, fmt.Errorf("size %q, want COLSxROWS", text)
 	}

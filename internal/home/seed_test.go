@@ -25,7 +25,7 @@ func TestExistsKnowsAHome(t *testing.T) {
 	}
 }
 
-// A home that lost its settings or never had its workspace gets them, and a whole home gets nothing.
+// A home that lost its settings or lacks its workspace gets them, and a whole home stays as it is.
 func TestSeedWritesWhatTheHomeLacks(t *testing.T) {
 	dir := anInitializedHome(t)
 	// Stop when the settings stay in place

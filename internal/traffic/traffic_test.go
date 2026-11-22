@@ -15,15 +15,15 @@ var now = fixture.Now
 // day is one day in seconds, the unit the record counts in.
 const day = 24 * 3600
 
-// A gateway that wrote no record yet hands back nothing, which reads as an empty record.
+// A gateway yet to write a record hands back empty data, which reads as an empty record.
 func TestParseReadsNothingAsEmpty(t *testing.T) {
 	got, err := Parse(nil)
 
-	// Report nothing read as a failure
+	// Report an empty read that fails
 	if err != nil {
 		t.Fatalf("Parse(nil) = %v, want an empty record", err)
 	}
-	// Report nothing read as holding something
+	// Report an empty read that holds hosts
 	if len(got.Hosts) != 0 || len(got.Blocked) != 0 {
 		t.Errorf("Parse(nil) = %+v, want an empty record", got)
 	}
@@ -51,7 +51,7 @@ func TestParseReadsTheRecord(t *testing.T) {
 	}
 }
 
-// A record that holds no JSON is turned away.
+// A record that fails to parse as JSON is turned away.
 func TestParseTurnsAwayBrokenJSON(t *testing.T) {
 	_, err := Parse([]byte("{"))
 
@@ -61,7 +61,7 @@ func TestParseTurnsAwayBrokenJSON(t *testing.T) {
 	}
 }
 
-// A host is dead once it was tracked for the whole window without moving any data in it.
+// A host is dead once it was tracked for the whole window and stayed idle through it.
 func TestDeadNeedsAWholeWindowWithoutTraffic(t *testing.T) {
 	n := now.Unix()
 	tests := []struct {
@@ -98,7 +98,7 @@ func TestSizeWritesDecimalUnits(t *testing.T) {
 	}
 }
 
-// A moment reads as how long ago it was, and a missing one as never.
+// A moment reads as how long ago it was, and a missing one as "never".
 func TestAgoWritesHowLongAgo(t *testing.T) {
 	n := now.Unix()
 	tests := map[int64]string{0: "never", n - 10: "10s ago", n - 5*60: "5m ago", n - 3*3600: "3h ago", n - 4*day: "4d ago"}

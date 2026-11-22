@@ -29,7 +29,7 @@ func serving(t *testing.T, r *relay.Relay) {
 	})
 }
 
-// dialing reaches the service once the relay listens for it, failing the test if it never does.
+// dialing reaches the service once the relay listens for it, failing the test once the time runs out.
 func dialing(t *testing.T, tr relay.Transport, s relay.Service) net.Conn {
 	t.Helper()
 	deadline := time.Now().Add(5 * time.Second)
@@ -174,7 +174,7 @@ func TestServeStopsWhenTheContextEnds(t *testing.T) {
 
 	cancel()
 
-	// Require Serve to return without an error, and the open connection to end
+	// Require Serve to return cleanly, and the open connection to end
 	select {
 	case err := <-done:
 		// Report a stop that claims a failure
