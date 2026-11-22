@@ -11,6 +11,13 @@ import (
 	"github.com/hansehart/o3s/internal/hostd"
 )
 
+// stubborn serves the control socket at the place with the info until the test ends, taking every shutdown and
+// staying all the same.
+func stubborn(t *testing.T, p hostd.Place, info hostd.Info) {
+	t.Helper()
+	serveControl(t, p, info, false)
+}
+
 // sleeper starts a process that idles until the test ends, and hands back its pid and a channel that closes once it
 // ends.
 func sleeper(t *testing.T) (int, <-chan struct{}) {

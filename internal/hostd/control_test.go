@@ -34,13 +34,6 @@ func controlled(t *testing.T, p hostd.Place, info hostd.Info) <-chan struct{} {
 	return serveControl(t, p, info, true)
 }
 
-// stubborn serves the control socket at the place with the info until the test ends, taking every shutdown and
-// staying all the same.
-func stubborn(t *testing.T, p hostd.Place, info hostd.Info) {
-	t.Helper()
-	serveControl(t, p, info, false)
-}
-
 // serveControl serves the control socket at the place with the info until the test ends, and until a shutdown arrives
 // where it obeys one, and hands back a channel that closes once it stops.
 func serveControl(t *testing.T, p hostd.Place, info hostd.Info, obey bool) <-chan struct{} {
