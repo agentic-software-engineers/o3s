@@ -1,7 +1,7 @@
 // Package fixture holds the values o3s tests use for examples, one value for each part a fixture plays, so every
 // test reads the same and a value changes in one place.
 //
-// Names follow the domains RFC 2606 reserves for examples and addresses the ranges RFC 5737 reserves for
+// Names follow the domains RFC 2606 reserves for examples and addresses the ranges RFC 5737 and RFC 3849 reserve for
 // documentation. A test keeps a literal where that value is itself what it checks, such as the order of versions, a
 // malformed address, or a real release the stack runs.
 package fixture
@@ -70,6 +70,8 @@ const (
 const (
 	// Address is a single address.
 	Address = "192.0.2.1"
+	// AddressV6 is a single IPv6 address.
+	AddressV6 = "2001:db8::1"
 	// Range is a range of addresses.
 	Range = "198.51.100.0/24"
 )
@@ -248,6 +250,7 @@ func Env() map[string]string {
 		"LOG_FILE":            LogFile,
 		"SSH_HOST":            SSHHost,
 		"ADDRESS":             Address,
+		"ADDRESS_V6":          AddressV6,
 		"RANGE":               Range,
 		"PORT":                strconv.Itoa(Port),
 		"OTHER_PORT":          strconv.Itoa(OtherPort),

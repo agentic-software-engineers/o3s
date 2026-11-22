@@ -171,11 +171,29 @@ func (c *Config) Find(name string) (Host, bool) {
 func (c *Config) Allows(host string, port int) bool {
 	// Look at every host the allowlist holds
 	for _, h := range c.Hosts {
-		suffix, wildcard := strings.CutPrefix(h.Name, "*")
-		// Take the host by its name, or by a wildcard that covers it
-		if (h.Name == host || wildcard && strings.HasSuffix(host, suffix)) && slices.Contains(h.Ports, port) {
+		// Take the host by its name, or by a wildcard that covers it, on a port it opens
+		if covers(h.Name, host) && slices.Contains(h.Ports, port) {
 			return true
 		}
 	}
 	return false
+}
+
+// Lists reports whether the allowlist holds a name on any port, by the name itself or by a wildcard above it.
+func (c *Config) Lists(name string) bool {
+	// Look at every host the allowlist holds
+	for _, h := range c.Hosts {
+		// Take the name by its own entry, or by a wildcard that covers it
+		if covers(h.Name, name) {
+			return true
+		}
+	}
+	return false
+}
+
+// covers reports whether an allowlist entry names the host: the entry itself, or a wildcard whose suffix the host
+// ends in, its apex left out.
+func covers(entry, host string) bool {
+	suffix, wildcard := strings.CutPrefix(entry, "*")
+	return entry == host || wildcard && strings.HasSuffix(host, suffix)
 }

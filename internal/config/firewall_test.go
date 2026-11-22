@@ -225,3 +225,24 @@ func TestAllowsReadsNamesAndWildcards(t *testing.T) {
 		}
 	}
 }
+
+// A name counts as listed on any port, by its own entry or by a wildcard above it, and a wildcard leaves its apex out.
+func TestListsReadsNamesAndWildcardsOnAnyPort(t *testing.T) {
+	c := aConfigThatAllows(config.Host{Name: fixture.Host, Ports: []int{fixture.OtherPort}}, config.Host{Name: fixture.OtherWildcard, Ports: []int{fixture.Port}})
+	tests := []struct {
+		name string
+		want bool
+	}{
+		{fixture.Host, true},
+		{"api." + fixture.OtherHost, true},
+		{fixture.OtherHost, false},
+		{fixture.ThirdHost, false},
+	}
+	// Check every name
+	for _, tt := range tests {
+		// Report a name read otherwise
+		if got := c.Lists(tt.name); got != tt.want {
+			t.Errorf("Lists(%s) = %v, want %v", tt.name, got, tt.want)
+		}
+	}
+}
