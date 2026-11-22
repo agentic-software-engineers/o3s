@@ -1,5 +1,5 @@
 #!/bin/sh
-# Checks and applies the rulesets the JSON files of this folder define (see README.md):
+# Checks and applies the rulesets the JSON files of this folder define:
 #   .github/rulesets/rulesets.sh check   fails where a live ruleset is missing or differs from its file
 #   .github/rulesets/rulesets.sh apply   creates or updates the live rulesets from their files (admins only)
 set -eu
@@ -42,7 +42,7 @@ check() {
 		rid="$(id "$name")"
 		# Name a ruleset nobody applied yet
 		if [ -z "$rid" ]; then
-			echo "::error file=$file::$repo has no ruleset named \"$name\". An admin applies it (see .github/rulesets/README.md)."
+			echo "::error file=$file::$repo has no ruleset named \"$name\". An admin applies it with .github/rulesets/rulesets.sh apply."
 			failed=1
 			continue
 		fi
