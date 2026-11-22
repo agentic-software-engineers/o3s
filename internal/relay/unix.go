@@ -114,10 +114,11 @@ func clearStale(p string) error {
 	return nil
 }
 
-// lockDown gives the socket its mode and reports what it is, so a watch can tell it from a later one.
+// lockDown gives the socket its mode, with the sticky bit that keeps it through a runtime folder's periodic clean-ups,
+// and reports what it is, so a watch can tell it from a later one.
 func lockDown(p string) (fs.FileInfo, error) {
 	// Hand back a mode that fails to apply
-	if err := os.Chmod(p, socketMode); err != nil {
+	if err := os.Chmod(p, socketMode|os.ModeSticky); err != nil {
 		return nil, err
 	}
 	return os.Lstat(p)
