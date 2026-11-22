@@ -3,8 +3,8 @@
 # Regenerate the table with PICT (github.com/microsoft/pict) at ab76c2548f551fcb46314e58653a1bd1172f3a72:
 #   pict setups.pict /o:2 > setups.golden
 #
-# A value with ~ is a failure: PICT puts each one with every working value, and never two failures together, so one
-# failure never hides another.
+# A value with ~ is a failure: PICT puts each one with every working value and keeps it alone in its setup, so every
+# failure shows on its own.
 
 # Where the user's terminal is: on the machine, or on it over SSH.
 Session: local, ssh

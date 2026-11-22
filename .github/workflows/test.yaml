@@ -9,7 +9,7 @@ on:
       - main
     paths-ignore:
       - '**.md'
-  # run every check on a release candidate's tag, which its publishing starts without waiting for them
+  # run every check on a release candidate's tag, which its publishing starts beside itself
   workflow_dispatch:
   # run every check on main once a day, catching what changes outside the repository, such as images and registries
   schedule:
@@ -317,9 +317,9 @@ jobs:
         run: go test -tags e2e -count=1 -timeout 60m -v ./test/e2e/vm/...
 
   merge-checks:
-    # stand for the long checks as one required check: passing where they were skipped on a pull request without
-    # verify, a release candidate's among them, and failing where any job failed, or skipped on a stable release's pull
-    # request until it is labeled verify
+    # stand for the long checks as one required check: passing where they ran green, or skipped on a pull request
+    # unlabeled or a release candidate's, and holding a stable release's pull request until it is labeled verify and
+    # they ran green
     if: always()
     needs: [stack, usage-setups, usage, unix, hcs]
     runs-on: ubuntu-latest

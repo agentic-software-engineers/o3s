@@ -51,8 +51,12 @@ var knownBreaks = map[string]string{
 const (
 	store   = "ghcr.io/devcontainers/features"
 	feature = store + "/node"
-	repo    = "git@github.com:octocat/Hello-World.git"
-	clone   = "/home/ubuntu/projects/github.com/octocat/Hello-World"
+	// forge serves the repository over SSH.
+	forge = "github.com"
+	repo  = "git@" + forge + ":octocat/Hello-World.git"
+	clone = "/home/ubuntu/projects/" + forge + "/octocat/Hello-World"
+	// closed is a proxy on the discard port, which turns every connection away, so it stands for a registry out of reach.
+	closed = "http://127.0.0.1:9"
 )
 
 // user is a user of the test's home on one setup: where the terminal is, the agent it holds, and the failure in place.
@@ -77,7 +81,7 @@ func (u *user) env() []string {
 	}
 	// Send o3s's requests to a closed port where the registry is out of reach
 	if u.unreachable {
-		out = append(out, "HTTPS_PROXY=http://127.0.0.1:9")
+		out = append(out, "HTTPS_PROXY="+closed)
 	}
 	return out
 }
@@ -208,12 +212,12 @@ func anAgent(t *testing.T) agent {
 
 // stop ends the agent.
 func (a agent) stop() {
-	// Leave an agent that never started
+	// Leave an agent whose start failed
 	if a.pid == "" {
 		return
 	}
 	pid, err := strconv.Atoi(a.pid)
-	// Leave an agent whose process reads as none
+	// Leave an agent whose process id is unreadable
 	if err != nil {
 		return
 	}
@@ -236,11 +240,11 @@ type event struct {
 
 // events are every command the orders run.
 var events = []event{
-	{name: "allow a host", args: []string{"firewall", "add", "github.com", "--port", "22"}, holds: func(u *user) string {
-		return unless(u.lists("github.com", "firewall"), "o3s firewall lists no github.com")
+	{name: "allow a host", args: []string{"firewall", "add", forge, "--port", "22"}, holds: func(u *user) string {
+		return unless(u.lists(forge, "firewall"), "o3s firewall lists no "+forge)
 	}},
-	{name: "close a host", args: []string{"firewall", "rm", "github.com", "--yes"}, holds: func(u *user) string {
-		return unless(!u.lists("github.com", "firewall"), "o3s firewall still lists github.com")
+	{name: "close a host", args: []string{"firewall", "rm", forge, "--yes"}, holds: func(u *user) string {
+		return unless(!u.lists(forge, "firewall"), "o3s firewall still lists "+forge)
 	}},
 	{name: "add a store", args: []string{"feature", "store", "add", store}, holds: func(u *user) string {
 		return unless(u.lists(store, "feature", "store"), "o3s feature store lists no "+store)
@@ -383,7 +387,7 @@ func use(t *testing.T, s usagetest.Setup) found {
 		u.agent = anAgent(t)
 	}
 	// Stop when the hosts the commands reach stay closed
-	if _, err := stacktest.O3s(t, "firewall", "add", "github.com", "--port", "443"); err != nil {
+	if _, err := stacktest.O3s(t, "firewall", "add", forge, "--port", "443"); err != nil {
 		t.Fatalf("Setup: o3s firewall add = %v", err)
 	}
 	// Stop when the stack fails to come up
