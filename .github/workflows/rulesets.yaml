@@ -1,6 +1,6 @@
 name: Rulesets
-# check that the repository's rulesets match the files of .github/rulesets, which an admin applies, after every change
-# to them on main: it fails until the change is applied. It runs without admin rights, so it leaves the bypass actors uncompared.
+# check that the repository's rulesets match the files of .github/rulesets after every change to them on main, failing
+# until an admin applies the change
 on:
   push:
     branches:
