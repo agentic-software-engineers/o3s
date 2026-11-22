@@ -40,7 +40,7 @@
       "matchStrings": ["LIMA_VERSION: (?<currentValue>\\S+)"],
       "depNameTemplate": "lima-vm/lima",
       "datasourceTemplate": "github-releases",
-      "extractVersion": "^v(?<version>.+)$"
+      "extractVersionTemplate": "^v(?<version>.+)$"
     }
   ],
   "packageRules": [
