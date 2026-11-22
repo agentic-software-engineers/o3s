@@ -7,11 +7,10 @@ on:
   push:
     branches:
       - main
-    # run every check on a release candidate once its tag exists, which it publishes without waiting for them
-    tags:
-      - 'v[0-9]+.[0-9]+.[0-9]+-rc.[0-9]+'
     paths-ignore:
       - '**.md'
+  # run every check on a release candidate's tag, which its publishing starts without waiting for them
+  workflow_dispatch:
   # run every check on main once a day, catching what changes outside the repository, such as images and registries
   schedule:
     - cron: '0 4 * * *'
