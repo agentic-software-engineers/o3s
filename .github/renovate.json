@@ -72,11 +72,6 @@
       "groupName": "workflow digests"
     },
     {
-      "description": "A minor is compatible by the rules, but a new minor of a base image or the toolchain can still change behaviour.",
-      "matchUpdateTypes": ["minor"],
-      "addLabels": ["review"]
-    },
-    {
       "description": "Images tracking a rolling tag do not need a digest pin.",
       "matchPackageNames": [
         "ghcr.io/hansehart/o3s-cage",
@@ -90,10 +85,9 @@
       "addLabels": ["breaking"]
     },
     {
-      "description": "Renovate updates itself through the renovate-version line, which the github-actions manager reads as an image but which takes no digest. It also deserves a read of its notes.",
+      "description": "Renovate updates itself through the renovate-version line, which the github-actions manager reads as an image but which takes no digest.",
       "matchPackageNames": ["ghcr.io/renovatebot/renovate"],
-      "pinDigests": false,
-      "addLabels": ["review"]
+      "pinDigests": false
     }
   ]
 }
