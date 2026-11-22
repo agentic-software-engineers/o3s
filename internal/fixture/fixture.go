@@ -32,6 +32,16 @@ const (
 	NextHost = "next.example.net"
 )
 
+// What travels through the relay between the cage and the host.
+const (
+	// Message is what the cage sends to a service on the host.
+	Message = "hello from the cage"
+	// Reply is what a service on the host sends back.
+	Reply = "hello from the host"
+	// SocketDir is the folder where the host's services listen for the cage.
+	SocketDir = "/run/o3s"
+)
+
 // What the gateway records for a host, as the screen shows it.
 const (
 	// DataMoved is the data a host moved.
@@ -224,6 +234,9 @@ func Env() map[string]string {
 		"ABSENT_NAME":         AbsentName,
 		"NEW_HOST":            NewHost,
 		"NEXT_HOST":           NextHost,
+		"MESSAGE":             Message,
+		"REPLY":               Reply,
+		"SOCKET_DIR":          SocketDir,
 		"DATA_MOVED":          DataMoved,
 		"LAST_SEEN":           LastSeen,
 		"ATTEMPTS":            strconv.Itoa(Attempts),
