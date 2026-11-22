@@ -13,6 +13,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"net/netip"
 	"net/url"
 	"strconv"
 	"strings"
@@ -31,11 +32,19 @@ import (
 // plainPort is the port plain web traffic takes.
 const plainPort = 80
 
-// upstreams stands in for the internet: each name and port it knows leads to a test server, and every dial is noted.
+// upstreams stands in for the internet: it resolves each name it knows to an address, each address and port leads to
+// a test server, and every dial is noted.
 type upstreams struct {
 	mu     sync.Mutex
+	names  map[string][]netip.Addr
+	next   netip.Addr
 	routes map[string]string
 	dialed []string
+}
+
+// newUpstreams makes an internet that knows no name yet.
+func newUpstreams() *upstreams {
+	return &upstreams{names: map[string][]netip.Addr{}, next: netip.MustParseAddr(fixture.Address), routes: map[string]string{}}
 }
 
 // route sends the listed host on the port to the test server.
@@ -43,11 +52,40 @@ func (u *upstreams) route(port int, srv *httptest.Server) {
 	u.routeHost(fixture.Host, port, srv)
 }
 
-// routeHost sends the host on the port to the test server.
+// routeHost gives the host an address of its own where it has none, and sends that address on the port to the test
+// server.
 func (u *upstreams) routeHost(host string, port int, srv *httptest.Server) {
 	u.mu.Lock()
 	defer u.mu.Unlock()
-	u.routes[net.JoinHostPort(host, strconv.Itoa(port))] = srv.Listener.Addr().String()
+	// Give a host its own address the first time it is routed
+	if _, ok := u.names[host]; !ok {
+		u.names[host] = []netip.Addr{u.next}
+		u.next = u.next.Next()
+	}
+	u.routes[net.JoinHostPort(u.names[host][0].String(), strconv.Itoa(port))] = srv.Listener.Addr().String()
+}
+
+// resolve makes the host resolve to the addresses.
+func (u *upstreams) resolve(host string, addrs ...string) {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	u.names[host] = nil
+	// Keep each address in the order given
+	for _, a := range addrs {
+		u.names[host] = append(u.names[host], netip.MustParseAddr(a))
+	}
+}
+
+// LookupNetIP answers with the addresses the host resolves to, and fails for a name it does not know.
+func (u *upstreams) LookupNetIP(_ context.Context, _, host string) ([]netip.Addr, error) {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	addrs, ok := u.names[host]
+	// Fail as an unknown name would
+	if !ok {
+		return nil, &net.DNSError{Err: "no such host", Name: host, IsNotFound: true}
+	}
+	return addrs, nil
 }
 
 // dial reaches the test server the address leads to, and fails for an address it does not know.
@@ -75,12 +113,13 @@ func (u *upstreams) dials() []string {
 // buffer.
 func proxying(t *testing.T, hosts ...config.Host) (*proxy.Proxy, *upstreams, *bytes.Buffer) {
 	t.Helper()
-	u := &upstreams{routes: map[string]string{}}
+	u := newUpstreams()
 	var log bytes.Buffer
 	p := proxy.New(proxy.Options{
-		Policy: &config.Config{Hosts: hosts},
-		Dial:   u.dial,
-		Log:    slog.New(slog.NewJSONHandler(&syncWriter{w: &log}, nil)),
+		Policy:   &config.Config{Hosts: hosts},
+		Dial:     u.dial,
+		Resolver: u,
+		Log:      slog.New(slog.NewJSONHandler(&syncWriter{w: &log}, nil)),
 	})
 	t.Cleanup(func() { _ = p.Close() })
 	return p, u, &log
@@ -243,7 +282,7 @@ func TestProxyMatchesANameInAnySpelling(t *testing.T) {
 	status, _, _ := rawRequest(t, p, "CONNECT "+addr+" HTTP/1.1\r\nHost: "+addr+"\r\n\r\n")
 
 	// Require the tunnel to open to the name the allowlist knows
-	want := []string{net.JoinHostPort(fixture.Host, strconv.Itoa(fixture.Port))}
+	want := []string{net.JoinHostPort(fixture.Address, strconv.Itoa(fixture.Port))}
 	if status != http.StatusOK || !cmp.Equal(u.dials(), want) {
 		t.Errorf("CONNECT %s = %d with dials %v, want %d and %v", addr, status, u.dials(), http.StatusOK, want)
 	}

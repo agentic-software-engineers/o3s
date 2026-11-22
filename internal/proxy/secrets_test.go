@@ -106,15 +106,16 @@ func intercepting(t *testing.T, value string, sites []string, answer http.Handle
 	s, got := recording(t, answer)
 	upstreamRoots := x509.NewCertPool()
 	upstreamRoots.AddCert(s.Certificate())
-	u := &upstreams{routes: map[string]string{}}
+	u := newUpstreams()
 	u.route(fixture.Port, s)
 	p := proxy.New(proxy.Options{
-		Policy: &config.Config{Hosts: []config.Host{listed(fixture.Port)}},
-		Dial:   u.dial,
-		Log:    slog.New(slog.DiscardHandler),
-		CA:     &ca,
-		Roots:  upstreamRoots,
-		Marker: fixture.Marker,
+		Policy:   &config.Config{Hosts: []config.Host{listed(fixture.Port)}},
+		Dial:     u.dial,
+		Resolver: u,
+		Log:      slog.New(slog.DiscardHandler),
+		CA:       &ca,
+		Roots:    upstreamRoots,
+		Marker:   fixture.Marker,
 		Secrets: func(host string) (proxy.Secret, bool) {
 			return proxy.Secret{Value: value, Sites: sites}, host == fixture.Host
 		},
@@ -232,9 +233,10 @@ func TestProxyKeepsTheSecretFromAHostWithoutOne(t *testing.T) {
 	other, got := recording(t, silent)
 	in.up.routeHost(fixture.Subdomain, fixture.Port, other)
 	p := proxy.New(proxy.Options{
-		Policy: &config.Config{Hosts: []config.Host{listed(fixture.Port), {Name: fixture.Subdomain, Ports: []int{fixture.Port}}}},
-		Dial:   in.up.dial,
-		Marker: fixture.Marker,
+		Policy:   &config.Config{Hosts: []config.Host{listed(fixture.Port), {Name: fixture.Subdomain, Ports: []int{fixture.Port}}}},
+		Dial:     in.up.dial,
+		Resolver: in.up,
+		Marker:   fixture.Marker,
 		Secrets: func(host string) (proxy.Secret, bool) {
 			return proxy.Secret{Value: fixture.TokenValue, Sites: []string{proxy.Header}}, host == fixture.Host
 		},
@@ -417,14 +419,15 @@ func TestProxyShowsACertificateStrictClientsAccept(t *testing.T) {
 func TestProxyRefusesAHostItCannotTrust(t *testing.T) {
 	ca, roots := testCA(t)
 	s, got := recording(t, silent)
-	u := &upstreams{routes: map[string]string{}}
+	u := newUpstreams()
 	u.route(fixture.Port, s)
 	p := proxy.New(proxy.Options{
-		Policy: &config.Config{Hosts: []config.Host{listed(fixture.Port)}},
-		Dial:   u.dial,
-		CA:     &ca,
-		Roots:  x509.NewCertPool(),
-		Marker: fixture.Marker,
+		Policy:   &config.Config{Hosts: []config.Host{listed(fixture.Port)}},
+		Dial:     u.dial,
+		Resolver: u,
+		CA:       &ca,
+		Roots:    x509.NewCertPool(),
+		Marker:   fixture.Marker,
 		Secrets: func(string) (proxy.Secret, bool) {
 			return proxy.Secret{Value: fixture.TokenValue, Sites: []string{proxy.Header}}, true
 		},
