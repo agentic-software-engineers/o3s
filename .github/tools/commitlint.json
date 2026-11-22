@@ -13,10 +13,13 @@
         "cage",
         "cli",
         "deps",
+        "dns",
         "docs",
         "gateway",
         "proxy",
-        "repo"
+        "relay",
+        "repo",
+        "vm"
       ]
     ],
     "subject-min-length": [2, "always", 10]
