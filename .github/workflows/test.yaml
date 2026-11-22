@@ -182,7 +182,7 @@ jobs:
       fail-fast: false
       matrix:
         setup: ${{ fromJSON(needs.usage-setups.outputs.setups) }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 150
     steps:
       # check out the code the suite builds
