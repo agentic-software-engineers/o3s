@@ -63,6 +63,18 @@ jobs:
           provenance: true
           sbom: true
 
+  # run every check on a release candidate's tag, beside its publishing
+  verify:
+    if: contains(github.ref_name, '-rc.')
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+    steps:
+      - name: Run every check on the tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run test.yaml --repo "${GITHUB_REPOSITORY}" --ref "${GITHUB_REF_NAME}"
+
   binaries:
     needs: publish
     runs-on: ubuntu-latest
