@@ -40,9 +40,14 @@ type upstreams struct {
 
 // route sends the listed host on the port to the test server.
 func (u *upstreams) route(port int, srv *httptest.Server) {
+	u.routeHost(fixture.Host, port, srv)
+}
+
+// routeHost sends the host on the port to the test server.
+func (u *upstreams) routeHost(host string, port int, srv *httptest.Server) {
 	u.mu.Lock()
 	defer u.mu.Unlock()
-	u.routes[net.JoinHostPort(fixture.Host, strconv.Itoa(port))] = srv.Listener.Addr().String()
+	u.routes[net.JoinHostPort(host, strconv.Itoa(port))] = srv.Listener.Addr().String()
 }
 
 // dial reaches the test server the address leads to, and fails for an address it does not know.

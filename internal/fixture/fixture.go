@@ -94,6 +94,10 @@ const (
 	NewSecret = "NEW_TOKEN"
 	// SecretValue is the value a secret holds.
 	SecretValue = "s3cr3t"
+	// TokenValue is a secret long enough to be told apart inside base64.
+	TokenValue = "tok-0123456789abcdef0123456789abcdef"
+	// Marker is the placeholder the cage sends in place of every secret.
+	Marker = "o3s-00112233445566778899aabbccddeeff"
 )
 
 // Stores and the features they offer.
@@ -252,6 +256,8 @@ func Env() map[string]string {
 		"OTHER_SECRET":        OtherSecret,
 		"NEW_SECRET":          NewSecret,
 		"SECRET_VALUE":        SecretValue,
+		"TOKEN_VALUE":         TokenValue,
+		"MARKER":              Marker,
 		"STORE":               Store,
 		"ABSENT_STORE":        AbsentStore,
 		"FEATURE":             Feature,
