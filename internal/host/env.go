@@ -15,9 +15,19 @@ import (
 	"github.com/hansehart/o3s/internal/secrets"
 )
 
+// Marker reads the placeholder a home's cage sends in place of every secret, and empty for a home that lacks one.
+func Marker(home string) string {
+	return markerIn(envFile(home))
+}
+
+// envFile is where a home keeps the values compose reads.
+func envFile(home string) string {
+	return filepath.Join(home, ".devcontainer", ".env")
+}
+
 // Env writes the values compose reads at create time, the cage's AppArmor profile among them, keeping the marker the cage already holds.
 func Env(home, appArmorProfile string) error {
-	path := filepath.Join(home, ".devcontainer", ".env")
+	path := envFile(home)
 	marker := markerIn(path)
 	// Draw a new marker where the home lacks one
 	if marker == "" {

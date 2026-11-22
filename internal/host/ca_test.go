@@ -2,6 +2,7 @@ package host
 
 import (
 	"bytes"
+	"crypto/tls"
 	"crypto/x509"
 	"encoding/asn1"
 	"encoding/pem"
@@ -127,5 +128,18 @@ func TestCAKeepsWhatItMade(t *testing.T) {
 	// Require the CA kept and reported as such
 	if err != nil || made || !bytes.Equal(before, after) {
 		t.Errorf("CA() again = %v, %v, kept %v, want the CA kept", made, err, bytes.Equal(before, after))
+	}
+}
+
+// The CA's file holds the key pair a TLS server loads straight from it.
+func TestCAFileHoldsTheKeyPairTLSLoads(t *testing.T) {
+	dir := aCA(t)
+	data, _ := os.ReadFile(CAFile(dir))
+
+	_, err := tls.X509KeyPair(data, data)
+
+	// Require the key pair to load
+	if err != nil {
+		t.Errorf("X509KeyPair(CAFile) = %v, want the CA's key pair", err)
 	}
 }
