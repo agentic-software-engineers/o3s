@@ -4,6 +4,8 @@ package proxy
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"io"
@@ -45,24 +47,37 @@ type Options struct {
 	Dial func(ctx context.Context, network, addr string) (net.Conn, error)
 	// Log takes a line for every refusal, and nothing is logged when it is left empty.
 	Log *slog.Logger
+	// CA signs the certificates the proxy shows the cage for a host whose secret it swaps in, and its absence keeps every
+	// host sealed.
+	CA *tls.Certificate
+	// Roots are the CAs the proxy trusts a host's certificate by, and the system's when it is left empty.
+	Roots *x509.CertPool
+	// Marker is the placeholder the cage sends in place of every secret.
+	Marker string
+	// Secrets hands back the secret a host carries and where, and reports whether the host carries one.
+	Secrets func(host string) (Secret, bool)
 }
 
 // Proxy serves the cage's connections one by one, as the relay hands them over.
 type Proxy struct {
-	policy Policy
-	dial   func(ctx context.Context, network, addr string) (net.Conn, error)
-	log    *slog.Logger
-	ctx    context.Context
-	stop   context.CancelFunc
-	conns  *handed
-	srv    *http.Server
-	fwd    *httputil.ReverseProxy
+	policy  Policy
+	dial    func(ctx context.Context, network, addr string) (net.Conn, error)
+	log     *slog.Logger
+	ctx     context.Context
+	stop    context.CancelFunc
+	conns   *handed
+	srv     *http.Server
+	fwd     *httputil.ReverseProxy
+	marker  string
+	secrets func(host string) (Secret, bool)
+	certs   *certs
+	secure  *http.Transport
 }
 
 // New starts a proxy with the options.
 func New(o Options) *Proxy {
 	ctx, stop := context.WithCancel(context.Background())
-	p := &Proxy{policy: o.Policy, dial: o.Dial, log: o.Log, ctx: ctx, stop: stop, conns: newHanded()}
+	p := &Proxy{policy: o.Policy, dial: o.Dial, log: o.Log, ctx: ctx, stop: stop, conns: newHanded(), marker: o.Marker, secrets: o.Secrets}
 	// Reach hosts directly when no dial is given
 	if p.dial == nil {
 		d := &net.Dialer{Timeout: dialTimeout}
@@ -86,6 +101,17 @@ func New(o Options) *Proxy {
 		ReadHeaderTimeout: headerTimeout,
 		BaseContext:       func(net.Listener) context.Context { return ctx },
 		ErrorLog:          slog.NewLogLogger(p.log.Handler(), slog.LevelDebug),
+	}
+	// Open the traffic of a host with a secret only where a CA can sign for it
+	if o.CA != nil {
+		p.certs = newCerts(o.CA)
+	}
+	p.secure = &http.Transport{
+		DialContext:           p.dial,
+		TLSClientConfig:       &tls.Config{RootCAs: o.Roots, MinVersion: tls.VersionTLS12},
+		ForceAttemptHTTP2:     true,
+		ExpectContinueTimeout: continueWait,
+		IdleConnTimeout:       idleTimeout,
 	}
 	go func() { _ = p.srv.Serve(p.conns) }()
 	return p
@@ -113,6 +139,7 @@ func (p *Proxy) Handle(ctx context.Context, c net.Conn) {
 // Close stops the proxy and ends every connection it serves.
 func (p *Proxy) Close() error {
 	p.stop()
+	p.secure.CloseIdleConnections()
 	return p.srv.Close()
 }
 
@@ -136,6 +163,11 @@ func (p *Proxy) tunnel(w http.ResponseWriter, r *http.Request) {
 	}
 	// Turn away a host the policy does not let through
 	if !p.allows(w, host, port) {
+		return
+	}
+	// Open the traffic of a host whose secret the proxy swaps in
+	if sec, ok := p.secretOf(host); ok {
+		p.intercept(w, host, port, sec)
 		return
 	}
 	up, err := p.dial(r.Context(), "tcp", net.JoinHostPort(host, strconv.Itoa(port)))
