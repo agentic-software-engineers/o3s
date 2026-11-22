@@ -43,8 +43,10 @@ type Policy interface {
 type Options struct {
 	// Policy decides which hosts the cage may reach.
 	Policy Policy
-	// Dial reaches a host the policy lets through, and a plain dialer does when it is left empty.
+	// Dial reaches an address the proxy checked, and a plain dialer does when it is left empty.
 	Dial func(ctx context.Context, network, addr string) (net.Conn, error)
+	// Resolver finds the addresses of a listed name, and the system's does when it is left empty.
+	Resolver Resolver
 	// Log takes a line for every refusal, and nothing is logged when it is left empty.
 	Log *slog.Logger
 	// CA signs the certificates the proxy shows the cage for a host whose secret it swaps in, and its absence keeps every
@@ -60,29 +62,36 @@ type Options struct {
 
 // Proxy serves the cage's connections one by one, as the relay hands them over.
 type Proxy struct {
-	policy  Policy
-	dial    func(ctx context.Context, network, addr string) (net.Conn, error)
-	log     *slog.Logger
-	ctx     context.Context
-	stop    context.CancelFunc
-	conns   *handed
-	srv     *http.Server
-	fwd     *httputil.ReverseProxy
-	marker  string
-	secrets func(host string) (Secret, bool)
-	certs   *certs
-	secure  *http.Transport
+	policy   Policy
+	dial     func(ctx context.Context, network, addr string) (net.Conn, error)
+	raw      func(ctx context.Context, network, addr string) (net.Conn, error)
+	resolver Resolver
+	log      *slog.Logger
+	ctx      context.Context
+	stop     context.CancelFunc
+	conns    *handed
+	srv      *http.Server
+	fwd      *httputil.ReverseProxy
+	marker   string
+	secrets  func(host string) (Secret, bool)
+	certs    *certs
+	secure   *http.Transport
 }
 
 // New starts a proxy with the options.
 func New(o Options) *Proxy {
 	ctx, stop := context.WithCancel(context.Background())
-	p := &Proxy{policy: o.Policy, dial: o.Dial, log: o.Log, ctx: ctx, stop: stop, conns: newHanded(), marker: o.Marker, secrets: o.Secrets}
+	p := &Proxy{policy: o.Policy, raw: o.Dial, resolver: o.Resolver, log: o.Log, ctx: ctx, stop: stop, conns: newHanded(), marker: o.Marker, secrets: o.Secrets}
 	// Reach hosts directly when no dial is given
-	if p.dial == nil {
+	if p.raw == nil {
 		d := &net.Dialer{Timeout: dialTimeout}
-		p.dial = d.DialContext
+		p.raw = d.DialContext
 	}
+	// Ask the system's resolver when no resolver is given
+	if p.resolver == nil {
+		p.resolver = net.DefaultResolver
+	}
+	p.dial = p.reach
 	// Drop the log when none is given
 	if p.log == nil {
 		p.log = slog.New(slog.DiscardHandler)
@@ -224,6 +233,12 @@ func (p *Proxy) allows(w http.ResponseWriter, host string, port int) bool {
 
 // unreachable reports a listed host the proxy cannot reach.
 func (p *Proxy) unreachable(w http.ResponseWriter, r *http.Request, err error) {
+	// Refuse a host whose address leads inward, as the policy would
+	if errors.Is(err, errInward) {
+		p.log.Info("refused", "host", r.Host, "err", err)
+		http.Error(w, "o3s refused "+r.Host+", whose address leads inward", http.StatusForbidden)
+		return
+	}
 	p.log.Warn("unreachable", "host", r.Host, "err", err)
 	w.WriteHeader(http.StatusBadGateway)
 }
