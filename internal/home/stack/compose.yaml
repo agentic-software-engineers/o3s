@@ -127,7 +127,7 @@ services:
 
   # Injects the upstream API key into inject-host HTTPS so the keys live here, outside the cage.
   proxy:
-    image: ghcr.io/mitmproxy/mitmproxy:12.2.3@sha256:00b77b5d8804c8ad18cb6caefbf9d5849e895e8986c5ce011f4ae30f4385962f
+    image: ghcr.io/mitmproxy/mitmproxy:12.3.1@sha256:2711066c855659b5af8b1dbb84494ed3eff69b42ece439c60b4fe09a2db829d4
     # The digest pins the image, so pull the proxy image when absent
     pull_policy: missing
     # Share the gateway's network namespace so its iptables REDIRECT lands here and resolves the original dst
