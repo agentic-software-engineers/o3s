@@ -24,7 +24,7 @@ func TestTheHomesVM(t *testing.T) {
 		t.Fatalf("o3s init = %v, want the home made inside its VM\n%s", err, out)
 	}
 	t.Cleanup(func() { _, _ = stacktest.O3sIn(t, dir, "cage", "rm", "--yes") })
-	stacktest.ABranchCageIn(t, dir)
+	stacktest.ACageIn(t, dir)
 
 	t.Run("leaves the host folder its ID alone", func(t *testing.T) {
 		entries, err := os.ReadDir(dir)
