@@ -149,12 +149,18 @@ func (u *user) o3s(stdin string, args ...string) (string, bool, bool) {
 	return string(out), err != nil, ctx.Err() != nil
 }
 
-// cageRuns reports whether the cage's container runs.
+// cageRuns reports whether the cage's container runs, as its own state says, which the engine's list can trail by a
+// moment after a stop.
 func (u *user) cageRuns() bool {
-	out, err := exec.CommandContext(u.t.Context(), "docker", "ps", "-q",
+	ids, err := exec.CommandContext(u.t.Context(), "docker", "ps", "-aq",
 		"--filter", "label=com.docker.compose.project.working_dir="+filepath.Join(u.home, ".devcontainer"),
 		"--filter", "label=com.docker.compose.service=cage").Output()
-	return err == nil && strings.TrimSpace(string(out)) != ""
+	// Report a cage the engine fails to list, or lists none of, as stopped
+	if err != nil || len(strings.Fields(string(ids))) == 0 {
+		return false
+	}
+	out, err := exec.CommandContext(u.t.Context(), "docker", append([]string{"inspect", "--format", "{{.State.Running}}"}, strings.Fields(string(ids))...)...).Output()
+	return err == nil && strings.Contains(string(out), "true")
 }
 
 // containers lists every container of the home with its state, creation time, project and command, for a log.
