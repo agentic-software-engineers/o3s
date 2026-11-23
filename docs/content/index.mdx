@@ -1,0 +1,33 @@
+---
+title: o3s
+description: Everything ready. Everything parallel. Everything locked down.
+---
+
+If you are not willing to trade security for productivity, o3s is a match.
+Let an agent generate every line of code, and review every line by hand or none at all.
+Either way, the features that shape your agents' environment, the hosts they reach and the secrets they can read stay yours to decide.
+
+## How it works
+
+Agents work side by side in the **cage**, a dev container with the features you choose.
+Every connection they open goes through the **gateway**, which holds the allowlist and the secrets, and is either allowed out to the internet or denied.
+
+## What you get
+
+- **Security:** your security model lives in one file: which hosts the cage reaches and which secrets it uses. Their values stay on the host, and the proxy injects them on the way out.
+- **Productivity:** several agents work side by side, each on its own branch or worktree. Everything lands in one view for you to review.
+- **Velocity:** your agents see every repository at once, the best context they can get. With rootless Docker they run your whole stack inside the cage, break it and bring it back without touching anything real.
+
+## Is it for you?
+
+- **My agent is actively malicious and tries to escape:** no, a VM boundary is stronger than containers.
+- **My long-leash-but-not-weaponized agent needs deterministic boundaries:** yes, the architecture delivers security coupled with convenience.
+
+## What the name means
+
+**O**pen **S**ecure **S**oftware **S**uite, or osss, shortened to o3s.
+
+- **Open:** read every line, shape it however you like, and make the whole setup truly your own to trust and extend.
+- **Secure:** give AI agents and untrusted code a long leash while you control the network they reach and the secrets they read.
+- **Software:** built for engineers and their agents to take your whole stack from prototype to production with minimal friction.
+- **Suite:** agents, containers, languages and all your projects, wired together into one platform you just open and use.
