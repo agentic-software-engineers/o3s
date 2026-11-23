@@ -10,10 +10,32 @@ import (
 )
 
 // Containers lists the running containers of one service of the home's stack.
+//
+// The engine's list can trail a stop by a moment, so it names the candidates and each container's own state, which the
+// engine reads under the container's lock, decides which of them run.
 func Containers(ctx context.Context, home, service string) ([]string, error) {
 	project := "label=com.docker.compose.project.working_dir=" + filepath.Join(home, ".devcontainer")
-	out, err := docker(ctx, "ps", "-q", "--filter", project, "--filter", "label=com.docker.compose.service="+service)
-	return strings.Fields(out), err
+	out, err := docker(ctx, "ps", "-aq", "--filter", project, "--filter", "label=com.docker.compose.service="+service)
+	ids := strings.Fields(out)
+	// Hand back an engine that fails to answer, or a service free of containers
+	if err != nil || len(ids) == 0 {
+		return nil, err
+	}
+	out, err = docker(ctx, append([]string{"inspect", "--format", "{{.State.Running}}"}, ids...)...)
+	// Hand back states that stay unread
+	if err != nil {
+		return nil, err
+	}
+	states := strings.Fields(out)
+	var running []string
+	// Keep every container whose own state says it runs
+	for i, id := range ids {
+		// Keep a container the engine reports running
+		if i < len(states) && states[i] == "true" {
+			running = append(running, id)
+		}
+	}
+	return running, nil
 }
 
 // Stop stops every container of the home's stack, and reports how many it stopped.

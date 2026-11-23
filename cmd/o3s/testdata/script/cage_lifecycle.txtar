@@ -6,6 +6,12 @@ exec o3s cage start
 stdout '^The cage runs$'
 grep '^up --workspace-folder ' $WORK/devcontainer.log
 
+# start raises a cage the engine stopped while its list still shows it
+exec sh -c 'touch $WORK/cage-listed'
+exec o3s cage start
+stdout '^The cage runs$'
+exec sh -c 'rm $WORK/cage-listed'
+
 # start leaves a cage that runs as it is
 exec sh -c 'touch $WORK/cage-up'
 exec o3s cage start
