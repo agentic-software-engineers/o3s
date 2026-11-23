@@ -1,6 +1,5 @@
 {
   "title": "Open Secure Software Suite",
-  "description": "Everything ready. Everything parallel. Everything locked down.",
   "root": true,
   "pages": ["index"]
 }
