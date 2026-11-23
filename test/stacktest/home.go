@@ -1,6 +1,7 @@
 package stacktest
 
 import (
+	"context"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -29,6 +30,14 @@ func aHome(tb testing.TB) string {
 	for _, kind := range []string{"CONFIG", "STATE", "DATA"} {
 		tb.Setenv("XDG_"+kind+"_HOME", filepath.Join(xdg, kind))
 	}
+	runtimeDir, err := os.MkdirTemp("", "o3s") //nolint:usetesting // t.TempDir's long path outgrows a socket's path limit
+	// Stop when the runtime folder fails to appear
+	if err != nil {
+		tb.Fatalf("Setup: MkdirTemp = %v", err)
+	}
+	tb.Cleanup(func() { _ = os.RemoveAll(runtimeDir) })
+	// Keep the host process's sockets in a short folder of the test's own
+	tb.Setenv("XDG_RUNTIME_DIR", runtimeDir)
 	tb.Setenv("O3S_IMAGES", filepath.Join(Repo(tb), "images"))
 	dir := filepath.Join(tb.TempDir(), "home")
 	// Stop when the home's folder fails to appear, open to read as a folder a user makes with mkdir
@@ -44,6 +53,11 @@ func aHome(tb testing.TB) string {
 	}
 	homes.Store(tb, dir)
 	tb.Cleanup(func() { homes.Delete(tb) })
+	tb.Cleanup(func() {
+		stop := exec.CommandContext(context.WithoutCancel(tb.Context()), bin, "host", "stop")
+		stop.Dir = dir
+		_ = stop.Run()
+	})
 	return dir
 }
 

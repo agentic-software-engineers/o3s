@@ -157,7 +157,7 @@ func TestInitPinsTheImagesToTheRelease(t *testing.T) {
 			t.Fatalf("ReadFile() = %v", err)
 		}
 		// Require both o3s images at the tag
-		for _, image := range []string{"ghcr.io/hansehart/o3s-cage:", "ghcr.io/hansehart/o3s-gateway:"} {
+		for _, image := range []string{"ghcr.io/hansehart/o3s-cage:"} {
 			// Report an image at another tag
 			if !bytes.Contains(data, []byte("image: "+image+tt.tag+"\n")) {
 				t.Errorf("version %s: compose lacks %s%s", tt.version, image, tt.tag)
@@ -190,9 +190,9 @@ func TestInitPullsEachImageOnlyWhenMissing(t *testing.T) {
 			t.Errorf("compose pulls with %q, want missing", strings.TrimSpace(policy))
 		}
 	}
-	// Require a policy on each of the three images
-	if policies != 3 {
-		t.Errorf("compose names %d pull policies, want 3", policies)
+	// Require a policy on the stack's one image
+	if policies != 1 {
+		t.Errorf("compose names %d pull policies, want 1", policies)
 	}
 }
 

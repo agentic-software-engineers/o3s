@@ -19,7 +19,7 @@ var (
 
 // validate holds a change to the allowlist's rules, naming the first rule it breaks.
 func validate(ch Change) error {
-	// Require a host in one of the forms the gateway resolves
+	// Require a host in one of the forms the allowlist matches
 	if !validName(ch.Name) {
 		return fmt.Errorf("%w host %q, want example.com, *.example.com, an IPv4 address or an IPv4 CIDR", ErrInvalid, ch.Name)
 	}
@@ -41,14 +41,14 @@ func validate(ch Change) error {
 			return fmt.Errorf("%w inject %q, want header, query or body", ErrInvalid, site)
 		}
 	}
-	// Require an end time in the one shape the gateway and the proxy read
+	// Require an end time in the one shape the host process reads
 	if ch.Expires != "" && !validEndTime(ch.Expires) {
 		return fmt.Errorf("%w expires %q, want UTC with whole seconds like %s", ErrInvalid, ch.Expires, EndTimeLayout)
 	}
 	return nil
 }
 
-// CheckHost holds a host's name to the forms the gateway resolves, naming the rule it breaks.
+// CheckHost holds a host's name to the forms the allowlist matches, naming the rule it breaks.
 func CheckHost(name string) error {
 	return validate(Change{Name: name})
 }

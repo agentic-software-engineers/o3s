@@ -25,6 +25,12 @@ const (
 	hostAttempts = 3
 )
 
+// The setting that leaves the host process to the caller, for runs that bring their own.
+const (
+	hostSetting = "O3S_HOST"
+	hostSkip    = "skip"
+)
+
 // newHost builds the commands that run the home's host process, and start, stop and show it.
 func newHost() *cobra.Command {
 	c := &cobra.Command{
@@ -73,23 +79,12 @@ func newHostStart() *cobra.Command {
 		Short: "Start the home's host process, or keep the one that runs",
 		Args:  usage(cobra.NoArgs),
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			p, err := hostPlace()
-			// Hand back a home whose place fails to settle
+			dir, err := cageHome()
+			// Hand back a folder that lacks a home
 			if err != nil {
 				return err
 			}
-			exe, err := executable()
-			// Hand back a binary whose path stays unknown
-			if err != nil {
-				return err
-			}
-			info, err := hostd.Ensure(cmd.Context(), p, hostd.EnsureOptions{
-				Version:  version(),
-				Spawn:    func() error { return hostd.Spawn(cmd.Context(), exe, p) },
-				Ready:    hostReady,
-				Gone:     hostGone,
-				Attempts: hostAttempts,
-			})
+			info, err := ensureHost(cmd, dir)
 			// Hand back a process that stays silent
 			if err != nil {
 				return err
@@ -98,6 +93,27 @@ func newHostStart() *cobra.Command {
 			return nil
 		},
 	}
+}
+
+// ensureHost keeps the home's host process running at this version, starting it from this binary where it has gone.
+func ensureHost(cmd *cobra.Command, dir string) (hostd.Info, error) {
+	p, err := hostd.PlaceOf(dir)
+	// Hand back a home whose place fails to settle
+	if err != nil {
+		return hostd.Info{}, err
+	}
+	exe, err := executable()
+	// Hand back a binary whose path stays unknown
+	if err != nil {
+		return hostd.Info{}, err
+	}
+	return hostd.Ensure(cmd.Context(), p, hostd.EnsureOptions{
+		Version:  version(),
+		Spawn:    func() error { return hostd.Spawn(cmd.Context(), exe, p) },
+		Ready:    hostReady,
+		Gone:     hostGone,
+		Attempts: hostAttempts,
+	})
 }
 
 // newHostStop builds the command that stops the home's host process.

@@ -6,7 +6,7 @@ stderr '^warning: EXAMPLE_TOKEN waits for its value: echo "\$TOKEN" \| o3s secre
 cmpenv .devcontainer/devcontainer.json want.jsonc
 grep '"by": \[\n +"user",\n +"'${REGISTRY@R}'/features/tool"' o3s.json
 grep '"ports": \[\n +22,\n +443' o3s.json
-cmpenv docker.log want.log
+! exists docker.log
 
 # Adding the feature again keeps both files as they were
 cp o3s.json before.json
@@ -14,8 +14,7 @@ exec o3s feature add $REGISTRY/features/tool:2
 cmpenv .devcontainer/devcontainer.json want.jsonc
 cmp o3s.json before.json
 
-# A feature that needs no host leaves the stack untouched and names no secret
-rm docker.log
+# A feature that needs no host names no secret
 exec o3s feature add $REGISTRY/features/go
 stdout '^'${REGISTRY@R}'/features/go:1$'
 ! stdout 'Restarted|!'
@@ -54,7 +53,7 @@ $REGISTRY/features/tool:2
   + EXAMPLE_MODE=strict
   + EXAMPLE_HOME=/home/ubuntu/features/$REGISTRY/features/tool
 Added $REGISTRY/features/tool
-Restarted gateway
+The host process picks the change up when it starts
 Rebuild the cage to install it
 -- want.jsonc --
 {
@@ -73,8 +72,3 @@ Rebuild the cage to install it
         "$REGISTRY/features/tool"
     ]
 }
--- want.log --
-ps -q --filter label=com.docker.compose.project.working_dir=$WORK/.devcontainer --filter label=com.docker.compose.service=gateway
-ps -q --filter label=com.docker.compose.project.working_dir=$WORK/.devcontainer --filter label=com.docker.compose.service=proxy
-restart gateway-id
-restart proxy-id

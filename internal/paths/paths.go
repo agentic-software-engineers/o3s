@@ -63,3 +63,19 @@ func base(variable, fallback string) string {
 	home, _ := os.UserHomeDir()
 	return filepath.Join(home, fallback, "o3s")
 }
+
+// Sockets is the folder that holds a home's sockets: a folder of the home's own in the user's runtime folder where the
+// system names one, since that folder is local and starts empty on every boot, and the home's state folder otherwise.
+func Sockets(dir string) string {
+	// Take a folder of the home's own in the runtime folder where the system names one
+	if runtime := os.Getenv("XDG_RUNTIME_DIR"); filepath.IsAbs(runtime) {
+		return filepath.Join(runtime, "o3s", ID(dir))
+	}
+	return Home(dir)
+}
+
+// CageSockets is the subfolder of a home's sockets that its cage reaches, apart from the sockets that control the host
+// process.
+func CageSockets(dir string) string {
+	return filepath.Join(Sockets(dir), "cage")
+}

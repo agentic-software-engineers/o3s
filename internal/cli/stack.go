@@ -5,7 +5,9 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/hansehart/o3s/internal/hostd"
 	"github.com/hansehart/o3s/internal/menu"
+	"github.com/hansehart/o3s/internal/paths"
 	"github.com/hansehart/o3s/internal/restart"
 )
 
@@ -24,24 +26,29 @@ type part struct {
 // stack is where every part of the home's stack on this machine stands, read once.
 type stack []part
 
-// homeStack reads where every part of the home's stack stands: the cage, the gateway and the proxy.
+// homeStack reads where every part of the home's stack stands: the cage, and the host process it reaches the internet
+// through.
 func homeStack(ctx context.Context, dir string) stack {
-	var s stack
-	// Read where every part stands
-	for _, name := range []string{"cage", "gateway", "proxy"} {
-		ids, err := restart.Containers(ctx, dir, name)
-		state := stopped
-		// Name a part whose state stays unknown
-		if err != nil {
-			state = unknown
-		}
-		// Name a part that runs
-		if len(ids) > 0 {
-			state = running
-		}
-		s = append(s, part{name: name, state: state})
+	ids, err := restart.Containers(ctx, dir, "cage")
+	cage := stopped
+	// Name a cage whose state stays unknown
+	if err != nil {
+		cage = unknown
 	}
-	return s
+	// Name a cage that runs
+	if len(ids) > 0 {
+		cage = running
+	}
+	return stack{{name: "cage", state: cage}, {name: "host", state: hostState(ctx, dir)}}
+}
+
+// hostState reads whether the home's host process answers.
+func hostState(ctx context.Context, dir string) string {
+	// Name a host process that answers as running
+	if _, err := hostd.GetInfo(ctx, hostd.Place{Sockets: paths.Sockets(dir)}.Control()); err == nil {
+		return running
+	}
+	return stopped
 }
 
 // caged reports whether the cage itself runs.

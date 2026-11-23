@@ -17,15 +17,13 @@ import (
 // update rewrites the expected files inside the scripts to what the binary now writes.
 var update = flag.Bool("update", false, "rewrite the expected files inside the scripts")
 
-// fakeDocker stands in for the container engine, so a script sees which restarts a change asks for and what the gateway recorded.
+// fakeDocker stands in for the container engine, so a script sees which containers run and what the traffic record holds.
 const fakeDocker = `#!/bin/sh
 echo "$*" >> "$WORK/docker.log"
-# Answer each question about the stack, any restart, and the daemon's security options, the way a host's engine would
+# Answer each question about the stack and the daemon's security options, the way a host's engine would
 case "$*" in
   ps*service=cage*) [ -f "$WORK/cage-up" ] && echo cage-id ;;
   ps*service=gateway*) [ -f "$WORK/stack-up" ] && echo gateway-id ;;
-  ps*service=proxy*) [ -f "$WORK/stack-up" ] && echo proxy-id ;;
-  restart*) echo "$2" ;;
   info*) [ -f "$WORK/no-apparmor" ] && echo '["name=seccomp,profile=builtin","name=cgroupns"]' || echo '["name=apparmor","name=seccomp,profile=builtin","name=cgroupns"]' ;;
   "exec gateway-id cat /state/traffic.json") [ -f "$WORK/traffic.json" ] && cat "$WORK/traffic.json" || exit 1 ;;
 esac
@@ -151,6 +149,8 @@ func TestScripts(t *testing.T) {
 		UpdateScripts:       *update,
 		Setup: func(env *testscript.Env) error {
 			env.Setenv("HOME", env.WorkDir)
+			// Leave the host process to the scripts that start it themselves
+			env.Setenv("O3S_HOST", "skip")
 			env.Setenv("REGISTRY", reg.Host)
 			// Hand the scripts every value of the fixture set by its name
 			for name, value := range fixture.Env() {

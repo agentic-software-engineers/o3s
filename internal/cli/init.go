@@ -264,6 +264,15 @@ func prepare(cmd *cobra.Command, dir string) error {
 	if err := host.Env(dir, profile); err != nil {
 		return err
 	}
+	// Bring up the host process the cage reaches the internet through, before compose mounts its sockets
+	if os.Getenv(hostSetting) != hostSkip {
+		info, err := ensureHost(cmd, dir)
+		// Hand back a host process that stays silent
+		if err != nil {
+			return err
+		}
+		fmt.Fprintf(out, "The host process runs, pid %d\n", info.PID)
+	}
 	waiting(cmd.ErrOrStderr(), dir)
 	return nil
 }

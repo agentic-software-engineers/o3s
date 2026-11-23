@@ -40,7 +40,7 @@ $REGISTRY/features/tool
   - EXAMPLE_MODE=strict
   - EXAMPLE_HOME=/home/ubuntu/features/$REGISTRY/features/tool
 Removed $REGISTRY/features/tool
-Restarted gateway
+The host process picks the change up when it starts
 -- want.jsonc --
 {
     "features": {},

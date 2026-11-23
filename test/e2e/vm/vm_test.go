@@ -24,6 +24,7 @@ func TestTheHomesVM(t *testing.T) {
 		t.Fatalf("o3s init = %v, want the home made inside its VM\n%s", err, out)
 	}
 	t.Cleanup(func() { _, _ = stacktest.O3sIn(t, dir, "cage", "rm", "--yes") })
+	stacktest.ABranchCageIn(t, dir)
 
 	t.Run("leaves the host folder its ID alone", func(t *testing.T) {
 		entries, err := os.ReadDir(dir)
@@ -100,9 +101,9 @@ func TestTheHomesVM(t *testing.T) {
 			t.Errorf("ip route replace default in the cage succeeded\n%s\nwant it refused", out)
 		}
 		out, err = stacktest.O3sIn(t, dir, "cage", "shell", "--vm", "--", "docker", "ps", "--format", "{{.Names}}")
-		// Require the gateway and the proxy beside the cage
-		if err != nil || !strings.Contains(out, "gateway") || !strings.Contains(out, "proxy") {
-			t.Errorf("docker ps in the VM = %v\n%s\nwant the gateway and the proxy running", err, out)
+		// Require the cage alone, its way out held by the host process
+		if err != nil || !strings.Contains(out, "cage") || strings.Contains(out, "gateway") {
+			t.Errorf("docker ps in the VM = %v\n%s\nwant the cage running alone", err, out)
 		}
 	})
 

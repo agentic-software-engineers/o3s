@@ -18,9 +18,8 @@ cage
 
 Cage
 
-  Cage      running
-  Gateway   running
-  Proxy     running
+  Cage   running
+  Host   running
 
 ❯ Open in VS Code
   Open a shell

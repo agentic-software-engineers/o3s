@@ -19,7 +19,8 @@ jobs:
       matrix:
         include:
           - name: o3s-cage
-            context: images/cage
+            context: .
+            file: images/cage/Dockerfile
           - name: o3s-gateway
             context: images/gateway
     steps:
@@ -56,6 +57,7 @@ jobs:
       - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: ${{ matrix.context }}
+          file: ${{ matrix.file }}
           push: true
           platforms: linux/amd64,linux/arm64
           tags: ${{ steps.meta.outputs.tags }}

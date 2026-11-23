@@ -77,7 +77,7 @@ func secrets() []menu.Secret {
 
 // stack is where every part of the stack stands, all in the same state.
 func stack(state string) []menu.Fact {
-	return []menu.Fact{{Label: "Cage", Value: state}, {Label: "Gateway", Value: state}, {Label: "Proxy", Value: state}}
+	return []menu.Fact{{Label: "Cage", Value: state}, {Label: "Host", Value: state}}
 }
 
 // inVM is a home that lives in its VM, in the state given.

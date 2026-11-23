@@ -1,16 +1,17 @@
 package host
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
+
+	"github.com/hansehart/o3s/internal/paths"
 )
 
-// The values compose reads name this user and keep the marker the cage already holds.
-func TestEnvKeepsTheMarkerAndNamesTheUser(t *testing.T) {
+// The values compose reads name the cage's socket folder and keep the marker the cage already holds.
+func TestEnvKeepsTheMarkerAndNamesTheCageSockets(t *testing.T) {
 	home := t.TempDir()
 	// Stop when the stack folder fails to appear
 	if err := os.MkdirAll(filepath.Join(home, ".devcontainer"), 0o750); err != nil {
@@ -34,12 +35,9 @@ func TestEnvKeepsTheMarkerAndNamesTheUser(t *testing.T) {
 	if marker == nil || !strings.Contains(string(second), string(marker)) {
 		t.Errorf("markers %q then:\n%s", marker, second)
 	}
-	// Require this user's ids
-	for _, want := range []string{fmt.Sprintf("O3S_UID=%d\n", os.Getuid()), fmt.Sprintf("O3S_GID=%d\n", os.Getgid())} {
-		// Report an id the file lacks
-		if !strings.Contains(string(second), want) {
-			t.Errorf(".env lacks %q:\n%s", want, second)
-		}
+	// Require the cage's socket folder, and the proxy container's values gone
+	if want := "O3S_SOCKETS=" + paths.CageSockets(home) + "\n"; !strings.Contains(string(second), want) || strings.Contains(string(second), "O3S_UID=") || strings.Contains(string(second), "O3S_SECRETS_DIR=") {
+		t.Errorf(".env lacks %q or keeps the proxy container's values:\n%s", want, second)
 	}
 }
 

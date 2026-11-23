@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
 #
 # NAME
-#        start.sh — bring the cage up behind the gateway
+#        start.sh — bring the cage up with its bridge to the host's sockets
 #
 # DESCRIPTION
 #        The cage container's command: trusts this host's proxy CA, exports the markers the
-#        allowlist declares, then holds the container open for the dev container to attach to.
+#        allowlist declares, then runs o3s-cage, which carries the cage's proxy and DNS ports to
+#        the host's sockets for as long as the container runs.
 #
 # SEE ALSO
 #        compose.yaml, markers.sh
@@ -21,5 +22,5 @@ update-ca-certificates >/dev/null 2>&1 || true
 # Export the markers the allowlist declares
 bash "$CAGE_DIR/markers.sh" || true
 
-# Hold the container open for the dev container to attach to
-exec sleep infinity
+# Carry the proxy and DNS ports to the host's sockets, holding the container open
+exec o3s-cage serve -sockets /run/o3s

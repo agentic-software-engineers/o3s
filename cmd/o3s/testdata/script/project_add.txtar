@@ -29,7 +29,7 @@ stderr '^  git clone git@gitlab.com:group/sub/app.git /home/ubuntu/projects/gitl
 grep '"path": "/home/ubuntu/projects/gitlab.com/group/sub/app"' home.code-workspace
 rm $WORK/no-agent
 
-# An HTTPS URL clones as given, over the port the gateway opens for it
+# An HTTPS URL clones as given, over the port the allowlist opens for it
 exec o3s project add https://github.com/hansehart/devcontainer-features
 grep 'exec --workspace-folder '$WORK'/home --container-id cage-id git clone https://github.com/hansehart/devcontainer-features /home/ubuntu/projects/github.com/hansehart/devcontainer-features$' $WORK/devcontainer.log
 

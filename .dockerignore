@@ -1,0 +1,5 @@
+# Keep the build context to what the images copy in
+.git
+.github
+test
+**/testdata

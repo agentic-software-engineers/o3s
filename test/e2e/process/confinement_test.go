@@ -56,50 +56,35 @@ func TestTheCageDropsNetAdmin(t *testing.T) {
 	}
 }
 
-// The kernel refuses the cage a change of its default route.
-func TestTheCageIsRefusedARouteChange(t *testing.T) {
+// The cage holds the loopback alone, so the host's sockets are its one way out.
+func TestTheCageHoldsTheLoopbackAlone(t *testing.T) {
 	raised, err := stacktest.DevcontainerUp(t)
 	// Stop when the stack fails to come up
 	if err != nil {
 		t.Fatalf("Setup: DevcontainerUp() = %v, want the stack raised", err)
 	}
-	route, err := stacktest.ContainerExec(t, raised.ContainerID, "ip", "route", "show", "default")
-	fields := strings.Fields(route)
-	// Stop when the cage's default route stays unread
-	if err != nil || len(fields) < 3 {
-		t.Fatalf("Setup: ContainerExec(cage, ip route show default) = %q, %v", route, err)
-	}
 
-	_, err = stacktest.ContainerExec(t, raised.ContainerID, "ip", "route", "replace", "default", "via", fields[2])
+	links, err := stacktest.ContainerExec(t, raised.ContainerID, "ls", "/sys/class/net")
 
-	// Require the kernel to refuse the change
-	if err == nil {
-		t.Errorf("ip route replace default via %s in the cage succeeded, want it refused", fields[2])
+	// Require the loopback as the cage's one interface
+	if err != nil || strings.TrimSpace(links) != "lo" {
+		t.Errorf("cage interfaces = %q, %v, want lo alone", links, err)
 	}
 }
 
-// The cage routes through the address Docker hands the cage network, which the gateway answers on.
-func TestTheCageRoutesThroughTheCageNetworksRouteAddress(t *testing.T) {
+// A direct connection from the cage to a public address stays refused, past any proxy.
+func TestTheCageIsRefusedADirectConnection(t *testing.T) {
 	raised, err := stacktest.DevcontainerUp(t)
 	// Stop when the stack fails to come up
 	if err != nil {
 		t.Fatalf("Setup: DevcontainerUp() = %v, want the stack raised", err)
 	}
-	address, err := stacktest.CageRoute(t)
-	// Stop when the route address stays unread
-	if err != nil || address == "" {
-		t.Fatalf("Setup: CageRoute() = %q, %v", address, err)
-	}
 
-	route, err := stacktest.ContainerExec(t, raised.ContainerID, "ip", "route", "show", "default")
+	_, err = stacktest.ContainerExec(t, raised.ContainerID, "curl", "--noproxy", "*", "--connect-timeout", "3", "-s", "-o", "/dev/null", "https://1.1.1.1")
 
-	// Stop when reading the route fails
-	if err != nil {
-		t.Fatalf("ContainerExec(cage, ip route show default) = %v", err)
-	}
-	// Require the default route to lead to the route address
-	if got, want := strings.TrimSpace(route), "default via "+address; !strings.HasPrefix(got, want) {
-		t.Errorf("cage default route = %q, want it to start with %q", got, want)
+	// Require the connection refused
+	if err == nil {
+		t.Error("a direct connection from the cage to 1.1.1.1 went through, want it refused")
 	}
 }
 

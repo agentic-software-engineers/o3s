@@ -4,7 +4,6 @@ package process_test
 
 import (
 	"strconv"
-	"strings"
 	"testing"
 	"time"
 
@@ -12,9 +11,8 @@ import (
 	"github.com/hansehart/o3s/test/stacktest"
 )
 
-// The data a host moves through the gateway shows beside it, and a name the cage was refused shows among the blocked names.
-func TestTheFirewallShowsTrafficAndBlockedNames(t *testing.T) {
-	t.Setenv("O3S_TRAFFIC_INTERVAL", "1")
+// The cage reaches a host the allowlist holds through the host process, and an unlisted host stays refused.
+func TestTheCageReachesTheListedHostsAlone(t *testing.T) {
 	_, err := stacktest.O3s(t, "firewall", "add", "github.com", "--port", strconv.Itoa(fixture.Port))
 	// Stop when the host stays closed
 	if err != nil {
@@ -25,54 +23,14 @@ func TestTheFirewallShowsTrafficAndBlockedNames(t *testing.T) {
 	if err != nil {
 		t.Fatalf("DevcontainerUp() = %v, want the stack raised", err)
 	}
-	// Stop when the cage fails to reach the allowed host
-	if _, err := stacktest.ContainerExec(t, raised.ContainerID, "curl", "-fsS", "-o", "/dev/null", "https://github.com"); err != nil {
-		t.Fatalf("curl https://github.com in the cage = %v", err)
-	}
-	// Ask for a name the policy leaves out, which the gateway refuses
-	_, _ = stacktest.ContainerExec(t, raised.ContainerID, "getent", "hosts", fixture.RefusedName)
 
-	shown := waitForO3s(t, []string{"firewall"}, func(out string) bool {
-		return strings.Contains(out, "github.com") && !strings.Contains(firstLine(out, "github.com"), " – ") && !strings.Contains(firstLine(out, "github.com"), " 0 B ") && strings.Contains(out, fixture.RefusedName)
-	})
+	_, listed := stacktest.ContainerExec(t, raised.ContainerID, "curl", "-fsS", "-o", "/dev/null", "https://github.com")
+	_, unlisted := stacktest.ContainerExec(t, raised.ContainerID, "curl", "-fsS", "--max-time", "10", "-o", "/dev/null", "https://"+fixture.OtherHost)
 
-	// Report an allowed host whose data is missing
-	if !strings.Contains(firstLine(shown, "github.com"), " ago") {
-		t.Errorf("o3s firewall = %q, want github.com with its data and when it last moved any", shown)
+	// Require the listed host reached and the unlisted one refused
+	if listed != nil || unlisted == nil {
+		t.Errorf("curl github.com = %v, curl %s = %v, want the first through and the second refused", listed, fixture.OtherHost, unlisted)
 	}
-	// Report a refused name missing from the blocked names
-	if !strings.Contains(shown, fixture.RefusedName) {
-		t.Errorf("o3s firewall = %q, want %s among the blocked names", shown, fixture.RefusedName)
-	}
-}
-
-// waitForO3s runs o3s until its output holds or a few intervals pass, and hands back its last output.
-func waitForO3s(t *testing.T, args []string, holds func(string) bool) string {
-	t.Helper()
-	var out string
-	// Run the command once a second, a few times over
-	for range 20 {
-		got, err := stacktest.O3s(t, args...)
-		out = got
-		// Hand back the output once it holds
-		if err == nil && holds(out) {
-			return out
-		}
-		time.Sleep(time.Second)
-	}
-	return out
-}
-
-// firstLine hands back the first line of an output that names a host.
-func firstLine(out, host string) string {
-	// Look at every line
-	for line := range strings.SplitSeq(out, "\n") {
-		// Take the line that starts with the host
-		if strings.HasPrefix(line, host+" ") {
-			return line
-		}
-	}
-	return ""
 }
 
 // A host allowed for a set time is reachable until its end and refused after it, with the stack running throughout.

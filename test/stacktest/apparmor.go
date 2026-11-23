@@ -10,7 +10,6 @@ import (
 // The stack built from this branch and where the cage's profile lives.
 const (
 	devProject       = "o3s-dev"
-	devGateway       = "o3s-gateway:dev"
 	profileName      = "o3s-cage"
 	kernelPolicy     = "/sys/kernel/security/apparmor/policy/profiles"
 	installedProfile = "/etc/apparmor.d/" + profileName
@@ -25,14 +24,14 @@ func AHostThatLostTheProfile(tb testing.TB) {
 	if err != nil {
 		tb.Fatalf("Setup: %v", err)
 	}
-	gateways, err := run(tb.Context(), tb, "docker", "ps", "--filter", "label=com.docker.compose.service=gateway", "--format", "{{.Label \"com.docker.compose.project\"}} {{.Image}}")
-	// Stop when the running gateways stay unread
+	cages, err := run(tb.Context(), tb, "docker", "ps", "--filter", "label=com.docker.compose.service=cage", "--format", "{{.Label \"com.docker.compose.project\"}}")
+	// Stop when the running cages stay unread
 	if err != nil {
 		tb.Fatalf("Setup: %v", err)
 	}
-	// Require the gateway built from this branch, so the test covers the code under review
-	if !strings.Contains(gateways, devProject+" "+devGateway) {
-		tb.Fatalf("Setup: the stack runs no gateway built from this branch, running:\n%s", gateways)
+	// Require the cage of the stack built from this branch, so the test covers the code under review
+	if !strings.Contains(cages, devProject) {
+		tb.Fatalf("Setup: the stack runs no cage built from this branch, running:\n%s", cages)
 	}
 	// Require a loaded profile first, so its absence below carries weight
 	if !profileIsLoaded(tb) {

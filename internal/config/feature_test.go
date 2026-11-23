@@ -82,7 +82,7 @@ func TestNeedTurnsAwayASecondSecret(t *testing.T) {
 	}
 }
 
-// A host a feature names in a form the gateway lacks is turned away.
+// A host a feature names in a form the allowlist lacks is turned away.
 func TestNeedTurnsAwayAMalformedHost(t *testing.T) {
 	var c config.Config
 

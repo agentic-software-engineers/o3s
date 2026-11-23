@@ -31,7 +31,7 @@ func Serve(ctx context.Context, p Place, o ServeOptions) error {
 		return err
 	}
 	defer func() { _ = lock.Release() }()
-	t, err := transport(p.Sockets)
+	t, err := transport(p.Cage)
 	// Hand back a system the cage's transport awaits
 	if err != nil {
 		return err
