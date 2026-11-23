@@ -80,9 +80,8 @@
       "minimumReleaseAge": "0 days"
     },
     {
-      "description": "The linter and release tool versions sit in an action's version input, which takes a version alone.",
-      "matchManagers": ["github-actions"],
-      "matchDepNames": ["golangci/golangci-lint", "goreleaser/goreleaser"],
+      "description": "A tool version given as an action's input takes a version alone, so it updates without a digest pin.",
+      "matchDepTypes": ["uses-with"],
       "pinDigests": false
     },
     {
