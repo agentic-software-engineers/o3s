@@ -10,7 +10,6 @@
   "semanticCommits": "enabled",
   "semanticCommitScope": "deps",
   "separateMinorPatch": true,
-  "pinDigests": true,
   "prConcurrentLimit": 0,
   "prHourlyLimit": 0,
   "minimumReleaseAge": "3 days",
@@ -47,6 +46,11 @@
     }
   ],
   "packageRules": [
+    {
+      "description": "Pin every image to its digest, while actions take theirs from the pinGitHubActionDigests preset.",
+      "matchDatasources": ["docker"],
+      "pinDigests": true
+    },
     {
       "description": "Bumps of the binary, the images and the stack ship to users, so they release. Anything new lands here too, which is the safer default: it shows up rather than passing unseen.",
       "matchPackageNames": ["*"],
