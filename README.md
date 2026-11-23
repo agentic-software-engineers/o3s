@@ -201,7 +201,7 @@ Fail fast, fix faster, ship fastest. Your agents see every repository at once, t
 > **My long-leash-but-not-weaponized agent needs deterministic boundaries**\
 > ✅ Yes, the architecture delivers security coupled with convenience.
 
-See the [comparison](https://github.com/Hansehart/o3s/wiki/Comparison) for others working on the same problem.
+See the [comparison](https://agentic-software-engineers.com/docs/o3s/comparison) for others working on the same problem.
 
 Something here you would do differently? Open an issue, send a pull request, or just get in touch. And if one of the others fits you better, take it, as long as you keep both your security and your productivity. You are always welcome back.
 
