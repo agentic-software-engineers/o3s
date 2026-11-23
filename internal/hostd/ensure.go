@@ -41,7 +41,7 @@ func Ensure(ctx context.Context, p Place, o EnsureOptions) (Info, error) {
 		}
 		// Stop a process of another version before a new one takes its place
 		if err == nil {
-			retire(ctx, ctl, info, o.Gone)
+			retire(ctx, p, info, o.Gone)
 		}
 		// Hand back a start that fails
 		if err := o.Spawn(); err != nil {
@@ -60,11 +60,12 @@ func Ensure(ctx context.Context, p Place, o EnsureOptions) (Info, error) {
 	return Info{}, fmt.Errorf("%w after %d starts, see %s", ErrUnready, o.Attempts, p.Crash())
 }
 
-// retire asks the process to stop and waits for it to go, and ends it where it stays past the wait.
-func retire(ctx context.Context, ctl string, info Info, gone time.Duration) {
-	_ = Shutdown(ctx, ctl)
-	// Leave the process be once its control socket falls silent within the wait
-	if silent(ctx, ctl, gone) {
+// retire asks the process to stop and waits until it lets go of the home, which a new process takes next, and ends it
+// where it keeps the home past the wait.
+func retire(ctx context.Context, p Place, info Info, gone time.Duration) {
+	_ = Shutdown(ctx, p.Control())
+	// Leave the process be once it lets go of the home within the wait
+	if released(ctx, p, gone) {
 		return
 	}
 	// End a process that stays past the wait, keeping the one asking alive
@@ -74,6 +75,7 @@ func retire(ctx context.Context, ctl string, info Info, gone time.Duration) {
 			_ = proc.Kill()
 		}
 	}
+	released(ctx, p, gone)
 }
 
 // await asks the control socket until it answers or the wait runs out.
@@ -93,16 +95,17 @@ func await(ctx context.Context, ctl string, wait time.Duration) (Info, error) {
 	}
 }
 
-// silent asks the control socket until it stays silent, and reports whether it fell silent before the wait ran out.
-func silent(ctx context.Context, ctl string, wait time.Duration) bool {
+// released tries the home's hold until it is free, and reports whether it came free before the wait ran out.
+func released(ctx context.Context, p Place, wait time.Duration) bool {
 	deadline := time.Now().Add(wait)
-	// Ask again while the socket still answers and the wait lasts
+	// Try the hold again while another process keeps it and the wait lasts
 	for {
-		// Report the socket silent once a question goes unanswered
-		if _, err := GetInfo(ctx, ctl); err != nil {
+		// Report the home free once the hold is taken, letting go of it at once
+		if lock, err := TryLock(p.Lock()); err == nil {
+			_ = lock.Release()
 			return true
 		}
-		// Report the socket still answering once the wait runs out, or the context ends
+		// Report the home still held once the wait runs out, or the context ends
 		if time.Now().After(deadline) || !pause(ctx, pollEvery) {
 			return false
 		}
