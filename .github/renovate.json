@@ -75,6 +75,11 @@
       "groupName": "workflow digests"
     },
     {
+      "description": "A digest names a build, not a release, so it has no date an age check could measure.",
+      "matchUpdateTypes": ["digest"],
+      "minimumReleaseAge": "0 days"
+    },
+    {
       "description": "Images tracking a rolling tag do not need a digest pin.",
       "matchPackageNames": [
         "ghcr.io/hansehart/o3s-cage",
