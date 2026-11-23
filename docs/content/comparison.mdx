@@ -1,0 +1,20 @@
+---
+title: Comparison
+description: An overview of approaches to sandboxing AI agents.
+---
+
+| | [Anthropic devcontainer][ref] | [Docker Sandboxes][sbx] | [NVIDIA OpenShell][osh] | o3s |
+|---|---|---|---|---|
+| GPU | ❌ | Dedicated, via VFIO | Dedicated, via VFIO<br />Shared, via CDI | Shared, via CDI |
+| Isolation | Container | MicroVM | MicroVM<br />Container | Container |
+| Login required | ❌ | ✅ | ❌ | ❌ |
+| Network | Allowlist, in agent container | Allowlist, in host proxy | Allowlist, in supervisor | Allowlist, in isolated network containers |
+| Open source | ✅ | ❌ | ✅ | ✅ |
+| PII filtering | ❌ | ❌ | Bring your own middleware | Bring your own middleware |
+| Projects | One per container | Multiple mounts | Multiple mounts | All in one persistent workspace |
+| Secrets | In agent container | On host, injected by proxy | In gateway, injected by supervisor | On host, injected by proxy container |
+| Tools | Dockerfile | Kits | Dockerfile | Dev container features |
+
+[ref]: https://github.com/anthropics/claude-code/tree/main/.devcontainer
+[sbx]: https://github.com/docker/sbx-releases
+[osh]: https://github.com/NVIDIA/OpenShell

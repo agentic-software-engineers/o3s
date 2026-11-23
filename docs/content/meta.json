@@ -1,5 +1,5 @@
 {
   "title": "Open Secure Software Suite",
   "root": true,
-  "pages": ["index"]
+  "pages": ["index", "comparison"]
 }
