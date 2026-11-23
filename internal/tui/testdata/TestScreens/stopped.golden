@@ -5,7 +5,7 @@ o3s  /home/ubuntu/o3s
 What do you want to do?
 ❯ cage       VM, stack and cage · stopped
   feature    tools in the cage · 2 installed
-  firewall   hosts the cage reaches · 4 allowed · 1 blocked
+  firewall   hosts the cage reaches · 4 allowed
   project    repositories in the workspace · 1
   secret     values the proxy injects · 1 set · 1 waiting
   update     the cli, the stack and the features

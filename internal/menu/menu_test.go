@@ -19,7 +19,7 @@ var (
 )
 
 // aHome is a home that allows a host the user added, a host with a secret, an expired host and one a feature needs,
-// knows two secrets, refused two names, offers one store and lists one project.
+// knows two secrets, offers one store and lists one project.
 var aHome = Home{
 	Dir:    fixture.HomeDir,
 	Exists: true,
@@ -30,12 +30,9 @@ var aHome = Home{
 		{Name: fixture.ThirdHost, Ports: []int{fixture.Port}, By: []string{"user"}, Expires: fixture.LongAgoText},
 		{Name: fixture.OtherHost, Ports: []int{fixture.Port}, By: []string{fixture.Store + "/" + fixture.Feature, "user"}},
 	},
-	Traffic:  map[string]Traffic{fixture.Host: {Data: fixture.DataMoved, Seen: fixture.LastSeen}},
 	Secrets:  []Secret{{Name: fixture.Secret, Set: false}, {Name: fixture.OtherSecret, Set: true}},
 	Stores:   []string{fixture.Store},
 	Projects: []string{"github.com/" + fixture.Repo},
-	Blocked:  []Option{{Value: fixture.RefusedName, Columns: BlockedRow(fixture.Attempts, fixture.LastSeen)}, {Value: fixture.AbsentName, Columns: BlockedRow(fixture.Attempts, fixture.LastSeen)}},
-	Running:  true,
 	Stack:    []Fact{{Label: "Cage", Value: "running"}},
 	Lookup:   fakeLookup{},
 }
@@ -104,7 +101,7 @@ func TestTheMainMenuNotesWhatEachGroupHolds(t *testing.T) {
 	want := []Option{
 		{Value: "cage", Note: "VM, stack and cage · running"},
 		{Value: "feature", Note: "tools in the cage · 0 installed"},
-		{Value: "firewall", Note: "hosts the cage reaches · 4 allowed · 2 blocked"},
+		{Value: "firewall", Note: "hosts the cage reaches · 4 allowed"},
 		{Value: "project", Note: "repositories in the workspace · 1"},
 		{Value: "secret", Note: "values the proxy injects · 1 set · 1 waiting"},
 		{Value: "update", Note: "the cli, the stack and the features"},
@@ -136,27 +133,22 @@ func TestOpenStartsAtTheGroupsView(t *testing.T) {
 	}
 }
 
-// The firewall's view shows every host with its ports, traffic, end and who needs it, a key to prune where one has
-// expired, and the refused names to mark.
-func TestTheFirewallViewShowsTheHostsAndTheRefusedNames(t *testing.T) {
+// The firewall's view shows every host with its ports, end and who needs it, and a key to prune where one has expired.
+func TestTheFirewallViewShowsTheHosts(t *testing.T) {
 	q, _ := Next(aHome, Answers{}.With("do", []string{"firewall"}))
 
-	allowed, blocked := q.Tabs[0], q.Tabs[1]
+	allowed := q.Tabs[0]
 	// Require the add row first, then every host with its columns
 	if allowed.Options[0].Value != add || len(allowed.Options) != len(aHome.Hosts)+1 {
 		t.Errorf("Allowed = %v", allowed.Options)
 	}
-	// Require the host's traffic and end in its columns
-	if diff := cmp.Diff([]string{bothPorts, fixture.DataMoved, fixture.LastSeen, "for good", "", "user"}, allowed.Options[1].Columns); diff != "" {
+	// Require the host's ports and end in its columns
+	if diff := cmp.Diff([]string{bothPorts, "for good", "", "user"}, allowed.Options[1].Columns); diff != "" {
 		t.Errorf("host columns (-want +got):\n%s", diff)
 	}
 	// Require the expired host to read as expired, and the key that prunes it
-	if allowed.Options[3].Columns[3] != "expired" || len(allowed.Keys) != 1 || allowed.Keys[0].Value != prune {
+	if allowed.Options[3].Columns[1] != "expired" || len(allowed.Keys) != 1 || allowed.Keys[0].Value != prune {
 		t.Errorf("expired host = %v, keys %v", allowed.Options[3], allowed.Keys)
-	}
-	// Require the refused names to mark
-	if !blocked.Multi || len(blocked.Options) != 2 {
-		t.Errorf("Blocked = %+v", blocked)
 	}
 }
 
@@ -185,12 +177,6 @@ func TestEveryFirewallDialogEndsInItsCommand(t *testing.T) {
 			[][]string{{"firewall"}, {"Allowed", add}, {fixture.NewHost}, {port}, {always}, {fresh}, {fixture.NewSecret}, {""}, {"header"}, {yes}},
 			[]string{"do", "view", "hosts", "ports", "for", "secret", "secretName", "value:" + fixture.NewSecret, "inject", "apply"},
 			[]Command{{Args: []string{"firewall", "add", fixture.NewHost, "--port", port, "--secret", fixture.NewSecret, "--inject", "header", "--yes"}}},
-		},
-		{
-			"two refused names for an hour",
-			[][]string{{"firewall"}, {"Blocked", fixture.RefusedName, fixture.AbsentName}, {port}, {"1h"}, {none}, {yes}},
-			[]string{"do", "view", "ports", "for", "secret", "apply"},
-			[]Command{{Args: []string{"firewall", "add", fixture.RefusedName, fixture.AbsentName, "--port", port, "--for", "1h", "--yes"}}},
 		},
 		{
 			"a host's ports",
@@ -255,7 +241,7 @@ func TestAHostsDetailShowsItsFacts(t *testing.T) {
 
 	got := asked[2]
 	// Require the facts of the host
-	if diff := cmp.Diff([]Fact{{"Ports", bothPorts}, {"Data", fixture.DataMoved}, {"Last seen", fixture.LastSeen}, {"Closes", "for good"}, {"Secret", "none"}, {"Needed by", "user"}}, got.Facts); diff != "" {
+	if diff := cmp.Diff([]Fact{{"Ports", bothPorts}, {"Closes", "for good"}, {"Secret", "none"}, {"Needed by", "user"}}, got.Facts); diff != "" {
 		t.Errorf("facts (-want +got):\n%s", diff)
 	}
 	// Require the removal among the actions, and Back last
@@ -428,24 +414,23 @@ func TestAProjectsRemovalChecksTheTypedName(t *testing.T) {
 	}
 }
 
-// A host shows the same row piped and in its view: ports, traffic, when it closes, its secret marked while it waits,
+// A host shows the same row piped and in its view: ports, when it closes, its secret marked while it waits,
 // and who needs it.
 func TestHostRowShowsAHostTheSameEverywhere(t *testing.T) {
 	tests := []struct {
 		host    config.Host
-		traffic Traffic
 		waiting bool
 		want    []string
 	}{
-		{aHome.Hosts[0], aHome.Traffic[fixture.Host], false, []string{bothPorts, fixture.DataMoved, fixture.LastSeen, "for good", "", "user"}},
-		{aHome.Hosts[1], Traffic{}, true, []string{port, "–", "–", "for good", fixture.Secret + " !", "user"}},
-		{aHome.Hosts[2], Traffic{}, false, []string{port, "–", "–", "expired", "", "user"}},
-		{config.Host{Name: fixture.Host, Ports: []int{fixture.Port}, Expires: fixture.InAnHourText, By: []string{"user"}}, Traffic{}, false, []string{port, "–", "–", "in 1h", "", "user"}},
+		{aHome.Hosts[0], false, []string{bothPorts, "for good", "", "user"}},
+		{aHome.Hosts[1], true, []string{port, "for good", fixture.Secret + " !", "user"}},
+		{aHome.Hosts[2], false, []string{port, "expired", "", "user"}},
+		{config.Host{Name: fixture.Host, Ports: []int{fixture.Port}, Expires: fixture.InAnHourText, By: []string{"user"}}, false, []string{port, "in 1h", "", "user"}},
 	}
 	// Check every host
 	for _, tt := range tests {
 		// Report a row that differs
-		if diff := cmp.Diff(tt.want, HostRow(tt.host, tt.traffic, tt.waiting, fixture.Now)); diff != "" {
+		if diff := cmp.Diff(tt.want, HostRow(tt.host, tt.waiting, fixture.Now)); diff != "" {
 			t.Errorf("HostRow(%s) (-want +got):\n%s", tt.host.Name, diff)
 		}
 	}

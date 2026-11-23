@@ -42,16 +42,6 @@ const (
 	SocketDir = "/run/o3s"
 )
 
-// What the gateway records for a host, as the screen shows it.
-const (
-	// DataMoved is the data a host moved.
-	DataMoved = "1.2 GB"
-	// LastSeen is when a host last moved data, or a name was last refused.
-	LastSeen = "2m ago"
-	// Attempts is how often the gateway refused a name.
-	Attempts = 3
-)
-
 // What a run leaves behind.
 const (
 	// Duration is how long a host stays open, as the user types it.
@@ -245,9 +235,6 @@ func Env() map[string]string {
 		"MESSAGE":             Message,
 		"REPLY":               Reply,
 		"SOCKET_DIR":          SocketDir,
-		"DATA_MOVED":          DataMoved,
-		"LAST_SEEN":           LastSeen,
-		"ATTEMPTS":            strconv.Itoa(Attempts),
 		"DURATION":            Duration,
 		"LOG_FILE":            LogFile,
 		"SSH_HOST":            SSHHost,

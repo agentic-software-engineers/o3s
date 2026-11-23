@@ -16,7 +16,6 @@ import (
 	"github.com/hansehart/o3s/internal/home"
 	"github.com/hansehart/o3s/internal/menu"
 	"github.com/hansehart/o3s/internal/registry"
-	"github.com/hansehart/o3s/internal/traffic"
 	"github.com/hansehart/o3s/internal/tui"
 	"github.com/hansehart/o3s/internal/update"
 	"github.com/hansehart/o3s/internal/vm"
@@ -198,7 +197,7 @@ func menuHome(ctx context.Context, cats *catalogs) menu.Home {
 	if err != nil {
 		return menu.Home{Lookup: lookup, Now: now}
 	}
-	h := menu.Home{Dir: dir, Lookup: lookup, Now: now, Traffic: map[string]menu.Traffic{}}
+	h := menu.Home{Dir: dir, Lookup: lookup, Now: now}
 	c, err := config.Load(dir)
 	// Take the home's hosts and stores where it holds settings
 	if err == nil {
@@ -213,19 +212,6 @@ func menuHome(ctx context.Context, cats *catalogs) menu.Home {
 	// Offer every feature the home installs from a store, in the order the cage installs them
 	if err == nil {
 		h.Installed = installed(dc)
-	}
-	record, running, err := traffic.Read(ctx, dir)
-	h.Running = running
-	// Show what the gateway recorded where its record reads
-	if err == nil {
-		// Show the data each host moved and when
-		for name, t := range record.Hosts {
-			h.Traffic[name] = hostTraffic(t, now)
-		}
-		// Offer each refused name, the most recent first, with how often and when
-		for _, b := range record.Refused() {
-			h.Blocked = append(h.Blocked, menu.Option{Value: b.Name, Columns: menu.BlockedRow(b.Attempts, traffic.Ago(b.LastSeen, now))})
-		}
 	}
 	h.Stack = stackFacts(ctx, dir, h.Exists)
 	// Show where the VM of a home that lives in one stands, in place of the stack it runs inside

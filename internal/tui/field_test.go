@@ -220,10 +220,10 @@ func TestTextChecksTheLineAsItIsTyped(t *testing.T) {
 	}
 }
 
-// aView is a view of two tabs: hosts the user picks from with a key that acts, and names the user marks.
+// aView is a view of two tabs: hosts the user picks from with a key that acts, and features the user marks.
 var aView = menu.Question{Key: "view", Kind: menu.View, Title: "Firewall", Tabs: []menu.Tab{
 	{Name: "Allowed", About: "The cage reaches only these hosts.", Options: []menu.Option{{Value: "+add", Label: "+ Allow a host…"}, {Value: fixture.Host, Columns: []string{port}}, {Value: fixture.OtherHost, Columns: []string{bothPorts}}}, Keys: []menu.Key{{Key: "p", Help: "prune expired", Value: "+prune"}}},
-	{Name: "Blocked", Multi: true, Options: []menu.Option{{Value: fixture.RefusedName}, {Value: fixture.AbsentName}}, Marked: []string{fixture.AbsentName}, Empty: "Nothing blocked yet."},
+	{Name: "Discover", Multi: true, Options: []menu.Option{{Value: fixture.Feature}, {Value: fixture.OtherFeature}}, Marked: []string{fixture.OtherFeature}, Empty: "No store offers a feature."},
 }}
 
 // A view picks a row on its tab, switches tabs both ways around, hands back the marks of a tab that takes them, and
@@ -237,7 +237,7 @@ func TestViewPicksSwitchesMarksAndActs(t *testing.T) {
 	got := [][]string{picked.values, marked.values, around.values, acted.values}
 
 	// Report answers that differ
-	if diff := cmp.Diff([][]string{{"Allowed", fixture.Host}, {"Blocked", fixture.RefusedName, fixture.AbsentName}, {"Allowed", "+add"}, {"Allowed", "+prune"}}, got); diff != "" {
+	if diff := cmp.Diff([][]string{{"Allowed", fixture.Host}, {"Discover", fixture.Feature, fixture.OtherFeature}, {"Allowed", "+add"}, {"Allowed", "+prune"}}, got); diff != "" {
 		t.Errorf("answers (-want +got):\n%s", diff)
 	}
 }
@@ -312,12 +312,12 @@ func TestViewPutsARowBack(t *testing.T) {
 func TestViewShowsTheTabsAndTheRows(t *testing.T) {
 	f := newView(aView)
 	empty := aView
-	empty.Tabs = []menu.Tab{aView.Tabs[0], {Name: "Blocked", Empty: "Nothing blocked yet."}}
+	empty.Tabs = []menu.Tab{aView.Tabs[0], {Name: "Discover", Empty: "No store offers a feature."}}
 	e, _ := press(newView(empty), right)
 
 	view := stripped(f.View(usualWidth, usualHeight))
 	// Require the tab bar, the about line, the search box and the rows lined up
-	for _, want := range []string{"Firewall", "Allowed", "Blocked", "The cage reaches only these hosts.", "⌕ Search…", "❯ + Allow a host…"} {
+	for _, want := range []string{"Firewall", "Allowed", "Discover", "The cage reaches only these hosts.", "⌕ Search…", "❯ + Allow a host…"} {
 		// Report a part the view lacks
 		if !strings.Contains(view, want) {
 			t.Errorf("view lacks %q:\n%s", want, view)
@@ -328,7 +328,7 @@ func TestViewShowsTheTabsAndTheRows(t *testing.T) {
 		t.Errorf("columns differ in where they start:\n%s", view)
 	}
 	// Require what an empty tab says
-	if view := stripped(e.View(usualWidth, usualHeight)); !strings.Contains(view, "Nothing blocked yet.") {
+	if view := stripped(e.View(usualWidth, usualHeight)); !strings.Contains(view, "No store offers a feature.") {
 		t.Errorf("empty tab:\n%s", view)
 	}
 }
@@ -385,7 +385,7 @@ func TestViewLabelsItsColumns(t *testing.T) {
 	q := aView
 	q.Tabs = []menu.Tab{
 		{Name: "Allowed", Header: []string{"HOST", "PORTS"}, Options: aView.Tabs[0].Options[1:]},
-		{Name: "Blocked", Header: []string{"NAME", "ATTEMPTS"}, Multi: true, Options: []menu.Option{{Value: fixture.RefusedName, Columns: []string{"3"}}}},
+		{Name: "Discover", Header: []string{"FEATURE", "STORE"}, Multi: true, Options: []menu.Option{{Value: fixture.Feature, Columns: []string{fixture.Store}}}},
 	}
 	f := newView(q)
 	marked, _ := press(f, right)
@@ -398,7 +398,7 @@ func TestViewLabelsItsColumns(t *testing.T) {
 		t.Errorf("header %q and row %q differ in where the column starts", header, row)
 	}
 	// Require the header past the room a mark takes
-	if header, row := lineWith(markedView, "NAME"), lineWith(markedView, fixture.RefusedName); column(header, "NAME") != column(row, fixture.RefusedName) {
+	if header, row := lineWith(markedView, "FEATURE"), lineWith(markedView, fixture.Feature); column(header, "FEATURE") != column(row, fixture.Feature) {
 		t.Errorf("header %q and row %q differ in where the label starts", header, row)
 	}
 }

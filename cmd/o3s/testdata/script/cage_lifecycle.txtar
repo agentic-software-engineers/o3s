@@ -7,7 +7,7 @@ stdout '^The cage runs$'
 grep '^up --workspace-folder ' $WORK/devcontainer.log
 
 # start leaves a cage that runs as it is
-exec sh -c 'touch $WORK/cage-up $WORK/stack-up'
+exec sh -c 'touch $WORK/cage-up'
 exec o3s cage start
 stdout '^The cage runs already$'
 
@@ -17,7 +17,7 @@ stdout '^Stopped \d+ containers?$'
 grep '^ps -aq --filter label=com.docker.compose.project.working_dir=' $WORK/docker.log
 
 # stop leaves a stack that runs nothing as it is
-exec sh -c 'rm $WORK/cage-up $WORK/stack-up'
+exec sh -c 'rm $WORK/cage-up'
 exec o3s cage stop
 stdout '^The cage is stopped already$'
 

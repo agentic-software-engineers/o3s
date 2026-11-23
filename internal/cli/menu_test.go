@@ -19,7 +19,7 @@ import (
 )
 
 // The menu knows every secret the home names or stores, whether it holds a value, and the home's stores, the clock,
-// the traffic and the stack aside, which the engine and the moment decide.
+// and the stack aside, which the engine and the moment decide.
 func TestMenuHomeReadsTheHome(t *testing.T) {
 	dir := t.TempDir()
 	t.Chdir(dir)
@@ -39,7 +39,7 @@ func TestMenuHomeReadsTheHome(t *testing.T) {
 
 	got := menuHome(t.Context(), newCatalogs(t.Context()))
 
-	got.Lookup, got.Now, got.Traffic, got.Stack = nil, time.Time{}, nil, nil
+	got.Lookup, got.Now, got.Stack = nil, time.Time{}, nil
 	want := menu.Home{
 		Dir:     dir,
 		Exists:  true,
@@ -65,7 +65,7 @@ func TestMenuHomeStartsOutsideAHome(t *testing.T) {
 
 	got := menuHome(t.Context(), newCatalogs(t.Context()))
 
-	got.Lookup, got.Now, got.Traffic, got.Stack = nil, time.Time{}, nil, nil
+	got.Lookup, got.Now, got.Stack = nil, time.Time{}, nil
 	// Require a home that names the folder alone
 	if diff := cmp.Diff(menu.Home{Dir: dir}, got); diff != "" {
 		t.Errorf("menuHome() (-want +got):\n%s", diff)

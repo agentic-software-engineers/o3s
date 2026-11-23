@@ -12,19 +12,16 @@ import (
 
 	"github.com/hansehart/o3s/internal/config"
 	"github.com/hansehart/o3s/internal/menu"
-	"github.com/hansehart/o3s/internal/traffic"
 	"github.com/hansehart/o3s/internal/words"
 )
 
 // newFirewall builds the commands that show, allow and remove hosts.
 func newFirewall() *cobra.Command {
-	var limit int
 	var asJSON bool
 	fw := group("firewall", "Show, allow or remove the hosts the cage may reach", func(cmd *cobra.Command) error {
-		return showFirewall(cmd, limit, asJSON)
+		return showFirewall(cmd, asJSON)
 	})
-	fw.Flags().IntVar(&limit, "limit", 0, "show up to this many blocked names, 0 for all")
-	fw.Flags().BoolVar(&asJSON, "json", false, "write the allowed hosts and the blocked names as JSON")
+	fw.Flags().BoolVar(&asJSON, "json", false, "write the allowed hosts as JSON")
 	fw.AddCommand(newFirewallAdd(), newFirewallRm(), newFirewallPrune())
 	return fw
 }
@@ -185,8 +182,8 @@ func newFirewallRm() *cobra.Command {
 	return cmd
 }
 
-// showFirewall writes the allowed hosts with their traffic and the names the gateway refused, as tables or as JSON.
-func showFirewall(cmd *cobra.Command, limit int, asJSON bool) error {
+// showFirewall writes the allowed hosts, as a table or as JSON.
+func showFirewall(cmd *cobra.Command, asJSON bool) error {
 	c, err := homeConfig()
 	// Hand back a home that fails to load
 	if err != nil {
@@ -197,73 +194,39 @@ func showFirewall(cmd *cobra.Command, limit int, asJSON bool) error {
 	if err != nil {
 		return err
 	}
-	dir, err := workingHome()
-	// Hand back a working folder that stays unknown
-	if err != nil {
-		return err
-	}
-	record, running := askGateway(cmd, dir)
-	blocked := capped(record.Refused(), limit)
-	// Hand both lists to a script that asked for JSON
+	// Hand the hosts to a script that asked for JSON
 	if asJSON {
-		return writeFirewallJSON(cmd, c, record, blocked)
+		return writeFirewallJSON(cmd, c)
 	}
 	out := cmd.OutOrStdout()
 	now := time.Now()
 	w := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
 	fmt.Fprintln(w, strings.Join(menu.HostHeader, "\t"))
-	waiting, dead, expired := false, false, false
+	waiting, expired := false, false
 	// Write a row per host, in the order the file holds them
 	for _, h := range c.Hosts {
 		_, set := store.Value(h.Secret)
 		waits := h.Secret != "" && !set
-		var t menu.Traffic
-		// Show what the host moved where the gateway recorded it
-		if recorded, ok := record.Hosts[h.Name]; ok {
-			t = hostTraffic(recorded, now)
-			dead = dead || recorded.Dead(now)
-		}
 		waiting, expired = waiting || waits, expired || h.Expired(now)
-		fmt.Fprintln(w, strings.Join(append([]string{h.Name}, menu.HostRow(h, t, waits, now)...), "\t"))
+		fmt.Fprintln(w, strings.Join(append([]string{h.Name}, menu.HostRow(h, waits, now)...), "\t"))
 	}
 	// Hand back a table that fails to write
 	if err := w.Flush(); err != nil {
 		return err
 	}
 	// Leave a line between the table and the notes below it
-	if waiting || dead || expired {
+	if waiting || expired {
 		fmt.Fprintln(out)
 	}
 	// Explain the mark below a table that carries it
 	if waiting {
 		fmt.Fprintln(out, "! waits for its value: echo \"$TOKEN\" | o3s secret add <name>")
 	}
-	// Point a dead host at the command that removes it
-	if dead {
-		fmt.Fprintln(out, "dead: no data in 30 days, remove it with o3s firewall rm <host>")
-	}
 	// Point the expired hosts at the command that removes them
 	if expired {
 		fmt.Fprintln(out, "expired: past its end time, remove these with o3s firewall prune")
 	}
-	fmt.Fprintln(out)
-	// Name where the blocked names come from while the stack is down
-	if !running {
-		fmt.Fprintln(out, "Blocked names show while the stack runs")
-		return nil
-	}
-	// Say that the blocked list is still empty
-	if len(blocked) == 0 {
-		fmt.Fprintln(out, "Nothing blocked yet, names the cage asks for and the firewall refuses show here")
-		return nil
-	}
-	w = tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, strings.Join(menu.BlockedHeader, "\t"))
-	// Write a row per refused name
-	for _, b := range blocked {
-		fmt.Fprintln(w, strings.Join(append([]string{b.Name}, menu.BlockedRow(b.Attempts, traffic.Ago(b.LastSeen, now))...), "\t"))
-	}
-	return w.Flush()
+	return nil
 }
 
 // newFirewallPrune builds the command that takes every expired host off the allowlist, once the user agrees.
@@ -320,69 +283,25 @@ func newFirewallPrune() *cobra.Command {
 	return cmd
 }
 
-// hostTraffic is how what the gateway recorded for a host reads: the data it moved, and when it last moved any, marked
-// dead after a whole idle window.
-func hostTraffic(t traffic.Host, now time.Time) menu.Traffic {
-	seen := traffic.Ago(t.LastSeen, now)
-	// Mark a host that stayed silent for a whole window
-	if t.Dead(now) {
-		seen += ", dead"
-	}
-	return menu.Traffic{Data: traffic.Size(t.Bytes), Seen: seen}
-}
-
-// capped keeps the first entries up to a limit, and every entry for a limit of 0.
-func capped[T any](entries []T, limit int) []T {
-	// Keep every entry within the limit
-	if limit <= 0 || len(entries) <= limit {
-		return entries
-	}
-	return entries[:limit]
-}
-
-// writeFirewallJSON writes the allowed hosts with their traffic and the refused names as one JSON document.
-func writeFirewallJSON(cmd *cobra.Command, c config.Config, record traffic.Record, blocked []traffic.Refused) error {
+// writeFirewallJSON writes the allowed hosts as one JSON document.
+func writeFirewallJSON(cmd *cobra.Command, c config.Config) error {
 	type allowedRow struct {
-		Host     string   `json:"host"`
-		Ports    []int    `json:"ports"`
-		Bytes    int64    `json:"bytes"`
-		LastSeen int64    `json:"last_seen"`
-		Expires  string   `json:"expires,omitempty"`
-		Secret   string   `json:"secret,omitempty"`
-		By       []string `json:"by"`
-	}
-	type blockedRow struct {
-		Host     string `json:"host"`
-		Attempts int64  `json:"attempts"`
-		LastSeen int64  `json:"last_seen"`
+		Host    string   `json:"host"`
+		Ports   []int    `json:"ports"`
+		Expires string   `json:"expires,omitempty"`
+		Secret  string   `json:"secret,omitempty"`
+		By      []string `json:"by"`
 	}
 	doc := struct {
 		Allowed []allowedRow `json:"allowed"`
-		Blocked []blockedRow `json:"blocked"`
-	}{Allowed: []allowedRow{}, Blocked: []blockedRow{}}
-	// Take every allowed host with what the gateway recorded for it
+	}{Allowed: []allowedRow{}}
+	// Take every allowed host
 	for _, h := range c.Hosts {
-		t := record.Hosts[h.Name]
-		doc.Allowed = append(doc.Allowed, allowedRow{Host: h.Name, Ports: h.Ports, Bytes: t.Bytes, LastSeen: t.LastSeen, Expires: h.Expires, Secret: h.Secret, By: h.By})
-	}
-	// Take every refused name
-	for _, b := range blocked {
-		doc.Blocked = append(doc.Blocked, blockedRow{Host: b.Name, Attempts: b.Attempts, LastSeen: b.LastSeen})
+		doc.Allowed = append(doc.Allowed, allowedRow{Host: h.Name, Ports: h.Ports, Expires: h.Expires, Secret: h.Secret, By: h.By})
 	}
 	enc := json.NewEncoder(cmd.OutOrStdout())
 	enc.SetIndent("", "  ")
 	return enc.Encode(doc)
-}
-
-// askGateway asks the home's running gateway for its record and reports whether it runs, warning about and leaving out a record that fails to read.
-func askGateway(cmd *cobra.Command, dir string) (traffic.Record, bool) {
-	record, running, err := traffic.Read(cmd.Context(), dir)
-	// Leave the traffic out where its record fails to read
-	if err != nil {
-		warn(cmd.ErrOrStderr(), "%v", err)
-		return traffic.Record{}, running
-	}
-	return record, running
 }
 
 // change applies a change to the home, saves it, and names how it takes effect.

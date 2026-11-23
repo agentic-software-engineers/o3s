@@ -12,7 +12,7 @@ secret / Secrets OTHER_TOKEN / Remove / yes → o3s secret rm OTHER_TOKEN --yes
 secret / Secrets OTHER_TOKEN / Remove / no → back
 secret / Secrets OTHER_TOKEN / Back → back
 
-# running, 169 paths
+# running, 154 paths
 cage / Open in VS Code → o3s cage ide
 cage / Open a shell → o3s cage shell [terminal]
 cage / Stop → o3s cage stop
@@ -139,21 +139,6 @@ firewall / Allowed example.org / Change secret / EXAMPLE_TOKEN / header, query, 
 firewall / Allowed example.org / Change secret / OTHER_TOKEN / header / yes → o3s firewall add example.org --secret OTHER_TOKEN --inject header --yes
 firewall / Allowed example.org / Change secret / NEW_TOKEN / *** / header / yes → o3s secret add NEW_TOKEN --no-bind-hint; o3s firewall add example.org --secret NEW_TOKEN --inject header --yes
 firewall / Allowed example.org / Back → back
-firewall / Blocked [] → back
-firewall / Blocked [blocked.example] / 443 / For good / None / yes → o3s firewall add blocked.example --port 443 --yes
-firewall / Blocked [blocked.example] / 443 / For good / None / no → back
-firewall / Blocked [blocked.example] / 443 / For good / EXAMPLE_TOKEN / header / yes → o3s firewall add blocked.example --port 443 --secret EXAMPLE_TOKEN --inject header --yes
-firewall / Blocked [blocked.example] / 443 / For good / EXAMPLE_TOKEN / query / yes → o3s firewall add blocked.example --port 443 --secret EXAMPLE_TOKEN --inject query --yes
-firewall / Blocked [blocked.example] / 443 / For good / EXAMPLE_TOKEN / body / yes → o3s firewall add blocked.example --port 443 --secret EXAMPLE_TOKEN --inject body --yes
-firewall / Blocked [blocked.example] / 443 / For good / EXAMPLE_TOKEN / header, query, body / yes → o3s firewall add blocked.example --port 443 --secret EXAMPLE_TOKEN --inject header,query,body --yes
-firewall / Blocked [blocked.example] / 443 / For good / OTHER_TOKEN / header / yes → o3s firewall add blocked.example --port 443 --secret OTHER_TOKEN --inject header --yes
-firewall / Blocked [blocked.example] / 443 / For good / NEW_TOKEN / *** / header / yes → o3s secret add NEW_TOKEN --no-bind-hint; o3s firewall add blocked.example --port 443 --secret NEW_TOKEN --inject header --yes
-firewall / Blocked [blocked.example] / 443 / 1 hour / None / yes → o3s firewall add blocked.example --port 443 --for 1h --yes
-firewall / Blocked [blocked.example] / 443 / 8 hours / None / yes → o3s firewall add blocked.example --port 443 --for 8h --yes
-firewall / Blocked [blocked.example] / 443 / 1 day / None / yes → o3s firewall add blocked.example --port 443 --for 24h --yes
-firewall / Blocked [blocked.example] / 443 / 90m / None / yes → o3s firewall add blocked.example --port 443 --for 90m --yes
-firewall / Blocked [blocked.example] / 22, 443 / For good / None / yes → o3s firewall add blocked.example --port 22,443 --yes
-firewall / Blocked [blocked.example] / 22, 443 / For good / None / yes → o3s firewall add blocked.example --port 22,443 --yes
 project / Projects + Add a project… / example/app / yes → o3s firewall add github.com --port 22 --yes; o3s project add example/app
 project / Projects + Add a project… / example/app / no → back
 project / Projects + Create a project… / example/app → o3s project create example/app
@@ -183,7 +168,7 @@ update / Update [cli, tool] / yes → o3s update cli registry.example.com/featur
 update / Update [cli, stack] / yes → o3s update cli stack --yes [restart]
 update / Update [] → (Everything is up to date.)
 
-# stopped, 169 paths
+# stopped, 154 paths
 cage / Open in VS Code → o3s cage ide
 cage / Open a shell → o3s cage shell [terminal]
 cage / Start → o3s cage start
@@ -310,21 +295,6 @@ firewall / Allowed example.org / Change secret / EXAMPLE_TOKEN / header, query, 
 firewall / Allowed example.org / Change secret / OTHER_TOKEN / header / yes → o3s firewall add example.org --secret OTHER_TOKEN --inject header --yes
 firewall / Allowed example.org / Change secret / NEW_TOKEN / *** / header / yes → o3s secret add NEW_TOKEN --no-bind-hint; o3s firewall add example.org --secret NEW_TOKEN --inject header --yes
 firewall / Allowed example.org / Back → back
-firewall / Blocked [] → back
-firewall / Blocked [blocked.example] / 443 / For good / None / yes → o3s firewall add blocked.example --port 443 --yes
-firewall / Blocked [blocked.example] / 443 / For good / None / no → back
-firewall / Blocked [blocked.example] / 443 / For good / EXAMPLE_TOKEN / header / yes → o3s firewall add blocked.example --port 443 --secret EXAMPLE_TOKEN --inject header --yes
-firewall / Blocked [blocked.example] / 443 / For good / EXAMPLE_TOKEN / query / yes → o3s firewall add blocked.example --port 443 --secret EXAMPLE_TOKEN --inject query --yes
-firewall / Blocked [blocked.example] / 443 / For good / EXAMPLE_TOKEN / body / yes → o3s firewall add blocked.example --port 443 --secret EXAMPLE_TOKEN --inject body --yes
-firewall / Blocked [blocked.example] / 443 / For good / EXAMPLE_TOKEN / header, query, body / yes → o3s firewall add blocked.example --port 443 --secret EXAMPLE_TOKEN --inject header,query,body --yes
-firewall / Blocked [blocked.example] / 443 / For good / OTHER_TOKEN / header / yes → o3s firewall add blocked.example --port 443 --secret OTHER_TOKEN --inject header --yes
-firewall / Blocked [blocked.example] / 443 / For good / NEW_TOKEN / *** / header / yes → o3s secret add NEW_TOKEN --no-bind-hint; o3s firewall add blocked.example --port 443 --secret NEW_TOKEN --inject header --yes
-firewall / Blocked [blocked.example] / 443 / 1 hour / None / yes → o3s firewall add blocked.example --port 443 --for 1h --yes
-firewall / Blocked [blocked.example] / 443 / 8 hours / None / yes → o3s firewall add blocked.example --port 443 --for 8h --yes
-firewall / Blocked [blocked.example] / 443 / 1 day / None / yes → o3s firewall add blocked.example --port 443 --for 24h --yes
-firewall / Blocked [blocked.example] / 443 / 90m / None / yes → o3s firewall add blocked.example --port 443 --for 90m --yes
-firewall / Blocked [blocked.example] / 22, 443 / For good / None / yes → o3s firewall add blocked.example --port 22,443 --yes
-firewall / Blocked [blocked.example] / 22, 443 / For good / None / yes → o3s firewall add blocked.example --port 22,443 --yes
 project / Projects + Add a project… / example/app / yes → o3s firewall add github.com --port 22 --yes; o3s project add example/app
 project / Projects + Add a project… / example/app / no → back
 project / Projects + Create a project… / example/app → o3s project create example/app
@@ -354,7 +324,7 @@ update / Update [cli, tool] / yes → o3s update cli registry.example.com/featur
 update / Update [cli, stack] / yes → o3s update cli stack --yes [restart]
 update / Update [] → (Everything is up to date.)
 
-# empty, 31 paths
+# empty, 30 paths
 cage / Open in VS Code → o3s cage ide
 cage / Open a shell → o3s cage shell [terminal]
 cage / Start → o3s cage start
@@ -374,7 +344,6 @@ firewall / Allowed + Allow a host… / new.example.net *.example.org / 443 / 1 d
 firewall / Allowed + Allow a host… / new.example.net *.example.org / 443 / 90m / None / yes → o3s firewall add new.example.net *.example.org --port 443 --for 90m --yes
 firewall / Allowed + Allow a host… / new.example.net *.example.org / 22, 443 / For good / None / yes → o3s firewall add new.example.net *.example.org --port 22,443 --yes
 firewall / Allowed + Allow a host… / new.example.net *.example.org / 22, 443 / For good / None / yes → o3s firewall add new.example.net *.example.org --port 22,443 --yes
-firewall / Blocked [] → back
 project / Projects + Add a project… / example/app / yes → o3s firewall add github.com --port 22 --yes; o3s project add example/app
 project / Projects + Add a project… / example/app / no → back
 project / Projects + Create a project… / example/app → o3s project create example/app

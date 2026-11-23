@@ -382,7 +382,7 @@ func TestProxyShowsACertificateStrictClientsAccept(t *testing.T) {
 	}
 }
 
-// A host whose certificate fails the proxy's check is left unreached, and the cage hears of a bad gateway.
+// A host whose certificate fails the proxy's check is left unreached, and the cage hears 502 Bad Gateway.
 func TestProxyRefusesAHostItCannotTrust(t *testing.T) {
 	ca, roots := certtest.CA(t)
 	s, got := recording(t, silent)
@@ -405,7 +405,7 @@ func TestProxyRefusesAHostItCannotTrust(t *testing.T) {
 
 	status, _, _ := send(t, c, http.MethodGet, hostURL("/"), http.Header{"Authorization": {"Bearer " + fixture.Marker}}, "")
 
-	// Require a bad gateway and an empty record at the host
+	// Require 502 Bad Gateway and an empty record at the host
 	if status != http.StatusBadGateway || len(got) != 0 {
 		t.Errorf("GET %s to an untrusted host = %d with %d reaching it, want %d and none", hostURL("/"), status, len(got), http.StatusBadGateway)
 	}
@@ -420,7 +420,7 @@ func TestProxyWithholdsAnAnswerItCannotRead(t *testing.T) {
 
 	status, _, body := send(t, in.client, http.MethodGet, hostURL("/"), http.Header{"Accept-Encoding": {"br"}}, "")
 
-	// Require a bad gateway and a body free of the secret
+	// Require 502 Bad Gateway and a body free of the secret
 	if status != http.StatusBadGateway || strings.Contains(body, fixture.TokenValue) {
 		t.Errorf("GET %s answered in br = %d %q, want %d without the secret", hostURL("/"), status, body, http.StatusBadGateway)
 	}

@@ -11,7 +11,7 @@
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset=".github/assets/architecture-dark.excalidraw.svg">
-    <img src=".github/assets/architecture.excalidraw.svg" alt="Agents work side by side in the cage alongside predefined and self-built features; every connection they open goes through the gateway, which holds the allowlist and the secrets, and is either allowed out to the internet or denied" width="100%">
+    <img src=".github/assets/architecture.excalidraw.svg" alt="Agents work side by side in the cage alongside predefined and self-built features; every connection they open goes through o3s on the host, which holds the allowlist and the secrets, and is either allowed out to the internet or denied" width="100%">
   </picture>
 </p>
 

@@ -20,27 +20,20 @@ const (
 	remove       = "remove"
 )
 
-// firewallView shows the hosts the cage reaches and the names the firewall refused.
+// firewallView shows the hosts the cage reaches.
 func firewallView(h Home) Question {
 	allowed := Tab{Name: "Allowed", About: "The cage reaches only these hosts.", Header: HostHeader, Options: []Option{{Value: add, Label: "+ Allow a host…"}}}
 	expired := false
-	// Show every host with its ports, its traffic, when it closes, its secret and who needs it
+	// Show every host with its ports, when it closes, its secret and who needs it
 	for _, host := range h.Hosts {
-		t := h.Traffic[host.Name]
-		allowed.Options = append(allowed.Options, Option{Value: host.Name, Columns: HostRow(host, t, waits(h, host.Secret), h.Now)})
+		allowed.Options = append(allowed.Options, Option{Value: host.Name, Columns: HostRow(host, waits(h, host.Secret), h.Now)})
 		expired = expired || host.Expired(h.Now)
 	}
 	// Offer to prune where a host has expired
 	if expired {
 		allowed.Keys = []Key{{Key: "p", Help: "prune expired", Value: prune}}
 	}
-	blocked := Tab{Name: "Blocked", About: "Names the cage asked for and the firewall refused, last 30 days.", Header: BlockedHeader, Multi: true, Options: h.Blocked}
-	blocked.Empty = "Nothing blocked yet. Names the cage asks for and the firewall refuses show here."
-	// Name where the blocked names come from while the stack is down
-	if !h.Running {
-		blocked.Empty = "Blocked names show while the stack runs. Open the cage to start it."
-	}
-	return Question{Key: "view", Kind: View, Title: "Firewall", Tabs: []Tab{allowed, blocked}}
+	return Question{Key: "view", Kind: View, Title: "Firewall", Tabs: []Tab{allowed}}
 }
 
 // firewallDialog asks what allowing, changing, removing or pruning hosts needs, starting at the firewall's view.
@@ -49,13 +42,11 @@ func firewallDialog(h Home, a Answers) (Question, bool) {
 	if !a.has("view") {
 		return firewallView(h), false
 	}
-	tab, picked := view(a)
+	_, picked := view(a)
 	// Follow what the user picked
 	switch {
 	case len(picked) == 0:
 		return Question{}, true
-	case tab == "Blocked":
-		return allowDialog(h, a, picked)
 	case picked[0] == add:
 		// Ask for the hosts first
 		if !a.has("hosts") {
@@ -191,7 +182,7 @@ func secretQuestion(withNone bool) func(Home, Answers) (Question, bool) {
 
 // firewallPlan builds the commands the firewall's dialogs lead to.
 func firewallPlan(_ Home, a Answers) []Command {
-	tab, picked := view(a)
+	_, picked := view(a)
 	// Go back to the view where the pick is empty or the user stepped back
 	if len(picked) == 0 || a.get("action") == back {
 		return nil
@@ -207,8 +198,6 @@ func firewallPlan(_ Home, a Answers) []Command {
 	}
 	// Build the command of what the user picked
 	switch {
-	case tab == "Blocked":
-		return append(cmds, Command{Args: allowArgs(a, picked)})
 	case picked[0] == add:
 		return append(cmds, Command{Args: allowArgs(a, strings.Fields(a.get("hosts")))})
 	case picked[0] == prune:
@@ -371,7 +360,6 @@ func expiredHosts(h Home) []config.Host {
 
 // hostFacts are the facts a host's detail shows.
 func hostFacts(h Home, host config.Host) []Fact {
-	t := h.Traffic[host.Name]
 	secret := "none"
 	// Name the secret and where it goes
 	if host.Secret != "" {
@@ -379,8 +367,6 @@ func hostFacts(h Home, host config.Host) []Fact {
 	}
 	return []Fact{
 		{Label: "Ports", Value: config.JoinPorts(host.Ports)},
-		{Label: "Data", Value: words.Or(t.Data, "–")},
-		{Label: "Last seen", Value: words.Or(t.Seen, "–")},
 		{Label: "Closes", Value: words.Or(config.Until(host.Expires, h.Now), "for good")},
 		{Label: "Secret", Value: secret},
 		{Label: "Needed by", Value: words.JoinAnd(host.By)},
@@ -402,25 +388,17 @@ func spoken(d time.Duration) string {
 }
 
 // HostHeader labels a host's row, piped and in the firewall's view.
-var HostHeader = []string{"HOST", "PORTS", "DATA", "LAST SEEN", "CLOSES", "SECRET", "BY"}
+var HostHeader = []string{"HOST", "PORTS", "CLOSES", "SECRET", "BY"}
 
-// BlockedHeader labels a refused name's row, piped and in the firewall's view.
-var BlockedHeader = []string{"NAME", "ATTEMPTS", "LAST SEEN"}
-
-// BlockedRow is how a refused name shows in a row, piped or in the firewall's view: how often and when it was refused.
-func BlockedRow(attempts int64, seen string) []string {
-	return []string{strconv.FormatInt(attempts, 10), seen}
-}
-
-// HostRow is how a host shows in a row of the firewall, piped or in its view: its ports, the data it moved, when it
-// last moved any, when it closes, its secret marked while it waits for a value, and who needs it.
-func HostRow(host config.Host, t Traffic, waiting bool, now time.Time) []string {
+// HostRow is how a host shows in a row of the firewall, piped or in its view: its ports, when it closes, its secret
+// marked while it waits for a value, and who needs it.
+func HostRow(host config.Host, waiting bool, now time.Time) []string {
 	secret := host.Secret
 	// Mark a secret that waits for its value
 	if waiting {
 		secret += " !"
 	}
-	return []string{config.JoinPorts(host.Ports), words.Or(t.Data, "–"), words.Or(t.Seen, "–"), words.Or(config.Until(host.Expires, now), "for good"), secret, strings.Join(host.By, ", ")}
+	return []string{config.JoinPorts(host.Ports), words.Or(config.Until(host.Expires, now), "for good"), secret, strings.Join(host.By, ", ")}
 }
 
 // SecretHeader labels a secret's row, piped and in the secret view.

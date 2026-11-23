@@ -6,7 +6,7 @@ exec o3s init --guest
 pty o3s
 screen '❯ cage'
 keys fir enter
-screen 'Firewall +Allowed +Blocked'
+screen 'The cage reaches only these hosts'
 keys enter
 screen 'A name, a wildcard, an IPv4 address or an IPv4 range'
 keys $NEW_HOST enter

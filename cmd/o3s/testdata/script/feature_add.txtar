@@ -37,7 +37,6 @@ stderr 'unknown feature .*/features/absent'
 stderr 'invalid feature "tool"'
 stderr 'for usage'
 
--- stack-up --
 -- o3s.json --
 {"$schema": "./.devcontainer/o3s.schema.json", "stores": [], "hosts": [{"name": "example.com", "ports": [22], "by": ["user"]}]}
 -- .devcontainer/devcontainer.json --

@@ -15,7 +15,6 @@
         "deps",
         "dns",
         "docs",
-        "gateway",
         "proxy",
         "relay",
         "repo",

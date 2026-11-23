@@ -300,14 +300,14 @@ func TestProxyRefusesATunnelWithoutAPort(t *testing.T) {
 	}
 }
 
-// A listed host that cannot be reached is reported as a bad gateway.
+// A listed host that cannot be reached is reported as 502 Bad Gateway.
 func TestProxyReportsAnUnreachableHost(t *testing.T) {
 	p, _, _ := proxying(t, listed(fixture.Port))
 	addr := net.JoinHostPort(fixture.Host, strconv.Itoa(fixture.Port))
 
 	status, _, _ := rawRequest(t, p, "CONNECT "+addr+" HTTP/1.1\r\nHost: "+addr+"\r\n\r\n")
 
-	// Require the failure to name the gateway
+	// Require the 502 Bad Gateway status
 	if status != http.StatusBadGateway {
 		t.Errorf("CONNECT %s to nowhere = %d, want %d", addr, status, http.StatusBadGateway)
 	}
