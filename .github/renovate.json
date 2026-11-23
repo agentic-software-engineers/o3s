@@ -80,6 +80,12 @@
       "minimumReleaseAge": "0 days"
     },
     {
+      "description": "The linter and release tool versions sit in an action's version input, which takes a version alone.",
+      "matchManagers": ["github-actions"],
+      "matchDepNames": ["golangci/golangci-lint", "goreleaser/goreleaser"],
+      "pinDigests": false
+    },
+    {
       "description": "Images tracking a rolling tag do not need a digest pin.",
       "matchPackageNames": [
         "ghcr.io/hansehart/o3s-cage",
