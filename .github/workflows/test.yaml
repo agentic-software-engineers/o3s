@@ -93,11 +93,54 @@ jobs:
       - name: Run the tests
         run: go test -race -count=1 ./...
 
+  cage-image:
+    # build the cage image from this commit once per architecture, which every long check then loads, once lint and the
+    # unit tests pass
+    # leave the long checks to a pull request labeled verify, a release candidate's tag and the daily run
+    if: github.event_name == 'schedule' || github.ref_type == 'tag' || contains(github.event.pull_request.labels.*.name, 'verify')
+    needs: [go-test, golangci-lint]
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [ubuntu-24.04, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.runner }}
+    steps:
+      # check out the repo so the build has the Dockerfile and the bridge's source
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # name the commit the image carries, which the suites hold the loaded image to
+      - id: revision
+        run: echo "revision=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      # enable the buildx container driver, which saves an image as an archive
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      # build the image under the name a home's stack runs and save it as an archive docker load reads
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: images/cage/Dockerfile
+          tags: ghcr.io/hansehart/o3s-cage:latest
+          labels: org.opencontainers.image.revision=${{ steps.revision.outputs.revision }}
+          outputs: type=docker,dest=${{ runner.temp }}/cage.tar
+          provenance: false
+          sbom: false
+
+      # hand the archive to the jobs on this architecture for the rest of the run
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: cage-${{ runner.arch }}
+          path: ${{ runner.temp }}/cage.tar
+          retention-days: 1
+          if-no-files-found: error
+
   stack:
     # run the suite on every supported release and every architecture the images ship for, once lint and the unit tests pass
     # leave the long checks to a pull request labeled verify, a release candidate's tag and the daily run
     if: github.event_name == 'schedule' || github.ref_type == 'tag' || contains(github.event.pull_request.labels.*.name, 'verify')
-    needs: [golangci-lint, go-test]
+    needs: [cage-image, go-test, golangci-lint]
     strategy:
       fail-fast: false
       matrix:
@@ -119,6 +162,12 @@ jobs:
       - name: Require AppArmor
         run: aa-enabled
 
+      # fetch the cage image this run built for this architecture
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: cage-${{ runner.arch }}
+          path: ${{ runner.temp }}/cage
+
       # install the Go toolchain the module names
       - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
         with:
@@ -135,8 +184,10 @@ jobs:
           HOME="${home}" O3S_RELEASE_URL="file://${release}" sh install.sh
           "${home}/.local/share/o3s/devcontainers/bin/devcontainer" --version
 
-      # run the tests that raise one component of the stack, built from this branch
+      # run the tests that raise one component of the stack, on the cage image this run built
       - name: Run the integration tests
+        env:
+          O3S_CAGE_ARCHIVE: ${{ runner.temp }}/cage/cage.tar
         run: go test -tags integration -count=1 -v ./test/integration/...
 
       # install the CLI this host's editor raises the stack with, at the version the lockfile pins
@@ -148,6 +199,7 @@ jobs:
       # run the tests that raise the whole stack on this host, the way the editor raises it
       - name: Run the e2e tests
         env:
+          O3S_CAGE_ARCHIVE: ${{ runner.temp }}/cage/cage.tar
           # let bake read the Dockerfile the CLI writes outside the build context, which the runners' Compose
           # withholds by default
           BUILDX_BAKE_ENTITLEMENTS_FS: 0
@@ -177,7 +229,7 @@ jobs:
 
   usage:
     # use o3s the way a user does on the real stack, one setup per job, once lint and the unit tests pass
-    needs: [golangci-lint, go-test, usage-setups]
+    needs: [cage-image, go-test, golangci-lint, usage-setups]
     strategy:
       fail-fast: false
       matrix:
@@ -193,6 +245,12 @@ jobs:
       # require the confinement the stack runs under
       - name: Require AppArmor
         run: aa-enabled
+
+      # fetch the cage image this run built for this architecture
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: cage-${{ runner.arch }}
+          path: ${{ runner.temp }}/cage
 
       # install the Go toolchain the module names
       - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
@@ -217,6 +275,7 @@ jobs:
       # use o3s on the job's setup
       - name: Run the usage suite
         env:
+          O3S_CAGE_ARCHIVE: ${{ runner.temp }}/cage/cage.tar
           # let bake read the Dockerfile the CLI writes outside the build context, which the runners' Compose
           # withholds by default
           BUILDX_BAKE_ENTITLEMENTS_FS: 0
@@ -228,7 +287,7 @@ jobs:
     # once lint and the unit tests pass
     # leave the long checks to a pull request labeled verify, a release candidate's tag and the daily run
     if: github.event_name == 'schedule' || github.ref_type == 'tag' || contains(github.event.pull_request.labels.*.name, 'verify')
-    needs: [golangci-lint, go-test]
+    needs: [cage-image, go-test, golangci-lint]
     strategy:
       fail-fast: false
       matrix:
@@ -240,6 +299,12 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+
+      # fetch the cage image this run built for this architecture
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: cage-${{ runner.arch }}
+          path: ${{ runner.temp }}/cage
 
       # install the Go toolchain the module names
       - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
@@ -265,13 +330,15 @@ jobs:
 
       # run the suite that boots the home's VM through the o3s CLI
       - name: Run the VM tests
+        env:
+          O3S_CAGE_ARCHIVE: ${{ runner.temp }}/cage/cage.tar
         run: go test -tags e2e -count=1 -timeout 60m -v ./test/e2e/vm/...
 
   hcs:
     # boot a home's VM on Windows, on the runner whose user is an Administrator, once lint and the unit tests pass
     # leave the long checks to a pull request labeled verify, a release candidate's tag and the daily run
     if: github.event_name == 'schedule' || github.ref_type == 'tag' || contains(github.event.pull_request.labels.*.name, 'verify')
-    needs: [golangci-lint, go-test]
+    needs: [cage-image, go-test, golangci-lint]
     runs-on: windows-2025
     timeout-minutes: 70
     steps:
@@ -285,6 +352,12 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+
+      # fetch the cage image this run built for this architecture
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: cage-${{ runner.arch }}
+          path: ${{ runner.temp }}/cage
 
       # install the Go toolchain the module names
       - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7.1.0
@@ -314,6 +387,8 @@ jobs:
 
       # run the suite that boots the home's VM through the o3s CLI
       - name: Run the VM tests
+        env:
+          O3S_CAGE_ARCHIVE: ${{ runner.temp }}/cage/cage.tar
         run: go test -tags e2e -count=1 -timeout 60m -v ./test/e2e/vm/...
 
   merge-checks:
@@ -321,10 +396,10 @@ jobs:
     # unlabeled or a release candidate's, and holding a stable release's pull request until it is labeled verify and
     # they ran green
     if: always()
-    needs: [stack, usage-setups, usage, unix, hcs]
+    needs: [cage-image, hcs, stack, unix, usage, usage-setups]
     runs-on: ubuntu-latest
     steps:
       - uses: re-actors/alls-green@b5b5b37504aa4183270bd3d855c52a67f212be35 # v1.3.0
         with:
-          allowed-skips: ${{ github.event_name != 'schedule' && github.ref_type != 'tag' && !contains(github.event.pull_request.labels.*.name, 'verify') && (github.head_ref != 'release-please--branches--main' || contains(github.event.pull_request.title, '-rc.')) && 'stack, usage-setups, usage, unix, hcs' || '' }}
+          allowed-skips: ${{ github.event_name != 'schedule' && github.ref_type != 'tag' && !contains(github.event.pull_request.labels.*.name, 'verify') && (github.head_ref != 'release-please--branches--main' || contains(github.event.pull_request.title, '-rc.')) && 'cage-image, hcs, stack, unix, usage, usage-setups' || '' }}
           jobs: ${{ toJSON(needs) }}

@@ -2,14 +2,14 @@
 #        compose.dev.yaml — development overlay running a second o3s stack from this checkout
 #
 # DESCRIPTION
-#        Renames the stack and builds the cage image from this checkout, so the o3s under
+#        Renames the stack and runs the cage image built from this checkout, so the o3s under
 #        development runs beside the o3s in daily use.
 #
 # USAGE
-#        The stack tests layer this file over a home's compose.yaml, so every image comes
-#        from the checkout under test. By hand, from a home made by o3s init, with
-#        O3S_IMAGES=<checkout>/images docker compose -f .devcontainer/compose.yaml
-#        -f <checkout>/test/stacktest/compose.dev.yaml up --build.
+#        The stack tests layer this file over a home's compose.yaml once they loaded the cage
+#        image built from the commit under test. By hand, from a home made by o3s init, with
+#        that image loaded, docker compose -f .devcontainer/compose.yaml
+#        -f <checkout>/test/stacktest/compose.dev.yaml up.
 #
 # SEE ALSO
 #        compose.yaml, devcontainer.json
@@ -19,12 +19,8 @@ name: o3s-dev
 
 services:
   cage:
-    # Build the cage image from this checkout's root, which Dev Containers then layers features onto
-    build:
-      context: ${O3S_IMAGES:?name the checkout's images folder}/..
-      dockerfile: images/cage/Dockerfile
-    image: o3s-cage:dev
-    pull_policy: build
+    # Run the loaded cage image alone, so a missing load fails instead of pulling a release
+    pull_policy: never
     volumes:
       # The home, writable while o3s is under development
       - ../:/home/ubuntu/o3s

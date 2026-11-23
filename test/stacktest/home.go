@@ -38,7 +38,6 @@ func aHome(tb testing.TB) string {
 	tb.Cleanup(func() { _ = os.RemoveAll(runtimeDir) })
 	// Keep the host process's sockets in a short folder of the test's own
 	tb.Setenv("XDG_RUNTIME_DIR", runtimeDir)
-	tb.Setenv("O3S_IMAGES", filepath.Join(Repo(tb), "images"))
 	dir := filepath.Join(tb.TempDir(), "home")
 	// Stop when the home's folder fails to appear, open to read as a folder a user makes with mkdir
 	if err := os.Mkdir(dir, 0o755); err != nil { //nolint:gosec // the cage's user reads the home through its mount
@@ -51,6 +50,7 @@ func aHome(tb testing.TB) string {
 	if err != nil {
 		tb.Fatalf("Setup: o3s init: %v\n%s", err, out)
 	}
+	ACage(tb)
 	homes.Store(tb, dir)
 	tb.Cleanup(func() { homes.Delete(tb) })
 	tb.Cleanup(func() {
@@ -69,7 +69,7 @@ func o3sBinary(tb testing.TB) string {
 	if runtime.GOOS == "windows" {
 		path += ".exe"
 	}
-	cmd := exec.CommandContext(tb.Context(), "go", "build", "-o", path, "./cmd/o3s")
+	cmd := exec.CommandContext(tb.Context(), "go", "build", "-buildvcs=false", "-o", path, "./cmd/o3s")
 	cmd.Dir = Repo(tb)
 	out, err := cmd.CombinedOutput()
 	// Stop when the binary fails to build

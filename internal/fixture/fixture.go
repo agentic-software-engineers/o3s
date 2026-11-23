@@ -140,6 +140,8 @@ const (
 	FurtherCandidate = "3.0.0-rc.1"
 	// DevBuild is a build outside every release.
 	DevBuild = "1.0.0-SNAPSHOT-abc1234"
+	// Commit is a full commit ID other than the one a checkout holds.
+	Commit = "0123456789abcdef0123456789abcdef01234567"
 )
 
 // Tags a feature carries.
@@ -275,6 +277,7 @@ func Env() map[string]string {
 		"NEXT_CANDIDATE":      NextCandidate,
 		"FURTHER_CANDIDATE":   FurtherCandidate,
 		"DEV_BUILD":           DevBuild,
+		"COMMIT":              Commit,
 		"MAJOR":               Major,
 		"TOGGLE":              Toggle,
 		"CHOICE":              Choice,
