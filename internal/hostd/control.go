@@ -18,6 +18,9 @@ const versionHeader = "O3s-Version"
 // headerTimeout bounds how long the control socket waits for a request's header.
 const headerTimeout = 10 * time.Second
 
+// shutdownGrace bounds how long the control socket lets the answers under way finish once the process stops.
+const shutdownGrace = 5 * time.Second
+
 // Info is what a running host process says about itself.
 type Info struct {
 	// Version is the o3s version the process runs.
@@ -70,9 +73,21 @@ func ServeControl(ctx context.Context, l net.Listener, info Info, stop context.C
 		BaseContext:       func(net.Listener) context.Context { return ctx },
 		ErrorLog:          slog.NewLogLogger(log.Handler(), slog.LevelDebug),
 	}
-	done := context.AfterFunc(ctx, func() { _ = srv.Close() })
-	defer done()
+	finished := make(chan struct{})
+	ending := context.AfterFunc(ctx, func() {
+		defer close(finished)
+		grace, cancel := context.WithTimeout(context.WithoutCancel(ctx), shutdownGrace)
+		defer cancel()
+		// Deliver every answer under way, the shutdown's own included, then close what outlasts the grace
+		if err := srv.Shutdown(grace); err != nil {
+			_ = srv.Close()
+		}
+	})
 	err := srv.Serve(l)
+	// Wait for the answers under way where the stop has begun
+	if !ending() {
+		<-finished
+	}
 	// Report a server that stopped once the context ended as a clean stop
 	if errors.Is(err, http.ErrServerClosed) {
 		return nil
