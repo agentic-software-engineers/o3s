@@ -27,17 +27,23 @@ func aPlace(t *testing.T) hostd.Place {
 	return p
 }
 
-// controlled serves the control socket at the place with the info until the test ends or a shutdown arrives, and
-// hands back a channel that closes once it stops.
+// controlled stands in for a host process: it holds the place's home and serves the control socket with the info until
+// the test ends or a shutdown arrives, and hands back a channel that closes once it stops.
 func controlled(t *testing.T, p hostd.Place, info hostd.Info) <-chan struct{} {
 	t.Helper()
-	return serveControl(t, p, info, true)
+	return serveControl(t, p, info, true, nil)
 }
 
-// serveControl serves the control socket at the place with the info until the test ends, and until a shutdown arrives
-// where it obeys one, and hands back a channel that closes once it stops.
-func serveControl(t *testing.T, p hostd.Place, info hostd.Info, obey bool) <-chan struct{} {
+// serveControl stands in for a host process: it holds the place's home and serves the control socket with the info until
+// the test ends, a shutdown arrives where it obeys one, or ends closes, and hands back a channel that closes once it
+// stops. It lets go of the home right after, the way a process that ends does.
+func serveControl(t *testing.T, p hostd.Place, info hostd.Info, obey bool, ends <-chan struct{}) <-chan struct{} {
 	t.Helper()
+	lock, err := hostd.TryLock(p.Lock())
+	// Stop when the home stays held
+	if err != nil {
+		t.Fatalf("Setup: TryLock = %v", err)
+	}
 	l, err := hostd.ListenControl(t.Context(), p.Control())
 	// Stop when the control socket fails to listen
 	if err != nil {
@@ -49,8 +55,16 @@ func serveControl(t *testing.T, p hostd.Place, info hostd.Info, obey bool) <-cha
 	if !obey {
 		onShutdown = func() {}
 	}
+	// End with the process the stand-in names, where it names one
+	if ends != nil {
+		go func() {
+			<-ends
+			stop()
+		}()
+	}
 	done := make(chan struct{})
 	go func() {
+		defer func() { _ = lock.Release() }()
 		defer close(done)
 		_ = hostd.ServeControl(ctx, l, info, onShutdown, slog.New(slog.DiscardHandler))
 	}()
