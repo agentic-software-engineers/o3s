@@ -18,9 +18,8 @@ cage
 
 Cage
 
-  Cage      stopped
-  Gateway   stopped
-  Proxy     stopped
+  Cage   stopped
+  Host   stopped
 
 ❯ Open in VS Code
   Open a shell

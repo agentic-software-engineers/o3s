@@ -91,7 +91,7 @@ func parse(arg string) (Repository, error) {
 			return Repository{}, err
 		}
 		port := map[string]int{"ssh": 22, "https": 443}[u.Scheme]
-		// Take the two schemes the gateway lets through as a clone
+		// Take the two schemes the allowlist lets through as a clone
 		if port == 0 {
 			return Repository{}, fmt.Errorf("scheme %q, want ssh or https", u.Scheme)
 		}

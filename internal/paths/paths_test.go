@@ -66,3 +66,31 @@ func TestHomeNamesAFolderPerHome(t *testing.T) {
 		t.Errorf("Home() = %q, %q, %q, want one stable 12-character folder per home below /state/o3s", a, again, b)
 	}
 }
+
+// A home's sockets live in a folder of its own in the runtime folder where the system names one, and in the home's state
+// folder otherwise, with the cage's sockets in a subfolder of their own.
+func TestSocketsFollowTheRuntimeFolder(t *testing.T) {
+	t.Setenv("XDG_STATE_HOME", "/state")
+	home := "/home/user/o3s"
+	tests := map[string]struct {
+		runtime string
+		want    string
+	}{
+		"runtime folder":    {"/run/user/1000", filepath.Join("/run/user/1000", "o3s", paths.ID(home))},
+		"no runtime folder": {"", paths.Home(home)},
+		"relative runtime":  {"run", paths.Home(home)},
+	}
+	// Check each runtime setting on its own
+	for label, tt := range tests {
+		t.Run(label, func(t *testing.T) {
+			t.Setenv("XDG_RUNTIME_DIR", tt.runtime)
+
+			got := []string{paths.Sockets(home), paths.CageSockets(home)}
+
+			// Require the folder and the cage's subfolder in it
+			if diff := cmp.Diff([]string{tt.want, filepath.Join(tt.want, "cage")}, got); diff != "" {
+				t.Errorf("sockets (-want +got):\n%s", diff)
+			}
+		})
+	}
+}

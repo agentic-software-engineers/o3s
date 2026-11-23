@@ -8,6 +8,7 @@ package usage_test
 
 import (
 	"context"
+	"fmt"
 	"maps"
 	"os"
 	"os/exec"
@@ -156,6 +157,18 @@ func (u *user) cageRuns() bool {
 	return err == nil && strings.TrimSpace(string(out)) != ""
 }
 
+// containers lists every container of the home with its state, creation time, project and command, for a log.
+func (u *user) containers() string {
+	out, err := exec.CommandContext(u.t.Context(), "docker", "ps", "-a",
+		"--filter", "label=com.docker.compose.project.working_dir="+filepath.Join(u.home, ".devcontainer"),
+		"--format", `{{.ID}} {{.Status}} created {{.CreatedAt}} project {{.Label "com.docker.compose.project"}} {{.Command}}`).CombinedOutput()
+	// Name the failure where the engine stays silent
+	if err != nil {
+		return fmt.Sprintf("docker ps = %v\n%s", err, out)
+	}
+	return string(out)
+}
+
 // inCage runs a command in the cage the way o3s runs it there, and reports whether it succeeded within the test's
 // patience.
 func (u *user) inCage(command ...string) bool {
@@ -274,6 +287,10 @@ var events = []event{
 	}},
 	{name: "stop the cage", args: []string{"cage", "stop"}, holds: func(u *user) string {
 		running := u.cageRuns()
+		// Log every container of the home where one still runs, so the log shows how it came back
+		if running {
+			u.t.Logf("containers of the home after the stop:\n%s", u.containers())
+		}
 		return unless(!running, "the cage still runs")
 	}},
 	{name: "start the cage", args: []string{"cage", "start"}, holds: func(u *user) string {
@@ -296,20 +313,22 @@ type fault struct {
 	start, end func(u *user)
 }
 
+// cutWeb adds or deletes the rule that rejects this user's outgoing web traffic, the host process's way out.
+func cutWeb(u *user, op string) {
+	_ = exec.CommandContext(u.t.Context(), "sudo", "iptables", op, "OUTPUT", "-p", "tcp", "-m", "multiport", "--dports", "80,443",
+		"-m", "owner", "--uid-owner", strconv.Itoa(os.Getuid()), "-j", "REJECT").Run()
+}
+
 // faults are the failures the setups name, by name.
 var faults = map[string]fault{
 	"none": {start: func(*user) {}, end: func(*user) {}},
 	"proxy-down": {
-		start: func(u *user) { _, _ = stacktest.Compose(u.t, "stop", "proxy") },
-		end:   func(u *user) { _, _ = stacktest.Compose(u.t, "start", "proxy") },
+		start: func(u *user) { _, _ = stacktest.O3s(u.t, "host", "stop") },
+		end:   func(u *user) { _, _ = stacktest.O3s(u.t, "host", "start") },
 	},
 	"network-cut": {
-		start: func(u *user) {
-			_ = exec.CommandContext(u.t.Context(), "sudo", "iptables", "-I", "DOCKER-USER", "-j", "REJECT").Run()
-		},
-		end: func(u *user) {
-			_ = exec.CommandContext(u.t.Context(), "sudo", "iptables", "-D", "DOCKER-USER", "-j", "REJECT").Run()
-		},
+		start: func(u *user) { cutWeb(u, "-I") },
+		end:   func(u *user) { cutWeb(u, "-D") },
 	},
 	"registry-down": {
 		start: func(u *user) { u.unreachable = true },

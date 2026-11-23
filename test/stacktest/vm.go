@@ -1,6 +1,7 @@
 package stacktest
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"fmt"
 	"os"
@@ -133,4 +134,26 @@ func O3sIn(tb testing.TB, dir string, args ...string) (string, error) {
 		return stdout.String(), fmt.Errorf("o3s %s: %w\n%s", strings.Join(args, " "), err, stderr.String())
 	}
 	return stdout.String(), nil
+}
+
+// ABranchCageIn builds the cage image from this branch inside the home's VM, under the name the stack runs, so the VM
+// raises the cage under review rather than the one last released.
+func ABranchCageIn(tb testing.TB, dir string) {
+	tb.Helper()
+	archive := exec.CommandContext(tb.Context(), "git", "archive", "--format=tar", "HEAD")
+	archive.Dir = Repo(tb)
+	tarball, err := archive.Output()
+	// Stop when the branch fails to pack
+	if err != nil {
+		tb.Fatalf("Setup: git archive: %v", err)
+	}
+	build := exec.CommandContext(tb.Context(), "o3s", "cage", "shell", "--vm", "--",
+		"docker", "build", "-q", "-t", "ghcr.io/hansehart/o3s-cage:latest", "-f", "images/cage/Dockerfile", "-")
+	build.Dir = dir
+	build.Stdin = bytes.NewReader(tarball)
+	out, err := build.CombinedOutput()
+	// Stop when the branch's cage fails to build in the VM
+	if err != nil {
+		tb.Fatalf("Setup: build the branch's cage in the VM: %v\n%s", err, out)
+	}
 }

@@ -3,8 +3,8 @@
 //
 // DESCRIPTION
 //        The sandboxed dev container: the o3s-cage image plus layered features, the remote
-//        user, and the cage's scripts. Egress is forced through the o3s gateway and secrets
-//        are injected through the proxy.
+//        user, and the cage's scripts. Egress leads through the host's o3s process alone,
+//        which holds the allowlist and swaps the secrets in.
 //
 // SEE ALSO
 //        compose.yaml, o3s.json, https://containers.dev
@@ -23,9 +23,9 @@
     "remoteUser": "ubuntu",
     // Which folder is the default inside the dev container
     "workspaceFolder": "/home/ubuntu/o3s",
-    // Prepare this host before every start, with its proxy CA, the cage's confinement and the values compose reads
+    // Prepare this host before every start, with its proxy CA, the cage's confinement, the values compose reads and the host process
     "initializeCommand": "o3s init",
-    // Probe that egress reaches the gateway on every container start
+    // Probe that egress leads through the host process alone on every container start
     "postStartCommand": "bash .devcontainer/cage/check-egress.sh",
     // VSCode settings
     "customizations": {

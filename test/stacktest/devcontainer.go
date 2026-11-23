@@ -9,6 +9,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 )
 
 // Raised is what the devcontainer CLI reports about the stack it raised.
@@ -38,7 +39,29 @@ func DevcontainerUp(tb testing.TB) (Raised, error) {
 	if err := json.Unmarshal([]byte(out), &raised); err != nil {
 		return Raised{}, fmt.Errorf("read the devcontainer result %q: %w", out, err)
 	}
-	return raised, nil
+	return raised, healthy(tb, raised.ContainerID)
+}
+
+// healthyWait is how long a cage may take to report healthy, its bridge to the host's sockets ready.
+const healthyWait = time.Minute
+
+// healthy waits until the container reports healthy, as compose's own wait does.
+func healthy(tb testing.TB, id string) error {
+	tb.Helper()
+	deadline := time.Now().Add(healthyWait)
+	// Ask again until the container reports healthy or the time runs out
+	for {
+		state, err := run(tb.Context(), tb, "docker", "inspect", "--format", "{{.State.Health.Status}}", id)
+		// Hand back the container once it reports healthy
+		if err == nil && strings.TrimSpace(state) == "healthy" {
+			return nil
+		}
+		// Report a container that stays unhealthy past the wait
+		if time.Now().After(deadline) {
+			return fmt.Errorf("container %s reports %q after %s, want healthy", id, strings.TrimSpace(state), healthyWait)
+		}
+		time.Sleep(time.Second)
+	}
 }
 
 // ContainerExec runs a command in a running container and hands back what it printed.

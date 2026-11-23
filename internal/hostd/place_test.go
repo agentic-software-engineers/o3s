@@ -70,3 +70,17 @@ func TestPlaceRefusesALongSocketPath(t *testing.T) {
 		t.Errorf("PlaceOf with a deep runtime folder = %v, want ErrPathTooLong", err)
 	}
 }
+
+// The cage's sockets go into a folder of their own inside the sockets folder, apart from the control socket.
+func TestPlaceKeepsTheCageSocketsApart(t *testing.T) {
+	t.Setenv("XDG_RUNTIME_DIR", shortDir(t))
+	t.Setenv("XDG_STATE_HOME", shortDir(t))
+
+	p, err := hostd.PlaceOf(fixture.HomeDir)
+
+	info, statErr := os.Stat(p.Cage)
+	// Require the cage's folder inside the sockets folder, standing, with the control socket outside it
+	if err != nil || statErr != nil || !info.IsDir() || filepath.Dir(p.Cage) != p.Sockets || filepath.Dir(p.Control()) != p.Sockets {
+		t.Errorf("PlaceOf = %+v, %v, cage folder %v, want the cage folder inside %q and the control socket beside it", p, err, statErr, p.Sockets)
+	}
+}

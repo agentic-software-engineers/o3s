@@ -6,8 +6,21 @@
 #        loaded into every shell, one PATH entry per directory, and the system's CA bundle as
 #        the trust store of every runtime, so the proxy's certificates hold everywhere.
 #
+# USAGE
+#        Built from the repository's root, which the bridge's Go source needs:
+#        docker build -f images/cage/Dockerfile .
+#
 # SEE ALSO
-#        dedupe-path.sh, compose.yaml, .github/workflows/publish.yaml
+#        dedupe-path.sh, compose.yaml, cmd/o3s-cage, .github/workflows/publish.yaml
+
+# The bridge that carries the cage's loopback to the host's sockets, built static for any base
+FROM golang:1.27-alpine@sha256:70bd7ddea8b6cbe5d6943cde279d6b67feb10cc924fb9100d1d8757c1575b280 AS bridge
+WORKDIR /src
+COPY go.mod go.sum ./
+RUN go mod download
+COPY cmd/o3s-cage ./cmd/o3s-cage
+COPY internal ./internal
+RUN CGO_ENABLED=0 go build -trimpath -ldflags=-s -o /out/o3s-cage ./cmd/o3s-cage
 
 FROM ubuntu:24.04@sha256:73b999393d07f2bf65a40373778a44dc9a6d54ad7718d29247d8ff9413c4d6a8
 
@@ -33,8 +46,11 @@ RUN printf '\n# Export the markers the allowlist declares\nif [ -f /etc/profile.
       >> /etc/bash.bashrc
 
 # Fold the PATH prepends of every profile script into one entry per directory
-COPY dedupe-path.sh /usr/local/share/o3s/dedupe-path.sh
+COPY images/cage/dedupe-path.sh /usr/local/share/o3s/dedupe-path.sh
 RUN printf '\n. /usr/local/share/o3s/dedupe-path.sh\n' >> /home/ubuntu/.profile
+
+# The bridge to the host's sockets, on every shell's PATH
+COPY --from=bridge /out/o3s-cage /usr/local/bin/o3s-cage
 
 # Point runtimes with their own trust store at the system CA bundle
 ENV NODE_EXTRA_CA_CERTS=/etc/ssl/certs/ca-certificates.crt \

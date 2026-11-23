@@ -55,7 +55,7 @@ func newProjectAdd() *cobra.Command {
 			}
 			// Check every repository before the cage comes up
 			for _, repo := range repos {
-				// Turn away a clone the gateway would block, with the command that opens the way
+				// Turn away a clone the allowlist would block, with the command that opens the way
 				if !c.Allows(repo.Host, repo.Port) {
 					return fmt.Errorf("the firewall blocks %s:%d, allow it with: o3s firewall add %s --port %d", repo.Host, repo.Port, repo.Host, repo.Port)
 				}

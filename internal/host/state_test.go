@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -43,11 +44,11 @@ func TestHomeStateRecordsTheHome(t *testing.T) {
 	}
 }
 
-// The values compose reads name the proxy's folder and the secrets' folder.
+// The values compose reads name the proxy's CA folder and the cage's socket folder.
 func TestEnvNamesTheFoldersComposeMounts(t *testing.T) {
-	state, secrets, home := t.TempDir(), t.TempDir(), t.TempDir()
+	state, home := t.TempDir(), t.TempDir()
 	t.Setenv("XDG_STATE_HOME", state)
-	t.Setenv("O3S_SECRETS_DIR", secrets)
+	t.Setenv("XDG_RUNTIME_DIR", "")
 	// Stop when the stack folder fails to appear
 	if err := os.MkdirAll(filepath.Join(home, ".devcontainer"), 0o750); err != nil {
 		t.Fatalf("Setup: %v", err)
@@ -62,7 +63,7 @@ func TestEnvNamesTheFoldersComposeMounts(t *testing.T) {
 	data, _ := os.ReadFile(filepath.Join(home, ".devcontainer", ".env"))
 	want := []string{
 		"O3S_PROXY_DIR=" + paths.Proxy() + "\n",
-		"O3S_SECRETS_DIR=" + secrets + "\n",
+		"O3S_SOCKETS=" + paths.CageSockets(home) + "\n",
 	}
 	// Require every folder named
 	for _, line := range want {
@@ -72,7 +73,7 @@ func TestEnvNamesTheFoldersComposeMounts(t *testing.T) {
 		}
 	}
 	// Require those two folders to be every folder the file names
-	if got := strings.Count(string(data), "_DIR="); got != len(want) {
+	if got := len(regexp.MustCompile(`(?m)^O3S_[A-Z_]+=/`).FindAll(data, -1)); got != len(want) {
 		t.Errorf(".env names %d folders, want %d:\n%s", got, len(want), data)
 	}
 }

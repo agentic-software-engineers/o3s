@@ -14,7 +14,7 @@ import (
 // errEmpty marks a line the user has yet to type.
 var errEmpty = errors.New("type at least one")
 
-// checkHosts reads hosts separated by spaces, naming the first one the gateway would turn away.
+// checkHosts reads hosts separated by spaces, naming the first one the allowlist would turn away.
 func checkHosts(line string) (string, error) {
 	hosts := strings.Fields(line)
 	// Wait for a host
@@ -24,7 +24,7 @@ func checkHosts(line string) (string, error) {
 	readings := make([]string, len(hosts))
 	// Check every host, reading what it covers
 	for i, h := range hosts {
-		// Name the host the gateway would turn away
+		// Name the host the allowlist would turn away
 		if err := config.CheckHost(h); err != nil {
 			return "", fmt.Errorf("%q is not a host name", h)
 		}

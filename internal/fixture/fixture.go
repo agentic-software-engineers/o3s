@@ -23,7 +23,7 @@ const (
 	OtherWildcard = "*.example.org"
 	// ThirdHost is a third host, apart from the other two.
 	ThirdHost = "example.net"
-	// RefusedName is a name the gateway refuses.
+	// RefusedName is a name the allowlist refuses.
 	RefusedName = "blocked.example"
 	// AbsentName is a name every resolver lacks.
 	AbsentName = "absent.example"

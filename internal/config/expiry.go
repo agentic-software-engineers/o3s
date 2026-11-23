@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-// EndTimeLayout is the one shape an end time takes, UTC with whole seconds, which the gateway and the proxy compare as text.
+// EndTimeLayout is the one shape an end time takes, UTC with whole seconds, which the host process compares as text.
 const EndTimeLayout = "2006-01-02T15:04:05Z"
 
 // EndTime writes the moment a host closes in the shape the allowlist keeps.

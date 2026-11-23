@@ -215,7 +215,7 @@ func TestCheckNamesTheImagesAReleaseMoves(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Check() = %v", err)
 	}
-	want := []home.ImageChange{{Name: "o3s-cage", Old: fixture.Version, New: fixture.NewerVersion}, {Name: "o3s-gateway", Old: fixture.Version, New: fixture.NewerVersion}}
+	want := []home.ImageChange{{Name: "o3s-cage", Old: fixture.Version, New: fixture.NewerVersion}}
 	// Require both images named
 	if diff := cmp.Diff(want, got.Images); diff != "" {
 		t.Errorf("Check() images (-want +got):\n%s", diff)

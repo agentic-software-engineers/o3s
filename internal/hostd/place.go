@@ -25,26 +25,26 @@ type Place struct {
 	Home string
 	// State is the home's own state folder, which holds the lock and the logs.
 	State string
-	// Sockets is the folder the sockets live in: a folder of the home's own in the user's runtime folder where the
-	// system has one, since that folder is local and starts empty on every boot, and the state folder otherwise.
+	// Sockets is the folder the control socket lives in.
 	Sockets string
+	// Cage is the folder of the sockets the cage reaches, which the cage mounts.
+	Cage string
 }
 
 // PlaceOf settles where the home's host process keeps its files, making the folders open to their owner alone.
 func PlaceOf(home string) (Place, error) {
-	p := Place{Home: home, State: paths.Home(home), Sockets: paths.Home(home)}
-	// Take a folder of the home's own in the runtime folder where the system names one
-	if runtime := os.Getenv("XDG_RUNTIME_DIR"); filepath.IsAbs(runtime) {
-		p.Sockets = filepath.Join(runtime, "o3s", paths.ID(home))
-	}
+	p := Place{Home: home, State: paths.Home(home), Sockets: paths.Sockets(home), Cage: paths.CageSockets(home)}
 	// Turn away a folder whose socket paths the kernel would cut short
-	if path := filepath.Join(p.Sockets, longestSocket); len(path) > maxSocketPath {
-		return Place{}, fmt.Errorf("%w: %s", ErrPathTooLong, path)
+	for _, path := range []string{filepath.Join(p.Sockets, longestSocket), filepath.Join(p.Cage, longestSocket)} {
+		// Name the first path past the limit
+		if len(path) > maxSocketPath {
+			return Place{}, fmt.Errorf("%w: %s", ErrPathTooLong, path)
+		}
 	}
 	// Make each folder, open to its owner alone
-	for _, dir := range []string{p.State, p.Sockets} {
+	for _, dir := range []string{p.State, p.Sockets, p.Cage} {
 		// Hand back a folder that fails to appear
-		if err := os.MkdirAll(dir, 0o700); err != nil { //nolint:gosec // the user's own runtime and state folders
+		if err := os.MkdirAll(dir, 0o700); err != nil {
 			return Place{}, err
 		}
 	}

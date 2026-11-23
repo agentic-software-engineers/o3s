@@ -15,8 +15,8 @@ import (
 
 // Digests of a release's images, as a release binary carries them.
 var (
-	cageDigest    = "sha256:" + strings.Repeat("a", 64)
-	gatewayDigest = "sha256:" + strings.Repeat("b", 64)
+	cageDigest  = "sha256:" + strings.Repeat("a", 64)
+	newerDigest = "sha256:" + strings.Repeat("b", 64)
 )
 
 // aRelease sets the version and digests a release binary carries, until the test ends.
@@ -46,18 +46,18 @@ func TestInitPinsTheImagesByDigest(t *testing.T) {
 	}{
 		{
 			"both digests",
-			map[string]string{"ghcr.io/hansehart/o3s-cage": cageDigest, "ghcr.io/hansehart/o3s-gateway": gatewayDigest},
-			[]string{"image: ghcr.io/hansehart/o3s-cage:" + fixture.Version + "@" + cageDigest + "\n", "image: ghcr.io/hansehart/o3s-gateway:" + fixture.Version + "@" + gatewayDigest + "\n"},
+			map[string]string{"ghcr.io/hansehart/o3s-cage": cageDigest},
+			[]string{"image: ghcr.io/hansehart/o3s-cage:" + fixture.Version + "@" + cageDigest + "\n"},
 		},
 		{
 			"no digests",
 			nil,
-			[]string{"image: ghcr.io/hansehart/o3s-cage:" + fixture.Version + "\n", "image: ghcr.io/hansehart/o3s-gateway:" + fixture.Version + "\n"},
+			[]string{"image: ghcr.io/hansehart/o3s-cage:" + fixture.Version + "\n"},
 		},
 		{
 			"a malformed digest",
-			map[string]string{"ghcr.io/hansehart/o3s-cage": "sha256:short", "ghcr.io/hansehart/o3s-gateway": gatewayDigest},
-			[]string{"image: ghcr.io/hansehart/o3s-cage:" + fixture.Version + "\n", "image: ghcr.io/hansehart/o3s-gateway:" + fixture.Version + "@" + gatewayDigest + "\n"},
+			map[string]string{"ghcr.io/hansehart/o3s-cage": "sha256:short"},
+			[]string{"image: ghcr.io/hansehart/o3s-cage:" + fixture.Version + "\n"},
 		},
 	}
 	// Write a home for every release
@@ -78,9 +78,9 @@ func TestInitPinsTheImagesByDigest(t *testing.T) {
 
 // An update names the tags that move, the digests left out of the display.
 func TestImagesShowsTagsWithoutDigests(t *testing.T) {
-	aRelease(t, fixture.Version, map[string]string{"ghcr.io/hansehart/o3s-cage": cageDigest, "ghcr.io/hansehart/o3s-gateway": gatewayDigest})
+	aRelease(t, fixture.Version, map[string]string{"ghcr.io/hansehart/o3s-cage": cageDigest})
 	dir := anInitializedHome(t)
-	aRelease(t, fixture.NewerVersion, map[string]string{"ghcr.io/hansehart/o3s-cage": gatewayDigest, "ghcr.io/hansehart/o3s-gateway": cageDigest})
+	aRelease(t, fixture.NewerVersion, map[string]string{"ghcr.io/hansehart/o3s-cage": newerDigest})
 
 	moved, err := home.Images(dir)
 
@@ -88,7 +88,7 @@ func TestImagesShowsTagsWithoutDigests(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Images() = %v", err)
 	}
-	want := []home.ImageChange{{Name: "o3s-cage", Old: fixture.Version, New: fixture.NewerVersion}, {Name: "o3s-gateway", Old: fixture.Version, New: fixture.NewerVersion}}
+	want := []home.ImageChange{{Name: "o3s-cage", Old: fixture.Version, New: fixture.NewerVersion}}
 	// Require the tags alone
 	if diff := cmp.Diff(want, moved); diff != "" {
 		t.Errorf("Images() (-want +got):\n%s", diff)
@@ -100,7 +100,7 @@ func TestImagesShowsTagsWithoutDigests(t *testing.T) {
 func TestRefreshBringsTheDigestsToATaggedHome(t *testing.T) {
 	aRelease(t, fixture.Version, nil)
 	dir := anInitializedHome(t)
-	aRelease(t, fixture.Version, map[string]string{"ghcr.io/hansehart/o3s-cage": cageDigest, "ghcr.io/hansehart/o3s-gateway": gatewayDigest})
+	aRelease(t, fixture.Version, map[string]string{"ghcr.io/hansehart/o3s-cage": cageDigest})
 
 	moved, err := home.Images(dir)
 	// Stop when the images fail to read
@@ -125,7 +125,7 @@ func TestRefreshBringsTheDigestsToATaggedHome(t *testing.T) {
 
 // A release candidate pins its images like any release, at its own tag and digest.
 func TestInitPinsAReleaseCandidate(t *testing.T) {
-	aRelease(t, fixture.Candidate, map[string]string{"ghcr.io/hansehart/o3s-cage": cageDigest, "ghcr.io/hansehart/o3s-gateway": gatewayDigest})
+	aRelease(t, fixture.Candidate, map[string]string{"ghcr.io/hansehart/o3s-cage": cageDigest})
 
 	compose := composeOf(t, anInitializedHome(t))
 

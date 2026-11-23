@@ -1,12 +1,11 @@
 # NAME
-#        compose.yaml — the o3s stack: cage, gateway and proxy.
+#        compose.yaml — the o3s stack: the cage.
 #
 # DESCRIPTION
-#        Three services on two networks. The cage sits alone in its network with
-#        the gateway as its sole route and resolver. The gateway NATs the cage out through its
-#        own egress interface, resolves and admits the allow-listed hosts, and redirects cage
-#        HTTPS to the proxy, which shares the gateway's network namespace and injects this
-#        host's secrets into the hosts that declare one.
+#        One service with no network of its own. The cage reaches the internet through the
+#        host's o3s process alone, over the sockets in the folder it mounts: its tools speak to
+#        a proxy port and a DNS port on its loopback, which o3s-cage carries to those sockets,
+#        and the host process holds the allowlist and swaps this host's secrets in.
 #
 # USAGE
 #        o3s init writes this file into a home, and the editor raises it when it opens the
@@ -18,20 +17,33 @@
 # Stack name
 name: o3s
 
-# Cage network identity
-x-cage-subnet: &cage_subnet 10.10.0.0/24
-x-gateway-ip: &gateway_ip 10.10.0.2
-# The address Docker routes the cage through, which the gateway answers on
-x-cage-route: &cage_route 10.10.0.1
+# The proxy the cage's tools reach on its loopback
+x-proxy: &proxy http://127.0.0.1:3128
 
 # Apps deployed by stack
 services:
-  # The dev container the work happens in, reaching the internet through the gateway alone.
+  # The dev container the work happens in, reaching the internet through the host's o3s process alone.
   cage:
     image: ghcr.io/hansehart/o3s-cage:latest
     # Each release pins its own tag, so pull the cage image when absent
     pull_policy: missing
     env_file: .env
+    # Point every tool at the proxy on the cage's loopback, in both spellings tools read
+    environment:
+      HTTP_PROXY: *proxy
+      HTTPS_PROXY: *proxy
+      ALL_PROXY: *proxy
+      http_proxy: *proxy
+      https_proxy: *proxy
+      all_proxy: *proxy
+      NO_PROXY: localhost,127.0.0.1,::1
+      no_proxy: localhost,127.0.0.1,::1
+      # Node reads the proxy variables once asked to
+      NODE_USE_ENV_PROXY: "1"
+      # Java reads its proxy from system properties
+      JAVA_TOOL_OPTIONS: -Dhttp.proxyHost=127.0.0.1 -Dhttp.proxyPort=3128 -Dhttps.proxyHost=127.0.0.1 -Dhttps.proxyPort=3128 -Dhttp.nonProxyHosts=localhost|127.0.0.1
+      # git over ssh opens its connection as a tunnel through the proxy
+      GIT_SSH_COMMAND: ssh -o ProxyCommand="o3s-cage connect %h %p"
     volumes:
       # The home, read-only, with its policy and the stack's scripts
       - ../:/home/ubuntu/o3s:ro
@@ -41,6 +53,8 @@ services:
       - projects:/home/ubuntu/projects
       # Public proxy CA, folded into the trust store
       - ${O3S_PROXY_DIR}/mitmproxy-ca.crt:/usr/local/share/ca-certificates/mitmproxy-ca.crt:ro
+      # The host's sockets for the cage, its one way out
+      - ${O3S_SOCKETS}:/run/o3s:ro
     # Limit ressource usage
     deploy:
       resources:
@@ -67,149 +81,22 @@ services:
       - apparmor=${O3S_APPARMOR_PROFILE:-o3s-cage}
       - seccomp=./seccomp.json
       - systempaths=unconfined
-    # Bring the cage up behind the gateway
+    # Bring the cage up with its bridge to the host's sockets
     command: bash /home/ubuntu/o3s/.devcontainer/cage/start.sh
-    # Its sole exit is the gateway
-    networks:
-      - cage
-    # Wait until the gateway is routing and the proxy takes the redirected HTTPS before this container starts
-    depends_on:
-      gateway:
-        condition: service_healthy
-      proxy:
-        condition: service_healthy
-    # Resolve through the gateway's dnsmasq
+    # Ready once the bridge answers on the proxy port and on the DNS port, the last it opens
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/3128 && exec 4<>/dev/tcp/127.0.0.53/53"]
+      interval: 1s
+      timeout: 2s
+      retries: 60
+    # The loopback alone, so every way out leads through the host's sockets
+    network_mode: none
+    # Resolve through the bridge's DNS port, with the host's search domains left out
     dns:
-      - *gateway_ip
-
-  # Sole path to the internet for the cage.
-  gateway:
-    image: ghcr.io/hansehart/o3s-gateway:latest
-    # Each release pins its own tag, so pull the gateway image when absent
-    pull_policy: missing
-    # Required to manage iptables/ipset and route/NAT the cage network
-    cap_add:
-      - NET_ADMIN
-      - NET_RAW
-    # Deny privilege escalation via setuid binaries
-    security_opt:
-      - no-new-privileges:true
-    # Forward IPv4 between the cage and egress interfaces so the gateway can route and NAT the cage out
-    sysctls:
-      - net.ipv4.ip_forward=1
-    # Cage identity: the gateway locates its cage/egress interfaces from this
-    environment:
-      GW_CAGE_IP: *gateway_ip
-      # The cage network's route address, which the gateway takes on so Docker's default route leads to it
-      GW_CAGE_ROUTE: *cage_route
-      # How often the traffic record is written, in seconds
-      O3S_TRAFFIC_INTERVAL: ${O3S_TRAFFIC_INTERVAL:-60}
-    volumes:
-      # The allow-listed hosts
-      - ../o3s.json:/config/o3s.json:ro
-      # The gateway's own state, where it records each host's traffic and the names it refused
-      - gateway:/state
-    networks:
-      cage:
-        ipv4_address: *gateway_ip
-      egress:
-    restart: unless-stopped
-    healthcheck:
-      # Resolve an allow-listed host through dnsmasq and open a real connection
-      test: ["CMD", "healthcheck.sh"]
-      # Probe fast during startup so the cage's service_healthy gate clears in seconds
-      # Once healthy, re-check rarely
-      start_interval: 3s
-      start_period: 30s
-      interval: 10m
-      timeout: 5s
-      retries: 3
-
-  # Injects the upstream API key into inject-host HTTPS so the keys live here, outside the cage.
-  proxy:
-    image: ghcr.io/mitmproxy/mitmproxy:12.3.1@sha256:2711066c855659b5af8b1dbb84494ed3eff69b42ece439c60b4fe09a2db829d4
-    # The digest pins the image, so pull the proxy image when absent
-    pull_policy: missing
-    # Share the gateway's network namespace so its iptables REDIRECT lands here and resolves the original dst
-    network_mode: "service:gateway"
-    # Deny privilege escalation via setuid binaries
-    security_opt:
-      - no-new-privileges:true
-    # Run mitmdump as this host's user
-    entrypoint: ["mitmdump"]
-    user: ${O3S_UID}:${O3S_GID}
-    # Reach the mounted secrets by file permission alone
-    cap_drop:
-      - ALL
-    environment:
-      # The marker the addon swaps for real secrets
-      O3S_MARKER: ${O3S_MARKER}
-      # Where the addon reads the real tokens
-      O3S_SECRETS_FILE: /secrets/secrets.env
-    volumes:
-      # Signing CA and DH parameters, which o3s keeps for this host
-      - ${O3S_PROXY_DIR}:/config:ro
-      # The real tokens, read whole after every change
-      - ${O3S_SECRETS_DIR}:/secrets:ro
-      # Which hosts are allowed and which of them inject which secret
-      - ../o3s.json:/etc/o3s/o3s.json:ro
-      # Injection logic (public)
-      - ./proxy/inject.py:/addons/inject.py:ro
-    # Take the redirected cage HTTPS, holding each connection until the handshake names its host
-    command:
-      - --mode
-      - transparent
-      - --showhost
-      - --set
-      - connection_strategy=lazy
-      - --set
-      - block_global=false
-      - --set
-      - onboarding=false
-      - --set
-      - body_size_limit=100m
-      - --set
-      - confdir=/config
-      - --listen-host
-      - *gateway_ip
-      - --listen-port
-      - "8443"
-      - -s
-      - /addons/inject.py
-    restart: unless-stopped
-    healthcheck:
-      # Report healthy once a socket listens on the proxy's port, the one the gateway redirects HTTPS to
-      test: ["CMD-SHELL", "grep -qE ':20FB [0-9A-F]+:[0-9A-F]+ 0A' /proc/net/tcp"]
-      # Probe fast during startup so the cage's service_healthy gate clears in seconds
-      start_interval: 1s
-      start_period: 30s
-      interval: 10m
-      timeout: 5s
-      retries: 3
-    # Shares the gateway's network namespace, so it must start after the gateway and restart with it.
-    depends_on:
-      gateway:
-        condition: service_healthy
-
-networks:
-  # The gateway alone (which NATs via its own egress interface) reaches the internet
-  cage:
-    name: o3s-cage
-    driver: bridge
-    driver_opts:
-      com.docker.network.bridge.enable_ip_masquerade: "false"
-      # The bridge lacks an IPv4 address, so the gateway is the cage's sole route out
-      com.docker.network.bridge.inhibit_ipv4: "true"
-    ipam:
-      config:
-        - subnet: *cage_subnet
-          # The route address Docker hands the cage, answered by the gateway
-          gateway: *cage_route
-  # Gateway's own path to the internet
-  egress:
-    name: o3s-egress
+      - 127.0.0.53
+    dns_search:
+      - .
 
 volumes:
   features:
   projects:
-  gateway:

@@ -12,7 +12,6 @@ import (
 
 	"github.com/hansehart/o3s/internal/config"
 	"github.com/hansehart/o3s/internal/menu"
-	"github.com/hansehart/o3s/internal/restart"
 	"github.com/hansehart/o3s/internal/traffic"
 	"github.com/hansehart/o3s/internal/words"
 )
@@ -386,7 +385,7 @@ func askGateway(cmd *cobra.Command, dir string) (traffic.Record, bool) {
 	return record, running
 }
 
-// change applies a change to the home, saves it, and restarts the stack so it takes effect.
+// change applies a change to the home, saves it, and names how it takes effect.
 func change(cmd *cobra.Command, apply func(*config.Config) error) error {
 	dir, err := edit(apply)
 	// Hand back a change that fails to apply or save
@@ -396,19 +395,14 @@ func change(cmd *cobra.Command, apply func(*config.Config) error) error {
 	return restartStack(cmd, dir)
 }
 
-// restartStack restarts the home's stack so a saved change takes effect, and names how it does.
+// restartStack names how a saved change takes effect, now that the host process reads the home's files as they change.
 func restartStack(cmd *cobra.Command, dir string) error {
-	running, err := restart.Stack(cmd.Context(), dir)
-	// Hand back a stack that fails to restart, its settings already saved
-	if err != nil {
-		return fmt.Errorf("saved %s, restart the stack to apply it: %w", config.File, err)
-	}
-	// Name how the change takes effect
-	if running {
-		fmt.Fprintln(cmd.OutOrStdout(), "Restarted gateway")
+	// Name how the change takes effect: at once where the host process runs, and once it starts otherwise
+	if hostState(cmd.Context(), dir) == running {
+		fmt.Fprintln(cmd.OutOrStdout(), "The host process applies the change")
 		return nil
 	}
-	fmt.Fprintln(cmd.OutOrStdout(), "The stack picks the change up when it starts")
+	fmt.Fprintln(cmd.OutOrStdout(), "The host process picks the change up when it starts")
 	return nil
 }
 
