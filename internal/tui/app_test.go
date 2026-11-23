@@ -131,8 +131,8 @@ func TestAppStepsBackWithTheAnswer(t *testing.T) {
 		t.Errorf("after esc = %q, view:\n%s", m.q.Key, view)
 	}
 	// Require the trail free of the host
-	if strings.Join(m.crumbs(), " / ") != "firewall / Allowed / Allow a host" {
-		t.Errorf("trail = %q, want firewall / Allowed / Allow a host", strings.Join(m.crumbs(), " / "))
+	if strings.Join(m.crumbs(), " / ") != "firewall / Allow a host" {
+		t.Errorf("trail = %q, want firewall / Allow a host", strings.Join(m.crumbs(), " / "))
 	}
 }
 
@@ -576,11 +576,11 @@ func TestTrailShowsATypedAnswerInPlaceOfItsChoice(t *testing.T) {
 	back, _ := drive(m, esc)
 
 	// Require the duration in place of its choice, and the choice back on a step back
-	if want := "firewall / Allowed / Allow a host / " + fixture.Host + " / " + port + " / " + fixture.Duration; typed != want {
+	if want := "firewall / Allow a host / " + fixture.Host + " / " + port + " / " + fixture.Duration; typed != want {
 		t.Errorf("trail = %q, want %q", typed, want)
 	}
 	// Require the choice in the trail once the step back leaves the typed answer
-	if got, want := strings.Join(back.crumbs(), " / "), "firewall / Allowed / Allow a host / "+fixture.Host+" / "+port+" / Type a duration"; got != want {
+	if got, want := strings.Join(back.crumbs(), " / "), "firewall / Allow a host / "+fixture.Host+" / "+port+" / Type a duration"; got != want {
 		t.Errorf("trail after esc = %q, want %q", got, want)
 	}
 }

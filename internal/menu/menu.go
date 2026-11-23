@@ -18,28 +18,17 @@ type Home struct {
 	// VM is where the VM of a home that lives in one stands, and empty for a home on this machine.
 	VM vm.State
 	// Now is the moment the menu reads the home at, which end times count from.
-	Now   time.Time
-	Hosts []config.Host
-	// Traffic is what the gateway recorded for each allowed host, by name.
-	Traffic map[string]Traffic
+	Now     time.Time
+	Hosts   []config.Host
 	Secrets []Secret
 	Stores  []string
 	// Installed are the features the cage installs, in the order it installs them.
 	Installed []Installed
-	// Blocked are the names the gateway refused, each noting how often and when.
-	Blocked []Option
-	// Running marks a stack whose gateway answers, which alone knows what it blocked.
-	Running bool
 	// Stack names whether each part of the stack runs.
 	Stack []Fact
 	// Projects are the projects the workspace lists, as host/owner/name.
 	Projects []string
 	Lookup   Lookup
-}
-
-// Traffic is what the gateway recorded for one host, as the screen shows it.
-type Traffic struct {
-	Data, Seen string
 }
 
 // Installed is a feature the cage installs, with the tag it follows and the options it sets.
@@ -296,7 +285,7 @@ func mainMenu(h Home) Question {
 		{Value: "init", Note: "make this folder a home"},
 		{Value: "cage", Note: "VM, stack and cage · " + stackState(h)},
 		{Value: "feature", Note: fmt.Sprintf("tools in the cage · %d installed", len(h.Installed))},
-		{Value: "firewall", Note: fmt.Sprintf("hosts the cage reaches · %d allowed · %d blocked", len(h.Hosts), len(h.Blocked))},
+		{Value: "firewall", Note: fmt.Sprintf("hosts the cage reaches · %d allowed", len(h.Hosts))},
 		{Value: "project", Note: fmt.Sprintf("repositories in the workspace · %d", len(h.Projects))},
 		{Value: "secret", Note: "values the proxy injects · " + secretCounts(h.Secrets)},
 		{Value: "update", Note: "the cli, the stack and the features"},

@@ -31,7 +31,6 @@ type Home struct {
 // an empty one, and a home in its VM in every state.
 func Homes() []Home {
 	stopped := full()
-	stopped.Running = false
 	stopped.Stack = stack("stopped")
 	return []Home{
 		{Name: "outside", Home: menu.Home{Dir: Dir, Now: fixture.Now, Secrets: secrets()}},
@@ -45,8 +44,7 @@ func Homes() []Home {
 }
 
 // full is a home on this machine that holds a bit of everything: hosts open for good, for a while and past their
-// end, secrets set and waiting, a store, both its features installed, the tool with an option set, a refused name
-// and a project.
+// end, secrets set and waiting, a store, both its features installed, the tool with an option set, and a project.
 func full() menu.Home {
 	return menu.Home{
 		Dir:    Dir,
@@ -58,12 +56,9 @@ func full() menu.Home {
 			{Name: fixture.ThirdHost, Ports: []int{fixture.Port}, Expires: fixture.LongAgoText, By: []string{"user"}},
 			{Name: fixture.OtherHost, Ports: []int{fixture.Port}, By: []string{Tool}},
 		},
-		Traffic:   map[string]menu.Traffic{fixture.Host: {Data: fixture.DataMoved, Seen: fixture.LastSeen}},
 		Secrets:   secrets(),
 		Stores:    []string{fixture.Store},
 		Installed: []menu.Installed{{Package: Tool, Tag: fixture.Major, Options: map[string]string{fixture.Choice: fixture.OtherChoiceValue}}, {Package: Other, Tag: fixture.Major, Options: map[string]string{}}},
-		Blocked:   []menu.Option{{Value: fixture.RefusedName, Columns: menu.BlockedRow(fixture.Attempts, fixture.LastSeen)}},
-		Running:   true,
 		Stack:     stack("running"),
 		Projects:  []string{"github.com/" + fixture.Repo},
 		Lookup:    Lookup{},

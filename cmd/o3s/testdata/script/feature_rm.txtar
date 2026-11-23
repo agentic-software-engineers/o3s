@@ -24,7 +24,6 @@ exec o3s feature rm $REGISTRY/features/tool --yes
 ! exec o3s feature rm $REGISTRY/features/tool --yes
 stderr 'unknown feature .*/features/tool'
 
--- stack-up --
 -- o3s.json.in --
 {"$schema": "./.devcontainer/o3s.schema.json", "stores": [], "hosts": [{"name": "example.org", "ports": [443], "by": ["user"]}]}
 -- .devcontainer/devcontainer.json --

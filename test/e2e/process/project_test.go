@@ -11,13 +11,13 @@ import (
 	"github.com/hansehart/o3s/test/stacktest"
 )
 
-// helloWorld is a small public repository, which the cage clones over HTTPS through the gateway and the proxy.
+// helloWorld is a small public repository, which the cage clones over HTTPS through the host process.
 const (
 	helloWorld = "https://github.com/octocat/Hello-World"
 	helloPath  = "/home/ubuntu/projects/github.com/octocat/Hello-World"
 )
 
-// A repository cloned through the gateway lands in the cage by host, owner and name, joins the workspace as
+// A repository cloned through the host process lands in the cage by host, owner and name, joins the workspace as
 // owner/name, and leaves the cage and the workspace with rm.
 func TestAProjectIsClonedListedAndRemovedInTheCage(t *testing.T) {
 	_, err := stacktest.O3s(t, "firewall", "add", "github.com", "--port", "443")

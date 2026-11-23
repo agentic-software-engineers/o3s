@@ -32,14 +32,9 @@ var instant = map[string]string{
 // knownBreaks are the breaks of the rules the menu shows today, each named by the finding a fix removes it with.
 // Fixing one removes its entry, and a new break fails the test.
 var knownBreaks = map[string]string{
-	"no footer: update / 3 marked / yes":                   "a running command names no key, though ctrl+c leaves",
-	"taller than 14: feature":                              "the feature view runs past a short terminal, its footer out of sight",
-	"wider than 60: firewall":                              "a line of the firewall view runs past a narrow terminal",
-	"no footer: update / unmarks 1 / yes":                  "a running command names no key, though ctrl+c leaves",
-	"taller than 14: firewall / Allowed / api.example.com": "a host's view runs past a short terminal, its footer out of sight",
-	"taller than 14: firewall / Allowed / example.com":     "a host's view runs past a short terminal, its footer out of sight",
-	"taller than 14: firewall / Allowed / example.net":     "a host's view runs past a short terminal, its footer out of sight",
-	"taller than 14: firewall / Allowed / example.org":     "a host's view runs past a short terminal, its footer out of sight",
+	"no footer: update / 3 marked / yes":  "a running command names no key, though ctrl+c leaves",
+	"taller than 14: feature":             "the feature view runs past a short terminal, its footer out of sight",
+	"no footer: update / unmarks 1 / yes": "a running command names no key, though ctrl+c leaves",
 }
 
 // breaks are every break of the rules on the screens of every path of every home, the screens paths end at and the

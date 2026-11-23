@@ -29,7 +29,6 @@ builds:
     ldflags:
       - -s -w -X main.version={{ .Version }}
       - -X main.cageDigest={{ envOrDefault "O3S_CAGE_DIGEST" "" }}
-      - -X main.gatewayDigest={{ envOrDefault "O3S_GATEWAY_DIGEST" "" }}
 
 archives:
   # Each binary as it is, named after the platform it runs on

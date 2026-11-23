@@ -23,7 +23,6 @@ cmp .devcontainer/devcontainer.json before.jsonc
 stderr 'requires at least 1 arg'
 stderr 'for usage'
 
--- stack-up --
 -- o3s.json --
 {"$schema": "./.devcontainer/o3s.schema.json", "stores": [], "hosts": []}
 -- other.json --

@@ -9,7 +9,7 @@ func TestFlowMainMenuSearches(t *testing.T) {
 	m, _ = drive(m, typed("fi")...)
 
 	// Require the firewall alone, highlighted
-	requireLines(t, m, "❯ firewall   hosts the cage reaches · 4 allowed · 1 blocked")
+	requireLines(t, m, "❯ firewall   hosts the cage reaches · 4 allowed")
 	lacksLine(t, m, "feature    tools in the cage")
 
 	m, quit := drive(m, esc)

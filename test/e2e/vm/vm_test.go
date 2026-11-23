@@ -100,9 +100,9 @@ func TestTheHomesVM(t *testing.T) {
 		if err == nil {
 			t.Errorf("ip route replace default in the cage succeeded\n%s\nwant it refused", out)
 		}
-		out, err = stacktest.O3sIn(t, dir, "cage", "shell", "--vm", "--", "docker", "ps", "--format", "{{.Names}}")
-		// Require the cage alone, its way out held by the host process
-		if err != nil || !strings.Contains(out, "cage") || strings.Contains(out, "gateway") {
+		out, err = stacktest.O3sIn(t, dir, "cage", "shell", "--vm", "--", "docker", "ps", "--format", `{{.Label "com.docker.compose.service"}}`)
+		// Require the cage as the stack's one running service, its way out held by the host process
+		if err != nil || strings.TrimSpace(out) != "cage" {
 			t.Errorf("docker ps in the VM = %v\n%s\nwant the cage running alone", err, out)
 		}
 	})
