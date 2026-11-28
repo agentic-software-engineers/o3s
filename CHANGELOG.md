@@ -1,5 +1,34 @@
 # Changelog
 
+## [0.8.3-rc.1](https://github.com/agentic-software-engineers/o3s/compare/v0.8.2...v0.8.3-rc.1) (2026-11-28)
+
+
+### Features
+
+* **cage:** bridge the cage's loopback to the host's sockets ([#353](https://github.com/agentic-software-engineers/o3s/issues/353)) ([12030cd](https://github.com/agentic-software-engineers/o3s/commit/12030cdde8d496e42a84b0760346abdaa11a0b91))
+* **cage:** feed the relay's services from the home's files ([#349](https://github.com/agentic-software-engineers/o3s/issues/349)) ([ca9395c](https://github.com/agentic-software-engineers/o3s/commit/ca9395c1fde31ca9ab6311ec918ba8644de77615))
+* **cage:** keep one host process per home running ([#351](https://github.com/agentic-software-engineers/o3s/issues/351)) ([c0337ba](https://github.com/agentic-software-engineers/o3s/commit/c0337ba51ffe94ed8c99351755898ed716c4637c))
+* **cage:** run the cage without a network on the host engine ([#366](https://github.com/agentic-software-engineers/o3s/issues/366)) ([651662c](https://github.com/agentic-software-engineers/o3s/commit/651662c11fce983fe23025934ee030f47b013a0a))
+* **cli:** check that the host runs a VM inside the home's VM ([#325](https://github.com/agentic-software-engineers/o3s/issues/325)) ([cebd078](https://github.com/agentic-software-engineers/o3s/commit/cebd0788112ef9c75a2e7e473c41bcd1828333a3))
+* **dns:** answer the cage's names through the allowlist ([#346](https://github.com/agentic-software-engineers/o3s/issues/346)) ([d3aecde](https://github.com/agentic-software-engineers/o3s/commit/d3aecdedeb9a01bea4696bef3e974f359089c7a0))
+* **docs:** add the overview page for the central docs ([#369](https://github.com/agentic-software-engineers/o3s/issues/369)) ([77f5dd2](https://github.com/agentic-software-engineers/o3s/commit/77f5dd2575ed9b554dc7d49e4de4c644beab4547))
+* **docs:** name o3s in full in the product switcher ([#370](https://github.com/agentic-software-engineers/o3s/issues/370)) ([eab3d7a](https://github.com/agentic-software-engineers/o3s/commit/eab3d7aa7e850f361de04732d11883d1a8aca7be))
+* **proxy:** refuse private and metadata addresses from the first packet ([#338](https://github.com/agentic-software-engineers/o3s/issues/338)) ([ce2627b](https://github.com/agentic-software-engineers/o3s/commit/ce2627b25cef2d0e13aa8794d6593bcb98884817))
+* **proxy:** serve the allow-list proxy over the relay ([#334](https://github.com/agentic-software-engineers/o3s/issues/334)) ([2f2fc48](https://github.com/agentic-software-engineers/o3s/commit/2f2fc4827173390b5aa9837d987f84333d5cba9c))
+* **proxy:** swap placeholder secrets for their bound host and slot ([#336](https://github.com/agentic-software-engineers/o3s/issues/336)) ([d6670ea](https://github.com/agentic-software-engineers/o3s/commit/d6670eaad07e3e7d5f1e3e27c553f73101cc7fa2))
+* **relay:** carry the cage's connections to o3s over one transport ([#332](https://github.com/agentic-software-engineers/o3s/issues/332)) ([4edad6e](https://github.com/agentic-software-engineers/o3s/commit/4edad6e765b23e2ea8a84e58cae3fa1694a47f36))
+
+
+### Bug Fixes
+
+* **cage:** deliver the shutdown answer before the control socket closes ([#379](https://github.com/agentic-software-engineers/o3s/issues/379)) ([479e860](https://github.com/agentic-software-engineers/o3s/commit/479e8603d39038b0e0e6415fed2e2f681459aa76))
+* **cage:** start a new host process once the old one lets go of the home ([#391](https://github.com/agentic-software-engineers/o3s/issues/391)) ([58e1c6c](https://github.com/agentic-software-engineers/o3s/commit/58e1c6c77660ed212c18fdfabb4177b939359226))
+* **deps:** update ghcr.io/mitmproxy/mitmproxy docker tag to v12.3.1 ([#359](https://github.com/agentic-software-engineers/o3s/issues/359)) ([d994d6c](https://github.com/agentic-software-engineers/o3s/commit/d994d6c3649a9f77d636d0c80f7b90de316af07a))
+* **deps:** update go modules (minor) ([#360](https://github.com/agentic-software-engineers/o3s/issues/360)) ([14a0113](https://github.com/agentic-software-engineers/o3s/commit/14a0113e3df3132d6bde1ea7520b9249a2984aa4))
+* **deps:** update go modules (patch) ([#355](https://github.com/agentic-software-engineers/o3s/issues/355)) ([60a080e](https://github.com/agentic-software-engineers/o3s/commit/60a080eba9a1ad33c34a67721a4f7d3e51c3e553))
+* **deps:** update module charm.land/bubbles/v2 to v2.2.2 ([#380](https://github.com/agentic-software-engineers/o3s/issues/380)) ([b41ede9](https://github.com/agentic-software-engineers/o3s/commit/b41ede92d1694832c418520ad487ecf4b20ad3a4))
+* **deps:** update ubuntu:24.04 docker digest to 562111b ([#376](https://github.com/agentic-software-engineers/o3s/issues/376)) ([bc62010](https://github.com/agentic-software-engineers/o3s/commit/bc620107ed523663e5a6cc13a743ef8d64c46a78))
+
 ## [0.8.2](https://github.com/hansehart/o3s/compare/v0.8.1...v0.8.2) (2026-11-19)
 
 
